@@ -8,6 +8,7 @@ export default function Login() {
         <Text style={style.logoText}>
           Ticket<Text style={{ color: colors.green }}>App</Text>
         </Text>
+        <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
       </View>
     </View>
   );
@@ -29,5 +30,10 @@ const style = StyleSheet.create({
     fontWeight: "bold",
     color: colors.white,
     marginBottom: 8,
+  },
+  slogan: {
+    fontSize: 36,
+    color: colors.white,
+    marginBottom: 36,
   },
 });
