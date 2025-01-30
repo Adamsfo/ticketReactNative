@@ -7,4 +7,6 @@ export default {
   gray: '#DDDDDD',
   red: '#FF0000',
   laranjado: '#FFA500',
+  azul: '#0073E6',
+  cinza: '#424242',
 };

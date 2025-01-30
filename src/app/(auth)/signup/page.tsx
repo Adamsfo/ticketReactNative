@@ -6,13 +6,17 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import colors from "@/constants/colors";
+import colors from "@/src/constants/colors";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Usuario } from "@/src/types/geral";
 import { apiAuth } from "@/src/lib/auth";
+import Menu from "@/src/components/Menu";
+import StatusBarPage from "@/src/components/StatusBarPage";
 
 export default function Signup() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -85,86 +89,95 @@ export default function Signup() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView style={{ flex: 1, backgroundColor: colors.white }}>
-        <View style={style.container}>
-          <View style={style.header}>
-            <Pressable style={style.backButton} onPress={() => router.back()}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        // keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView style={{ flex: 1, backgroundColor: colors.white }}>
+          <View style={style.container}>
+            <Menu color="white" />
+            <StatusBarPage style="light" />
+            <View style={style.header}>
+              {/* <Pressable style={style.backButton} onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={24} color={colors.white} />
-            </Pressable>
+            </Pressable> */}
 
-            <Text style={style.logoText}>
-              Ticket<Text style={{ color: colors.green }}>App</Text>
-            </Text>
-            <Text style={style.slogan}>Criar uma conta</Text>
-          </View>
-
-          <View style={style.form}>
-            <View>
-              <Text style={style.label}>Nome Completo</Text>
-              <TextInput
-                style={style.input}
-                placeholder="Nome Completo..."
-                keyboardType="default"
-                value={formData.nomeCompleto}
-                onChangeText={(text) => handleChange("nomeCompleto", text)}
-              ></TextInput>
-              {errors.nomeCompleto && (
-                <Text style={style.labelError}>{errors.nomeCompleto}</Text>
-              )}
-            </View>
-
-            <View>
-              <Text style={style.label}>Email</Text>
-              <TextInput
-                style={style.input}
-                placeholder="Digite seu email"
-                keyboardType="email-address"
-                value={formData.email}
-                onChangeText={(text) => handleChange("email", text)}
-              />
-              {errors.email && (
-                <Text style={style.labelError}>{errors.email}</Text>
-              )}
-            </View>
-
-            <View>
-              <Text style={style.label}>Senha</Text>
-              <TextInput
-                style={style.input}
-                placeholder="Digite sua senha"
-                secureTextEntry
-                value={formData.senha}
-                onChangeText={(text) => handleChange("senha", text)}
-              />
-              {errors.senha && (
-                <Text style={style.labelError}>{errors.senha}</Text>
-              )}
-            </View>
-
-            <View>
-              <Text style={style.label}>Repetir Senha</Text>
-              <TextInput
-                style={style.input}
-                placeholder="Repetir senha"
-                secureTextEntry
-                value={formData.confirmaSenha}
-                onChangeText={(text) => handleChange("confirmaSenha", text)}
-              />
-              {errors.confirmaSenha && (
-                <Text style={style.labelError}>{errors.confirmaSenha}</Text>
-              )}
-            </View>
-
-            {errors.api && <Text style={style.labelError}>{errors.api}</Text>}
-
-            <Pressable style={style.button} onPress={handleSingUp}>
-              <Text style={style.buttonText}>
-                {loading ? "Cadastrando..." : "Cadastrar"}
+              <Text style={style.logoText}>
+                Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
               </Text>
-            </Pressable>
+              <Text style={style.slogan}>Criar uma conta</Text>
+            </View>
+
+            <View style={style.form}>
+              <View>
+                <Text style={style.label}>Nome Completo</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Nome Completo..."
+                  keyboardType="default"
+                  value={formData.nomeCompleto}
+                  onChangeText={(text) => handleChange("nomeCompleto", text)}
+                ></TextInput>
+                {errors.nomeCompleto && (
+                  <Text style={style.labelError}>{errors.nomeCompleto}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={style.label}>Email</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Digite seu email"
+                  keyboardType="email-address"
+                  value={formData.email}
+                  autoCapitalize="none"
+                  onChangeText={(text) => handleChange("email", text)}
+                />
+                {errors.email && (
+                  <Text style={style.labelError}>{errors.email}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={style.label}>Senha</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Digite sua senha"
+                  secureTextEntry
+                  value={formData.senha}
+                  onChangeText={(text) => handleChange("senha", text)}
+                />
+                {errors.senha && (
+                  <Text style={style.labelError}>{errors.senha}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={style.label}>Repetir Senha</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Repetir senha"
+                  secureTextEntry
+                  value={formData.confirmaSenha}
+                  onChangeText={(text) => handleChange("confirmaSenha", text)}
+                />
+                {errors.confirmaSenha && (
+                  <Text style={style.labelError}>{errors.confirmaSenha}</Text>
+                )}
+              </View>
+
+              {errors.api && <Text style={style.labelError}>{errors.api}</Text>}
+
+              <Pressable style={style.button} onPress={handleSingUp}>
+                <Text style={style.buttonText}>
+                  {loading ? "Cadastrando..." : "Cadastrar"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -172,7 +185,7 @@ export default function Signup() {
 const style = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 34,
+    paddingTop: 110,
     backgroundColor: colors.zinc,
   },
   header: {

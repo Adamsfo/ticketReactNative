@@ -1,8 +1,10 @@
 import { View, Text, StyleSheet, TextInput, Pressable } from "react-native";
-import colors from "@/constants/colors";
+import colors from "@/src/constants/colors";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { apiAuth } from "../../../lib/auth";
+import Menu from "@/src/components/Menu";
+import StatusBarPage from "@/src/components/StatusBarPage";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -30,6 +32,8 @@ export default function Login() {
 
   return (
     <View style={style.container}>
+      <Menu color="white" />
+      <StatusBarPage style="light" />
       <View style={style.header}>
         <Text style={style.logoText}>
           Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
@@ -44,6 +48,7 @@ export default function Login() {
             style={style.input}
             placeholder="Digite seu email"
             keyboardType="email-address"
+            autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
           />
@@ -84,7 +89,7 @@ export default function Login() {
 const style = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 34,
+    paddingTop: 110,
     backgroundColor: colors.zinc,
   },
   header: {
