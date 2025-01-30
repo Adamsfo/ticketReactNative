@@ -1,15 +1,50 @@
-import { View, Text, StyleSheet } from "react-native";
 import colors from "@/constants/colors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import { apiAuth } from "../lib/auth";
+import { Usuario } from "../types/geral";
+import { Link } from "expo-router";
 
-export default function Login() {
+export default function Index() {
+  const [usuario, setUsuario] = useState<Usuario>();
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      let _token = await AsyncStorage.getItem("token");
+      if (_token) {
+        const response = await apiAuth.getUsurioToken(_token);
+
+        console.log(response);
+        if (response) {
+          setUsuario(response as unknown as Usuario);
+        }
+      }
+    };
+    fetchToken();
+  }, []);
+
   return (
     <View style={style.container}>
-      <View style={style.header}>
-        <Text style={style.logoText}>
-          Ticket<Text style={{ color: colors.green }}>App</Text>
+      <Text>Pagina Perfil</Text>
+      <Text>{usuario?.nomeCompleto}</Text>
+      <Text>{usuario?.email}</Text>
+      <Link
+        href="/(auth)/singin/page"
+        style={{ marginTop: 16, textAlign: "center" }}
+      >
+        <Text style={{ textAlign: "center", color: colors.laranjado }}>
+          Login
         </Text>
-        <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
-      </View>
+      </Link>
+      {/* <ActivityIndicator size="large" color={colors.laranjado} /> */}
     </View>
   );
 }
@@ -17,23 +52,8 @@ export default function Login() {
 const style = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 34,
-    backgroundColor: colors.zinc,
-  },
-  header: {
-    flex: 1,
-    paddingLeft: 14,
-    paddingRight: 14,
-  },
-  logoText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-    marginBottom: 8,
-  },
-  slogan: {
-    fontSize: 36,
-    color: colors.white,
-    marginBottom: 36,
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

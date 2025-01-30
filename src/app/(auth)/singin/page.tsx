@@ -1,0 +1,148 @@
+import { View, Text, StyleSheet, TextInput, Pressable } from "react-native";
+import colors from "@/constants/colors";
+import { Link, router } from "expo-router";
+import { useState } from "react";
+import { apiAuth } from "../../../lib/auth";
+
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  async function handleLogin() {
+    setLoading(true);
+
+    const result = await apiAuth.login({ login: email, senha: password });
+    if (result.success) {
+      // const response = await apiAuth.getUsuario({ search: email });
+      // if (response.data[0]) {
+      //   let usuario = response.data[0];
+      // }
+
+      setLoading(false);
+      router.replace("/");
+    } else {
+      setError(result.message || "Erro desconhecido");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <View style={style.container}>
+      <View style={style.header}>
+        <Text style={style.logoText}>
+          Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
+        </Text>
+        <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
+      </View>
+
+      <View style={style.form}>
+        <View>
+          <Text style={style.label}>Email</Text>
+          <TextInput
+            style={style.input}
+            placeholder="Digite seu email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+
+        <View>
+          <Text style={style.label}>Senha</Text>
+          <TextInput
+            style={style.input}
+            placeholder="Digite sua senha"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+
+        {error && <Text style={style.labelError}>{error}</Text>}
+
+        <Pressable style={style.button} onPress={handleLogin}>
+          <Text style={style.buttonText}>
+            {loading ? "Carregando..." : "Entrar"}
+          </Text>
+        </Pressable>
+
+        <Link
+          href="/(auth)/signup/page"
+          style={{ marginTop: 16, textAlign: "center" }}
+        >
+          <Text style={{ textAlign: "center", color: colors.laranjado }}>
+            Não tem uma conta? Cadastre-se
+          </Text>
+        </Link>
+      </View>
+    </View>
+  );
+}
+
+const style = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 34,
+    backgroundColor: colors.zinc,
+  },
+  header: {
+    paddingLeft: 14,
+    paddingRight: 14,
+  },
+  logoText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.white,
+    marginBottom: 8,
+  },
+  slogan: {
+    fontSize: 36,
+    color: colors.white,
+    marginBottom: 36,
+  },
+  form: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 24,
+    paddingLeft: 14,
+    paddingRight: 14,
+  },
+  label: {
+    // fontSize: 16,
+    color: colors.zinc,
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 8,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+    paddingTop: 14,
+    paddingBottom: 14,
+  },
+  button: {
+    backgroundColor: colors.laranjado,
+    paddingTop: 14,
+    paddingLeft: 14,
+    paddingBottom: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: colors.white,
+    // fontSize: 14,
+    fontWeight: "bold",
+  },
+  labelError: {
+    color: colors.red,
+    marginTop: -18,
+    marginBottom: 18,
+  },
+});
