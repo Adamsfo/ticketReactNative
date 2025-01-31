@@ -1,18 +1,20 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-// import styles from "./styles";
+import { Container, Item } from "./styles";
+import { Feather } from "@expo/vector-icons";
 
 interface CardEventoProps {
   data: { nome: string };
   onPress: () => void;
 }
-// { data, onPress }: CardEventoProps
-export default function CardEvento() {
+
+export default function CardEvento({ data, onPress }: CardEventoProps) {
   return (
-    <TouchableOpacity>
-      <View>
-        <Text>Item</Text>
-      </View>
-    </TouchableOpacity>
+    <View>
+      <Container activeOpacity={0.5} onPress={onPress}>
+        <Feather name="calendar" size={24} color="black" />
+        <Item>{data.nome}</Item>
+      </Container>
+    </View>
   );
 }

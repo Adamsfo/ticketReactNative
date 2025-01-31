@@ -27,14 +27,27 @@ export default function Index() {
             { id: 1, nome: "Evento 1" },
             { id: 2, nome: "Evento 2" },
             { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
+            { id: 3, nome: "Evento 3" },
           ]}
           keyExtractor={(item: any) => item.id}
           renderItem={({ item }: { item: any }) => (
             <CardEvento
-            // data={item}
-            // onPress={() => {
-            //   setVisibleMsg(true);
-            // }}
+              data={item}
+              onPress={() => {
+                setVisibleMsg(true);
+              }}
             />
           )}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -67,5 +80,6 @@ const style = StyleSheet.create({
     backgroundColor: colors.white,
     justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
 });
