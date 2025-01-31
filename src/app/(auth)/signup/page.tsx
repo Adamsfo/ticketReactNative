@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Usuario } from "@/src/types/geral";
 import { apiAuth } from "@/src/lib/auth";
-import Menu from "@/src/components/Menu";
+import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 
 export default function Signup() {
@@ -88,27 +88,29 @@ export default function Signup() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        // keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <ScrollView style={{ flex: 1, backgroundColor: colors.white }}>
-          <View style={style.container}>
-            <Menu color="white" />
-            <StatusBarPage style="light" />
-            <View style={style.header}>
-              {/* <Pressable style={style.backButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color={colors.white} />
-            </Pressable> */}
+    <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
+      <StatusBarPage style="dark" />
+      <BarMenu color={colors.line} />
 
-              <Text style={style.logoText}>
-                Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
-              </Text>
-              <Text style={style.slogan}>Criar uma conta</Text>
-            </View>
+      <View style={style.container}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        >
+          <View style={style.header}>
+            <Text style={style.logoText}>
+              Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
+            </Text>
+            <Text style={style.slogan}>Criar uma conta</Text>
+          </View>
 
+          <ScrollView
+            style={{
+              flex: 1,
+              backgroundColor: colors.white,
+              borderRadius: 8,
+            }}
+          >
             <View style={style.form}>
               <View>
                 <Text style={style.label}>Nome Completo</Text>
@@ -175,33 +177,39 @@ export default function Signup() {
                 </Text>
               </Pressable>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </View>
   );
 }
 
 const style = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 110,
+    marginTop: Platform.OS === "web" ? 80 : 120,
+    marginRight: 20,
+    marginBottom: 20,
+    marginLeft: 20,
     backgroundColor: colors.zinc,
   },
   header: {
     paddingLeft: 14,
     paddingRight: 14,
+    backgroundColor: colors.zinc,
   },
   logoText: {
     fontSize: 20,
     fontWeight: "bold",
     color: colors.white,
     marginBottom: 8,
+    borderRadius: 8,
   },
   slogan: {
     fontSize: 36,
     color: colors.white,
-    marginBottom: 36,
+    marginBottom: 24,
+    borderRadius: 8,
   },
   form: {
     flex: 1,
@@ -211,6 +219,7 @@ const style = StyleSheet.create({
     paddingTop: 24,
     paddingLeft: 14,
     paddingRight: 14,
+    borderRadius: 8,
   },
   label: {
     // fontSize: 16,

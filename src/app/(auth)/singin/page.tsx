@@ -1,9 +1,16 @@
-import { View, Text, StyleSheet, TextInput, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Platform,
+} from "react-native";
 import colors from "@/src/constants/colors";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { apiAuth } from "../../../lib/auth";
-import Menu from "@/src/components/Menu";
+import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 
 export default function Login() {
@@ -31,56 +38,59 @@ export default function Login() {
   }
 
   return (
-    <View style={style.container}>
-      <Menu color="white" />
-      <StatusBarPage style="light" />
-      <View style={style.header}>
-        <Text style={style.logoText}>
-          Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
-        </Text>
-        <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
-      </View>
+    <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
+      <StatusBarPage style="dark" />
+      <BarMenu color={colors.line} />
 
-      <View style={style.form}>
-        <View>
-          <Text style={style.label}>Email</Text>
-          <TextInput
-            style={style.input}
-            placeholder="Digite seu email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
+      <View style={style.container}>
+        <View style={style.header}>
+          <Text style={style.logoText}>
+            Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
+          </Text>
+          <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
         </View>
 
-        <View>
-          <Text style={style.label}>Senha</Text>
-          <TextInput
-            style={style.input}
-            placeholder="Digite sua senha"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+        <View style={style.form}>
+          <View>
+            <Text style={style.label}>Email</Text>
+            <TextInput
+              style={style.input}
+              placeholder="Digite seu email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <View>
+            <Text style={style.label}>Senha</Text>
+            <TextInput
+              style={style.input}
+              placeholder="Digite sua senha"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
+
+          {error && <Text style={style.labelError}>{error}</Text>}
+
+          <Pressable style={style.button} onPress={handleLogin}>
+            <Text style={style.buttonText}>
+              {loading ? "Carregando..." : "Entrar"}
+            </Text>
+          </Pressable>
+
+          <Link
+            href="/(auth)/signup/page"
+            style={{ marginTop: 16, textAlign: "center" }}
+          >
+            <Text style={{ textAlign: "center", color: colors.laranjado }}>
+              Não tem uma conta? Cadastre-se
+            </Text>
+          </Link>
         </View>
-
-        {error && <Text style={style.labelError}>{error}</Text>}
-
-        <Pressable style={style.button} onPress={handleLogin}>
-          <Text style={style.buttonText}>
-            {loading ? "Carregando..." : "Entrar"}
-          </Text>
-        </Pressable>
-
-        <Link
-          href="/(auth)/signup/page"
-          style={{ marginTop: 16, textAlign: "center" }}
-        >
-          <Text style={{ textAlign: "center", color: colors.laranjado }}>
-            Não tem uma conta? Cadastre-se
-          </Text>
-        </Link>
       </View>
     </View>
   );
@@ -89,7 +99,10 @@ export default function Login() {
 const style = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 110,
+    marginTop: Platform.OS === "web" ? 80 : 120,
+    marginRight: 20,
+    marginBottom: 20,
+    marginLeft: 20,
     backgroundColor: colors.zinc,
   },
   header: {
@@ -105,13 +118,12 @@ const style = StyleSheet.create({
   slogan: {
     fontSize: 36,
     color: colors.white,
-    marginBottom: 36,
+    marginBottom: 24,
   },
   form: {
     flex: 1,
     backgroundColor: colors.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderRadius: 16,
     paddingTop: 24,
     paddingLeft: 14,
     paddingRight: 14,
