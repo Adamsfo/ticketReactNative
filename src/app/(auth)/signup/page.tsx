@@ -17,8 +17,10 @@ import { Usuario } from "@/src/types/geral";
 import { apiAuth } from "@/src/lib/auth";
 import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
+import { useNavigation } from "@react-navigation/native";
 
 export default function Signup() {
+  const navigation = useNavigation() as any;
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Usuario>({
@@ -73,7 +75,7 @@ export default function Signup() {
           api: response.message || "Erro desconhecido ao registrar usuário.",
         });
       } else {
-        router.replace("/(auth)/singin/page");
+        navigation.navigate("login");
       }
     } catch (error) {
       console.error("Network request failed:", error);

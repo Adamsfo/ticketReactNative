@@ -26,14 +26,11 @@ class ApiAuth {
 
   // Método para logout
   public async logout(): Promise<void> {
-    if (Platform.OS === "web") {
-      localStorage.removeItem("token");
-      window.location.href = "/";
-    } else {
-      await AsyncStorage.removeItem("token");
-      // Use react-navigation for mobile navigation
-      router.replace("/"); // Certifique-se de ter uma rota "Login" configurada
-    }
+    // if (Platform.OS === "web") {
+    //   localStorage.removeItem("token");
+    // } else {
+    await AsyncStorage.removeItem("token");
+    // }
   }
 
   //Usuario

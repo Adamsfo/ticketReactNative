@@ -12,8 +12,10 @@ import { useState } from "react";
 import { apiAuth } from "../../../lib/auth";
 import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
+import { useNavigation } from "@react-navigation/native";
 
 export default function Login() {
+  const navigation = useNavigation() as any;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export default function Login() {
       // }
 
       setLoading(false);
-      router.replace("/");
+      navigation.navigate("home");
     } else {
       setError(result.message || "Erro desconhecido");
       setLoading(false);
@@ -84,6 +86,7 @@ export default function Login() {
 
           <Link
             href="/(auth)/signup/page"
+            onPress={() => navigation.navigate("loginAdd")}
             style={{ marginTop: 16, textAlign: "center" }}
           >
             <Text style={{ textAlign: "center", color: colors.laranjado }}>

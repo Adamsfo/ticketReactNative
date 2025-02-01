@@ -16,7 +16,7 @@ function Routes() {
   return (
     <GestureHandlerRootView>
       <Drawer.Navigator
-        initialRouteName="Home"
+        initialRouteName="index"
         screenOptions={{
           drawerActiveBackgroundColor: colors.laranjado,
           drawerActiveTintColor: colors.white,
@@ -28,17 +28,18 @@ function Routes() {
           },
         }}
       >
-        {/* <Drawer.Screen
-        name="index"
-        component={Index}
-        options={{
-          headerShown: true,
-          drawerLabel: () => null, // Oculta o rótulo do menu
-          drawerIcon: () => null,
-        }}
-      /> */}
         <Drawer.Screen
-          name="Home"
+          name="index"
+          component={Index}
+          options={{
+            headerShown: true,
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
+          }}
+        />
+        <Drawer.Screen
+          name="home"
           component={Home}
           options={{
             title: "Home",
@@ -53,48 +54,33 @@ function Routes() {
           }}
         />
         <Drawer.Screen
-          name="Login"
+          name="login"
           component={Login}
           options={{
-            title: "Login",
             headerShown: false,
-            drawerIcon: ({ focused, size, color }) => (
-              <Ionicons
-                name={focused ? "log-in" : "log-in-outline"}
-                size={size}
-                color={color}
-              />
-            ),
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
           }}
         />
         <Drawer.Screen
-          name="Cadastro Login"
+          name="loginAdd"
           component={Signup}
           options={{
-            title: "Cadastro Login",
             headerShown: false,
-            drawerIcon: ({ focused, size, color }) => (
-              <Ionicons
-                name={focused ? "person-add" : "person-add-outline"}
-                size={size}
-                color={color}
-              />
-            ),
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
           }}
         />
         <Drawer.Screen
-          name="Perfil Login"
+          name="perfil"
           component={Profile}
           options={{
-            title: "Perfil Login",
             headerShown: false,
-            drawerIcon: ({ focused, size, color }) => (
-              <Ionicons
-                name={focused ? "person" : "person-outline"}
-                size={size}
-                color={color}
-              />
-            ),
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
           }}
         />
       </Drawer.Navigator>
