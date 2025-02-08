@@ -8,6 +8,8 @@ import Home from "./(panel)/home/page";
 import Login from "./(auth)/singin/page";
 import Signup from "./(auth)/signup/page";
 import Profile from "./(panel)/profile/page";
+import Evento from "./(panel)/evento/page";
+import CriaEvento from "./(panel)/criaEvento/page";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const Drawer = createDrawerNavigator();
@@ -81,6 +83,24 @@ function Routes() {
             drawerLabel: () => null, // Oculta o rótulo do menu
             drawerIcon: () => null, // Oculta o ícone do menu
             drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
+          }}
+        />
+        <Drawer.Screen
+          name="evento"
+          component={Evento}
+          options={{
+            headerShown: false,
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
+          }}
+        />
+        <Drawer.Screen
+          name="criaevento"
+          component={CriaEvento}
+          options={{
+            headerShown: false,
+            title: "Cria Evento",
           }}
         />
       </Drawer.Navigator>

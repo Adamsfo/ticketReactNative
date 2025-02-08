@@ -48,14 +48,19 @@ export default function CardEvento({
           <Text style={styles.titulo} key={data.id}>
             {data.nome}
           </Text>
-          <Text style={{ fontWeight: "bold" }}>
-            Local:
+          <View style={{ flexDirection: "row" }}>
+            <Text style={{ fontWeight: "bold" }}>Local:</Text>
             <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
               Pesque Pague Jango
             </Text>
-          </Text>
+          </View>
 
-          <Text>Aberto todos os dias exceto 4ª feira</Text>
+          <View style={{ flexDirection: "row" }}>
+            <Text style={{ fontWeight: "bold" }}>Data:</Text>
+            <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
+              Aberto todos os dias exceto 4ª feira
+            </Text>
+          </View>
 
           <Text style={{ fontWeight: "normal" }}>
             Valores a partir de R$ 55,00.

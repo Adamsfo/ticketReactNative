@@ -15,11 +15,13 @@ import CardEvento from "@/src/components/CardEvento";
 import { FlatList } from "react-native-gesture-handler";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
   const [visibleMsg, setVisibleMsg] = useState(false);
+  const navigation = useNavigation() as any;
 
   const widthCardItem = 460;
 
@@ -57,7 +59,7 @@ export default function Index() {
             <CardEvento
               data={item}
               onPress={() => {
-                setVisibleMsg(true);
+                navigation.navigate("evento");
               }}
               widthCardItem={widthCardItem}
             />
