@@ -13,8 +13,18 @@ import {
   actions,
 } from "react-native-pell-rich-editor";
 
+// interface TextEditorProps {
+//   onChange: (html: string) => void;
+//   initialContent: string;
+// }
+
 export default function FormattedTextEditor() {
   const richText = useRef<RichEditor>(null);
+
+  // const handleEditorChange = (html: string) => {
+  //   console.log("Editor content changed:", html);
+  //   onChange(html);
+  // };
 
   return (
     <View style={styles.container}>
@@ -26,7 +36,7 @@ export default function FormattedTextEditor() {
           <RichEditor
             ref={richText}
             // initialContentHTML={initialContent}
-            // onChange={handleChange}
+            // onChange={handleEditorChange}
             style={styles.richEditor}
           />
         </ScrollView>

@@ -16,24 +16,17 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
-import ModalMsg from "@/src/components/ModalMsg";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import { Feather } from "@expo/vector-icons";
-import CounterTicket from "@/src/components/CounterTicket";
 import FormattedTextEditor from "@/src/components/FormattedTextEditor";
-import {
-  RichEditor,
-  RichToolbar,
-  actions,
-} from "react-native-pell-rich-editor";
-import TextEditor from "@/src/components/TextEditor";
+import QuillEditorWeb from "@/src/components/QuillEditorWeb";
+import QuillEditorMobile from "../../../components/QuillEditorMobile";
+import ImageUploader from "@/src/components/ImageUploader";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import DatePickerComponente from "@/src/components/DatePickerComponente";
+import TimePickerComponente from "@/src/components/TimePickerComponente";
 
 const { width } = Dimensions.get("window");
-
-const handleHead = ({ tintColor }: { tintColor: string }) => (
-  <Text style={{ color: tintColor }}>H1</Text>
-);
 
 export default function Index() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -49,7 +42,9 @@ export default function Index() {
     setFormData({ ...formData, [field]: value });
   };
 
-  const richText = React.useRef<RichEditor | null>(null);
+  const handleEditorChange = (html: string) => {
+    console.log("Editor content:", html);
+  };
 
   return (
     <LinearGradient
@@ -60,49 +55,82 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
-        {/* <View style={styles.area}> */}
-        <Text style={styles.titulo}>Crie seu Evento</Text>
-        {/* </View> */}
-
-        <View style={styles.area}>
-          <Text style={styles.areaTitulo}>Principais informações</Text>
-
-          <View>
-            <Text style={styles.label}>Nome do evento</Text>
-            <TextInput
-              style={styles.input}
-              multiline={Platform.OS === "web" ? false : true}
-              placeholder="Nome do evento..."
-              keyboardType="default"
-              value={formData.nome}
-              onChangeText={(text) => handleChange("nome", text)}
-            ></TextInput>
-            {errors.nomeCompleto && (
-              <Text style={styles.labelError}>{errors.nome}</Text>
-            )}
-          </View>
-
-          {/* <View> */}
-          <FormattedTextEditor />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        >
+          {/* <View style={styles.area}> */}
+          <Text style={styles.titulo}>Crie seu Evento</Text>
           {/* </View> */}
 
-          {/* <View>
-            <Text style={styles.label}>Descrição do evento</Text>
-            <TextInput
-              style={styles.input}
-              multiline={true}
-              placeholder="Coloque todas as informações necessárias do seu evento..."
-              keyboardType="default"
-              value={formData.descricao}
-              onChangeText={(text) => handleChange("descricao", text)}
-              numberOfLines={15}
-              textAlignVertical="top"
-            ></TextInput>
-            {errors.nomeCompleto && (
-              <Text style={styles.labelError}>{errors.descricao}</Text>
-            )}
-          </View> */}
-        </View>
+          <ScrollView
+            style={{
+              flex: 1,
+              borderRadius: 8,
+            }}
+          >
+            <View style={styles.area}>
+              <Text style={styles.areaTitulo}>Principais informações</Text>
+
+              <View>
+                <Text style={styles.label}>Nome do evento</Text>
+                <TextInput
+                  style={styles.input}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Nome do evento..."
+                  keyboardType="default"
+                  value={formData.nome}
+                  onChangeText={(text) => handleChange("nome", text)}
+                ></TextInput>
+                {errors.nome && (
+                  <Text style={styles.labelError}>{errors.nome}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={styles.label}>Imagem do evento</Text>
+                <ImageUploader />
+              </View>
+
+              <View style={{ marginBottom: 16, flex: 1, minHeight: 300 }}>
+                <SafeAreaView style={{ height: "100%" }}>
+                  <Text>Descrição </Text>
+                  {Platform.OS === "web" ? (
+                    <QuillEditorWeb />
+                  ) : (
+                    <QuillEditorMobile />
+                  )}
+                </SafeAreaView>
+                {errors.descricao && (
+                  <Text style={styles.labelError}>{errors.descricao}</Text>
+                )}
+              </View>
+
+              <View style={styles.eventDetails}>
+                <View style={{ flexDirection: "row" }}>
+                  <Text style={styles.labelData}>Data Inicio do Evento:</Text>
+                  <DatePickerComponente />
+                </View>
+                <View style={{ flexDirection: "row" }}>
+                  <Text style={styles.labelData}>Hora Inicio do Evento:</Text>
+                  <TimePickerComponente />
+                </View>
+
+                <View style={{ flexDirection: "row" }}>
+                  <Text style={styles.labelData}>Data Fim do Evento:</Text>
+                  <DatePickerComponente />
+                </View>
+                <View style={{ flexDirection: "row" }}>
+                  <Text style={styles.labelData}>Hora Fim do Evento:</Text>
+                  <TimePickerComponente />
+                </View>
+                {errors.nomeCompleto && (
+                  <Text style={styles.labelError}>{errors.descricao}</Text>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </LinearGradient>
   );
@@ -144,6 +172,15 @@ const styles = StyleSheet.create({
     // fontSize: 16,
     color: colors.zinc,
     marginBottom: 4,
+    // flexBasis: "45%",
+  },
+  labelData: {
+    // fontSize: 16,
+    color: colors.zinc,
+    marginBottom: 4,
+    width: 140,
+    textAlign: "right",
+    // flexBasis: "45%",
   },
   input: {
     borderWidth: 1,
@@ -158,5 +195,12 @@ const styles = StyleSheet.create({
     color: colors.red,
     marginTop: -18,
     marginBottom: 18,
+  },
+  eventDetails: {
+    // flexDirection: "row",
+    flexWrap: "wrap",
+    // justifyContent: "space-between",
+    width: Platform.OS === "web" ? width - 432 : -32, // Ajusta a largura conforme a tela
+    // width: width - 32, // Ajusta a largura conforme a tela
   },
 });
