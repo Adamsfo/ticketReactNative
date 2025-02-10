@@ -92,7 +92,13 @@ export default function Index() {
                 <ImageUploader />
               </View>
 
-              <View style={{ marginBottom: 16, flex: 1, minHeight: 300 }}>
+              <View
+                style={{
+                  marginBottom: 16,
+                  flex: 1,
+                  minHeight: Platform.OS === "web" ? 200 : 350,
+                }}
+              >
                 <SafeAreaView style={{ height: "100%" }}>
                   <Text>Descrição </Text>
                   {Platform.OS === "web" ? (
@@ -107,20 +113,20 @@ export default function Index() {
               </View>
 
               <View style={styles.eventDetails}>
-                <View style={{ flexDirection: "row" }}>
+                <View style={styles.eventDetailItem}>
                   <Text style={styles.labelData}>Data Inicio do Evento:</Text>
                   <DatePickerComponente />
                 </View>
-                <View style={{ flexDirection: "row" }}>
+                <View style={styles.eventDetailItem}>
                   <Text style={styles.labelData}>Hora Inicio do Evento:</Text>
                   <TimePickerComponente />
                 </View>
 
-                <View style={{ flexDirection: "row" }}>
+                <View style={styles.eventDetailItem}>
                   <Text style={styles.labelData}>Data Fim do Evento:</Text>
                   <DatePickerComponente />
                 </View>
-                <View style={{ flexDirection: "row" }}>
+                <View style={styles.eventDetailItem}>
                   <Text style={styles.labelData}>Hora Fim do Evento:</Text>
                   <TimePickerComponente />
                 </View>
@@ -197,10 +203,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   eventDetails: {
-    // flexDirection: "row",
     flexWrap: "wrap",
-    // justifyContent: "space-between",
+    // justifyContent: "center",
     width: Platform.OS === "web" ? width - 432 : -32, // Ajusta a largura conforme a tela
     // width: width - 32, // Ajusta a largura conforme a tela
+  },
+  eventDetailItem: {
+    flexDirection: "row",
+    alignItems: Platform.OS === "web" ? "flex-start" : "center",
+    marginBottom: 5,
   },
 });

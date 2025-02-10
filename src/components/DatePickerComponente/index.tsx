@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Button, Platform, Text, StyleSheet } from "react-native";
+import {
+  View,
+  Button,
+  Platform,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -41,7 +48,14 @@ const DatePickerComponente = () => {
       ) : (
         <View>
           <View>
-            <Button onPress={showpicker} title="Show date picker!" />
+            <Button
+              onPress={showpicker}
+              title={date.toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            />
           </View>
           {show && (
             <DateTimePicker
@@ -55,7 +69,6 @@ const DatePickerComponente = () => {
           )}
         </View>
       )}
-      {/* <Text style={styles.text}>Selected: {date.toLocaleString()}</Text> */}
     </View>
   );
 };

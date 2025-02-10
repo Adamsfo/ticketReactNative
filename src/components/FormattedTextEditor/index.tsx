@@ -67,6 +67,6 @@ const styles = StyleSheet.create({
   },
   richEditor: {
     flex: 1,
-    minHeight: 200,
+    // minHeight: 100,
   },
 });

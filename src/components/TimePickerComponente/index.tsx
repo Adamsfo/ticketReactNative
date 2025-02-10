@@ -42,13 +42,19 @@ const TimePickerComponente = () => {
       ) : (
         <View>
           <View>
-            <Button onPress={showpicker} title="Show date picker!" />
+            <Button
+              onPress={showpicker}
+              title={date.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            />
           </View>
           {show && (
             <DateTimePicker
               testID="dateTimePicker"
               value={date}
-              mode="date"
+              mode="time"
               is24Hour={true}
               display="default"
               onChange={onChange}
@@ -56,7 +62,6 @@ const TimePickerComponente = () => {
           )}
         </View>
       )}
-      {/* <Text style={styles.text}>Selected: {date.toLocaleString()}</Text> */}
     </View>
   );
 };
