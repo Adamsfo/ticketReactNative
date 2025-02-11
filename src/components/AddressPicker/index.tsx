@@ -3,8 +3,8 @@ import { View, TextInput, Button, StyleSheet, Platform } from "react-native";
 import Geocoder from "react-native-geocoding";
 import WebMap from "../WebMap";
 
-// Inicialize o Geocoder com sua chave da API do Google Maps
-Geocoder.init("YOUR_GOOGLE_MAPS_API_KEY");
+// Substitua pela sua chave de API do Google Maps
+Geocoder.init("AIzaSyDOKub2Z7hwFD9BiMxNfXPSSwKJ--YG_rU");
 
 interface AddressPickerProps {
   onSave?: (location: { latitude: number; longitude: number }) => void;
@@ -16,8 +16,8 @@ const AddressPicker: React.FC<AddressPickerProps> = ({ onSave }) => {
     latitude: number;
     longitude: number;
   }>({
-    latitude: -23.55052,
-    longitude: -46.633308,
+    latitude: -15.6014109,
+    longitude: -56.0978917,
   });
   const [MobileMap, setMobileMap] = useState<React.FC<{
     location: { latitude: number; longitude: number };

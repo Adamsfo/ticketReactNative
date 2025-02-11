@@ -24,9 +24,12 @@ const MobileMap: React.FC<MobileMapProps> = ({ location, setLocation }) => {
       <Text>Mapa não disponível no navegador</Text>
     </View>
   ) : (
-    <MapView style={styles.map} region={region}>
-      <Marker coordinate={location} draggable onDragEnd={handleMarkerDragEnd} />
-    </MapView>
+    // <MapView style={styles.map} region={region}>
+    //   <Marker coordinate={location} draggable onDragEnd={handleMarkerDragEnd} />
+    // </MapView>
+    <View style={styles.map}>
+      <Text>Mapa não disponível no navegador</Text>
+    </View>
   );
 };
 
