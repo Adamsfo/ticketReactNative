@@ -25,6 +25,7 @@ import ImageUploader from "@/src/components/ImageUploader";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
+import AddressPicker from "@/src/components/AddressPicker";
 
 const { width } = Dimensions.get("window");
 
@@ -134,6 +135,11 @@ export default function Index() {
                   <Text style={styles.labelError}>{errors.descricao}</Text>
                 )}
               </View>
+            </View>
+
+            <View style={styles.area}>
+              <Text style={styles.areaTitulo}>Localização do Evento</Text>
+              <AddressPicker />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
