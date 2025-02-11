@@ -24,19 +24,19 @@ const AddressPicker: React.FC<AddressPickerProps> = ({ onSave }) => {
     setLocation: (location: { latitude: number; longitude: number }) => void;
   }> | null>(null);
 
-  const loadMobileMap = async () => {
+  useEffect(() => {
     if (Platform.OS !== "web") {
-      const MobileMapComponent = require("../MobileMap").default;
-      setMobileMap(() => MobileMapComponent);
+      import("../MobileMap")
+        .then((module) => setMobileMap(() => module.default))
+        .catch((error) => console.error("Failed to load MobileMap:", error));
     }
-  };
+  }, []);
 
   const handleAddressChange = (input: string) => {
     setAddress(input);
   };
 
   const handleFindLocation = async () => {
-    loadMobileMap;
     try {
       const json = await Geocoder.from(address);
       const location = json.results[0].geometry.location;

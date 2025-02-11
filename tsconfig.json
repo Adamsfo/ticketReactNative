@@ -6,8 +6,21 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "target": "es5",
+    "module": "esnext",
+    "lib": ["dom", "es2017"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,    
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "jsx": "react-native",
+    "moduleResolution": "node"
   },
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"],
   "include": [
     "**/*.ts",
     "**/*.tsx",
