@@ -138,6 +138,10 @@ export default function Index() {
             </View>
 
             <View style={styles.area}>
+              <Text style={styles.areaTitulo}>Ingressos</Text>
+            </View>
+
+            <View style={styles.area}>
               <Text style={styles.areaTitulo}>Localização do Evento</Text>
               <AddressPicker />
             </View>

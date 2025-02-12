@@ -8,7 +8,6 @@ import {
   Alert,
 } from "react-native";
 import Geocoder from "react-native-geocoding";
-import WebMap from "../WebMap";
 import MapViewer from "../MapViewer";
 
 // Substitua pela sua chave de API do Google Maps
@@ -89,7 +88,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    height: 500,
+    height: 470,
   },
   input: {
     height: 40,

@@ -1,7 +1,4 @@
 import React from "react";
-import { Platform } from "react-native";
-import MobileMap from "../MobileMap";
-import WebMapPlaceholder from "../WebMapPlaceholder";
 import WebMap from "../WebMap";
 
 interface MapViewerProps {
@@ -10,11 +7,7 @@ interface MapViewerProps {
 }
 
 const MapViewer: React.FC<MapViewerProps> = ({ location, setLocation }) => {
-  return Platform.OS === "web" ? (
-    <WebMap location={location} />
-  ) : (
-    <MobileMap location={location} setLocation={setLocation} />
-  );
+  return <WebMap location={location} />;
 };
 
 export default MapViewer;
