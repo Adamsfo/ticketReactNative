@@ -25,7 +25,7 @@ import ImageUploader from "@/src/components/ImageUploader";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
-import AddressPicker from "@/src/components/AddressPicker";
+import AddressPicker from "../../../components/AddressPicker";
 
 const { width } = Dimensions.get("window");
 
