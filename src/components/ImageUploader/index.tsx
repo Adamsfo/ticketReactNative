@@ -78,7 +78,13 @@ export default function ImageUploader() {
   };
 
   return (
-    <View style={{ justifyContent: "center", alignItems: "center" }}>
+    <View
+      style={{
+        justifyContent: "center",
+        alignItems: "flex-start",
+        marginBottom: 20,
+      }}
+    >
       {image && (
         <Image
           source={{ uri: image }}

@@ -27,26 +27,19 @@ import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import AddressPicker from "../../../components/AddressPicker";
 import CustomGrid from "@/src/components/CustomGrid";
-import Select from "@/src/components/Select";
+import { Feather } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [loading, setLoading] = useState(false);
+  const [count, setCount] = useState(1);
   const [formData, setFormData] = useState({
     nome: "",
     descricao: "",
   });
-
-  const [content, setContent] = useState("");
-
   const handleChange = (field: any, value: string) => {
     setFormData({ ...formData, [field]: value });
-  };
-
-  const handleEditorChange = (html: string) => {
-    console.log("Editor content:", html);
   };
 
   return (
@@ -63,7 +56,7 @@ export default function Index() {
           behavior={Platform.OS === "ios" ? "padding" : "padding"}
         >
           {/* <View style={styles.area}> */}
-          <Text style={styles.titulo}>Crie seu Evento</Text>
+          <Text style={styles.titulo}>Tipo Ingresso</Text>
           {/* </View> */}
 
           <ScrollView
@@ -75,14 +68,26 @@ export default function Index() {
             }}
           >
             <View style={styles.area}>
+              <CustomGrid />
+              <CustomGrid />
+            </View>
+
+            <View style={styles.area}>
               <Text style={styles.areaTitulo}>Principais informações</Text>
 
               <View>
-                <Text style={styles.label}>Nome do evento</Text>
+                <Text style={styles.label}>
+                  Descrição{" "}
+                  <Text
+                    style={{ fontSize: 10, color: colors.red, marginLeft: 8 }}
+                  >
+                    Informação: Ingresso Individual, Bistro, Camarote
+                  </Text>
+                </Text>
                 <TextInput
                   style={styles.input}
                   multiline={Platform.OS === "web" ? false : true}
-                  placeholder="Nome do evento..."
+                  placeholder="Ingresso Individual..."
                   keyboardType="default"
                   value={formData.nome}
                   onChangeText={(text) => handleChange("nome", text)}
@@ -92,74 +97,42 @@ export default function Index() {
                 )}
               </View>
 
-              <View>
-                <Text style={styles.label}>Imagem do evento</Text>
-                <ImageUploader />
+              <View style={{ alignContent: "flex-start" }}>
+                <Text style={styles.label}>
+                  Quantidade de Ingressos{" "}
+                  <Text
+                    style={{ fontSize: 10, color: colors.red, marginLeft: 8 }}
+                  >
+                    Informação: Ingresso Individual quantidade 1, caso bistro ou
+                    camarote informe a quantidade correspondente
+                  </Text>
+                </Text>
+                <View style={{ marginLeft: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: "rgb(0, 146, 250)",
+                        borderRadius: 5,
+                      }}
+                      onPress={() => setCount(count + 1)}
+                    >
+                      <Feather name="plus" size={28} color="white"></Feather>
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, marginHorizontal: 5 }}>
+                      {count}
+                    </Text>
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: "rgb(0, 146, 250)",
+                        borderRadius: 5,
+                      }}
+                      onPress={() => setCount(count - 1)}
+                    >
+                      <Feather name="minus" size={28} color="white"></Feather>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-
-              <View
-                style={{
-                  marginBottom: 16,
-                  flex: 1,
-                  minHeight: Platform.OS === "web" ? 200 : 350,
-                }}
-              >
-                <SafeAreaView style={{ height: "100%" }}>
-                  <Text>Descrição </Text>
-                  {Platform.OS === "web" ? (
-                    <QuillEditorWeb />
-                  ) : (
-                    <QuillEditorMobile />
-                  )}
-                </SafeAreaView>
-                {errors.descricao && (
-                  <Text style={styles.labelError}>{errors.descricao}</Text>
-                )}
-              </View>
-
-              <View style={styles.eventDetails}>
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Data Inicio do Evento:</Text>
-                  <DatePickerComponente />
-                </View>
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Hora Inicio do Evento:</Text>
-                  <TimePickerComponente />
-                </View>
-
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Data Fim do Evento:</Text>
-                  <DatePickerComponente />
-                </View>
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Hora Fim do Evento:</Text>
-                  <TimePickerComponente />
-                </View>
-                {errors.nomeCompleto && (
-                  <Text style={styles.labelError}>{errors.descricao}</Text>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Mapa do Evento</Text>
-              <ImageUploader />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Ingressos</Text>
-              <CustomGrid />
-              <CustomGrid />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Localização do Evento</Text>
-              <AddressPicker />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Produtor</Text>
-              <Select />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

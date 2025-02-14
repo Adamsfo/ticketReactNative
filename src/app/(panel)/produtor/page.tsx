@@ -27,7 +27,6 @@ import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import AddressPicker from "../../../components/AddressPicker";
 import CustomGrid from "@/src/components/CustomGrid";
-import Select from "@/src/components/Select";
 
 const { width } = Dimensions.get("window");
 
@@ -63,7 +62,7 @@ export default function Index() {
           behavior={Platform.OS === "ios" ? "padding" : "padding"}
         >
           {/* <View style={styles.area}> */}
-          <Text style={styles.titulo}>Crie seu Evento</Text>
+          <Text style={styles.titulo}>Produtor</Text>
           {/* </View> */}
 
           <ScrollView
@@ -78,11 +77,11 @@ export default function Index() {
               <Text style={styles.areaTitulo}>Principais informações</Text>
 
               <View>
-                <Text style={styles.label}>Nome do evento</Text>
+                <Text style={styles.label}>Nome</Text>
                 <TextInput
                   style={styles.input}
                   multiline={Platform.OS === "web" ? false : true}
-                  placeholder="Nome do evento..."
+                  placeholder="Nome..."
                   keyboardType="default"
                   value={formData.nome}
                   onChangeText={(text) => handleChange("nome", text)}
@@ -93,7 +92,7 @@ export default function Index() {
               </View>
 
               <View>
-                <Text style={styles.label}>Imagem do evento</Text>
+                <Text style={styles.label}>Logo do Produtor</Text>
                 <ImageUploader />
               </View>
 
@@ -105,7 +104,7 @@ export default function Index() {
                 }}
               >
                 <SafeAreaView style={{ height: "100%" }}>
-                  <Text>Descrição </Text>
+                  <Text>Descrição do Produtor</Text>
                   {Platform.OS === "web" ? (
                     <QuillEditorWeb />
                   ) : (
@@ -116,50 +115,6 @@ export default function Index() {
                   <Text style={styles.labelError}>{errors.descricao}</Text>
                 )}
               </View>
-
-              <View style={styles.eventDetails}>
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Data Inicio do Evento:</Text>
-                  <DatePickerComponente />
-                </View>
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Hora Inicio do Evento:</Text>
-                  <TimePickerComponente />
-                </View>
-
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Data Fim do Evento:</Text>
-                  <DatePickerComponente />
-                </View>
-                <View style={styles.eventDetailItem}>
-                  <Text style={styles.labelData}>Hora Fim do Evento:</Text>
-                  <TimePickerComponente />
-                </View>
-                {errors.nomeCompleto && (
-                  <Text style={styles.labelError}>{errors.descricao}</Text>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Mapa do Evento</Text>
-              <ImageUploader />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Ingressos</Text>
-              <CustomGrid />
-              <CustomGrid />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Localização do Evento</Text>
-              <AddressPicker />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Produtor</Text>
-              <Select />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

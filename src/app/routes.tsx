@@ -10,6 +10,8 @@ import Signup from "./(auth)/signup/page";
 import Profile from "./(panel)/profile/page";
 import Evento from "./(panel)/evento/page";
 import CriaEvento from "./(panel)/criaEvento/page";
+import Produtor from "./(panel)/produtor/page";
+import TipoIngresso from "./(panel)/tipoIngresso/page";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const Drawer = createDrawerNavigator();
@@ -101,6 +103,22 @@ function Routes() {
           options={{
             headerShown: false,
             title: "Cria Evento",
+          }}
+        />
+        <Drawer.Screen
+          name="produtor"
+          component={Produtor}
+          options={{
+            headerShown: false,
+            title: "Produtor",
+          }}
+        />
+        <Drawer.Screen
+          name="tipoingresso"
+          component={TipoIngresso}
+          options={{
+            headerShown: false,
+            title: "Tipo Ingresso",
           }}
         />
       </Drawer.Navigator>

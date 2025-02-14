@@ -1,8 +1,16 @@
 import colors from "@/src/constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
 import { Link } from "expo-router";
+import { navigate } from "expo-router/build/global-state/routing";
 
 export default function Index() {
   useEffect(() => {

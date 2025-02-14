@@ -8,23 +8,24 @@ import {
   Text,
   Image,
   Platform,
+  View,
 } from "react-native";
 
 export default function Menu({ color }: { color?: string }) {
   const navigation = useNavigation() as any;
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      onPress={() => navigation.openDrawer()}
-    >
-      <Feather name="menu" size={36} color={color ? color : colors.roxo} />
-      {/* <Text>Jango Produções</Text> */}
-      <Image
-        source={require("../../assets/logoJangoProducoes.png")}
-        style={styles.imagem}
-      />
-    </TouchableOpacity>
+    <View style={styles.container}>
+      <TouchableOpacity onPress={() => navigation.openDrawer()}>
+        <Feather name="menu" size={36} color={color ? color : colors.roxo} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate("home")}>
+        <Image
+          source={require("../../assets/logoJangoProducoes.png")}
+          style={styles.imagem}
+        />
+      </TouchableOpacity>
+    </View>
   );
 }
 
