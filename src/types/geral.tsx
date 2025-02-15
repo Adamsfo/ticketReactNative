@@ -36,6 +36,12 @@ export interface Cidade {
   uf: string;
 }
 
+export interface TipoIngresso {
+  id: number;
+  descricao: string;
+  qtde: number;
+}
+
 export interface FormPropsEdit {
   id?: string;
   onClose?: () => void;

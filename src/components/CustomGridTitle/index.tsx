@@ -1,18 +1,17 @@
 import colors from "@/src/constants/colors";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
+import { View, Text, StyleSheet, Dimensions } from "react-native";
 
 interface DataItem {
-  label?: string;
-  content: string;
+  label: string;
 }
 
 interface CustomGridProps {
   data: DataItem[];
 }
 
-const CustomGrid: React.FC<CustomGridProps> = ({ data }) => {
+const CustomGridTitle: React.FC<CustomGridProps> = ({ data }) => {
   const { width } = Dimensions.get("window");
   const isMobile = width < 768;
 
@@ -21,14 +20,11 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data }) => {
       <View style={[styles.row, isMobile && styles.column]}>
         {data.map((item, index) => (
           <View key={index} style={styles.box}>
-            {Platform.OS !== "web" && (
-              <Text style={styles.textLabel}>{item.label + ":"}</Text>
-            )}
-            <Text style={styles.text}>{item.content}</Text>
+            <Text style={styles.textLabel}>{item.label}</Text>
           </View>
         ))}
-        <View style={styles.boxIcone}>
-          <Feather name="edit" size={18} color={colors.branco} />
+        <View style={{ ...styles.boxIcone }}>
+          <Feather name="edit" size={18} color="rgba(255,255,255, 0.21)" />
         </View>
       </View>
     </View>
@@ -41,7 +37,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     marginRight: 5,
     marginBottom: 2,
-    backgroundColor: colors.azul,
+    // backgroundColor: colors.azul,
   },
   row: {
     flexDirection: "row",
@@ -51,14 +47,14 @@ const styles = StyleSheet.create({
     flexDirection: "column",
   },
   box: {
-    backgroundColor: colors.azul,
+    // backgroundColor: colors.azul,
     margin: 5,
     flex: 1,
     alignItems: "center",
     flexDirection: "row",
   },
   boxIcone: {
-    backgroundColor: colors.azul,
+    // backgroundColor: colors.azul,
     margin: 5,
     alignItems: "center",
   },
@@ -67,10 +63,12 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   textLabel: {
-    color: "#FFF",
+    // color: "#FFF",
     marginRight: 5,
     fontWeight: "bold",
+    alignItems: "center",
+    alignContent: "center",
   },
 });
 
-export default CustomGrid;
+export default CustomGridTitle;

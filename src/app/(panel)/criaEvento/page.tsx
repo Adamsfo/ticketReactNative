@@ -28,6 +28,7 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import AddressPicker from "../../../components/AddressPicker";
 import CustomGrid from "@/src/components/CustomGrid";
 import Select from "@/src/components/Select";
+import CustomGridTitle from "@/src/components/CustomGridTitle";
 
 const { width } = Dimensions.get("window");
 
@@ -45,9 +46,13 @@ export default function Index() {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleEditorChange = (html: string) => {
-    console.log("Editor content:", html);
-  };
+  const data = [
+    { label: "Tipo", content: "Day Use Adulto" },
+    { label: "Valor", content: "R$ 60,00" },
+    { label: "Taxa", content: "R$ 6,00" },
+    { label: "Total", content: "R$ 66,00" },
+    { label: "Vendidos", content: "200" },
+  ];
 
   return (
     <LinearGradient
@@ -148,8 +153,9 @@ export default function Index() {
 
             <View style={styles.area}>
               <Text style={styles.areaTitulo}>Ingressos</Text>
-              <CustomGrid />
-              <CustomGrid />
+              {Platform.OS === "web" && <CustomGridTitle data={data} />}
+              <CustomGrid data={data} />
+              <CustomGrid data={data} />
             </View>
 
             <View style={styles.area}>

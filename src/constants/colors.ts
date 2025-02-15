@@ -12,4 +12,5 @@ export default {
   cinza: '#424242',
   roxo: 'rgb(78, 57, 117)',
   line: 'rgb(227, 227, 229)',
+  lightGray: 'rgb(211, 211, 211)',
 };

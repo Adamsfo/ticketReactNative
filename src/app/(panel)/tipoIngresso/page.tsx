@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -28,19 +28,44 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import AddressPicker from "../../../components/AddressPicker";
 import CustomGrid from "@/src/components/CustomGrid";
 import { Feather } from "@expo/vector-icons";
+import CustomGridTitle from "@/src/components/CustomGridTitle";
+import ModalAddTipoIngresso from "./modalAdd";
+import { QueryParams, TipoIngresso } from "@/src/types/geral";
+import { apiGeral } from "@/src/lib/geral";
+import { useFocusEffect } from "expo-router";
 
 const { width } = Dimensions.get("window");
+let timer: NodeJS.Timeout;
 
 export default function Index() {
+  const endpointApi = "/tipoingresso";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [visibleMsg, setVisibleMsg] = useState(false);
   const [count, setCount] = useState(1);
-  const [formData, setFormData] = useState({
-    nome: "",
-    descricao: "",
-  });
+  const [registros, setRegistros] = useState<TipoIngresso[]>([]);
+
   const handleChange = (field: any, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    // setRegistros({ ...registros, [field]: value });
   };
+
+  const data = [
+    { label: "Tipo", content: "Ingresso Individual" },
+    { label: "Quantidade de Ingressos", content: "1" },
+  ];
+
+  const getRegistros = async () => {
+    const response = await apiGeral.getResource<TipoIngresso>("/tipoingresso");
+    const registrosData = response.data ?? [];
+
+    console.log("Registros", registrosData);
+    setRegistros(registrosData);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      getRegistros();
+    }, [])
+  );
 
   return (
     <LinearGradient
@@ -68,74 +93,49 @@ export default function Index() {
             }}
           >
             <View style={styles.area}>
-              <CustomGrid />
-              <CustomGrid />
-            </View>
-
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Principais informações</Text>
-
-              <View>
-                <Text style={styles.label}>
-                  Descrição{" "}
-                  <Text
-                    style={{ fontSize: 10, color: colors.red, marginLeft: 8 }}
-                  >
-                    Informação: Ingresso Individual, Bistro, Camarote
+              {Platform.OS === "web" && <CustomGridTitle data={data} />}
+              {registros.map((item: TipoIngresso, index: number) => (
+                <CustomGrid
+                  key={index}
+                  data={[
+                    { label: data[0].label, content: item.descricao },
+                    { label: data[1].label, content: item.qtde.toString() },
+                  ]}
+                />
+              ))}
+              <View style={{ alignItems: "flex-end" }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: colors.azul,
+                    borderRadius: 5,
+                    padding: 10,
+                    marginTop: 10,
+                    width: Platform.OS === "web" ? 200 : 100,
+                    alignItems: "center",
+                  }}
+                  // onPress={() => setVisibleMsg(true)}
+                  onPress={() => getRegistros()}
+                >
+                  <Text style={{ color: "white", fontWeight: "bold" }}>
+                    Novo
                   </Text>
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  multiline={Platform.OS === "web" ? false : true}
-                  placeholder="Ingresso Individual..."
-                  keyboardType="default"
-                  value={formData.nome}
-                  onChangeText={(text) => handleChange("nome", text)}
-                ></TextInput>
-                {errors.nome && (
-                  <Text style={styles.labelError}>{errors.nome}</Text>
-                )}
-              </View>
-
-              <View style={{ alignContent: "flex-start" }}>
-                <Text style={styles.label}>
-                  Quantidade de Ingressos{" "}
-                  <Text
-                    style={{ fontSize: 10, color: colors.red, marginLeft: 8 }}
-                  >
-                    Informação: Ingresso Individual quantidade 1, caso bistro ou
-                    camarote informe a quantidade correspondente
-                  </Text>
-                </Text>
-                <View style={{ marginLeft: 10 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: "rgb(0, 146, 250)",
-                        borderRadius: 5,
-                      }}
-                      onPress={() => setCount(count + 1)}
-                    >
-                      <Feather name="plus" size={28} color="white"></Feather>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: 18, marginHorizontal: 5 }}>
-                      {count}
-                    </Text>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: "rgb(0, 146, 250)",
-                        borderRadius: 5,
-                      }}
-                      onPress={() => setCount(count - 1)}
-                    >
-                      <Feather name="minus" size={28} color="white"></Feather>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ModalAddTipoIngresso
+            visible={visibleMsg}
+            onClose={() => setVisibleMsg(false)}
+          />
+        </View>
       </View>
     </LinearGradient>
   );
