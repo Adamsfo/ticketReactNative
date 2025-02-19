@@ -1,18 +1,27 @@
 import colors from "@/src/constants/colors";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { View, Text, StyleSheet, Dimensions, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
 
 interface DataItem {
   label?: string;
   content: string;
+  id: number;
 }
 
 interface CustomGridProps {
   data: DataItem[];
+  onItemPress: (id: number) => void;
 }
 
-const CustomGrid: React.FC<CustomGridProps> = ({ data }) => {
+const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
   const { width } = Dimensions.get("window");
   const isMobile = width < 768;
 
@@ -20,12 +29,16 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data }) => {
     <View style={styles.container}>
       <View style={[styles.row, isMobile && styles.column]}>
         {data.map((item, index) => (
-          <View key={index} style={styles.box}>
+          <TouchableOpacity
+            key={index}
+            style={styles.box}
+            onPress={() => onItemPress(item.id)}
+          >
             {Platform.OS !== "web" && (
               <Text style={styles.textLabel}>{item.label + ":"}</Text>
             )}
             <Text style={styles.text}>{item.content}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
         <View style={styles.boxIcone}>
           <Feather name="edit" size={18} color={colors.branco} />

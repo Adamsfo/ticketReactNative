@@ -39,14 +39,9 @@ let timer: NodeJS.Timeout;
 
 export default function Index() {
   const endpointApi = "/tipoingresso";
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [visibleMsg, setVisibleMsg] = useState(false);
-  const [count, setCount] = useState(1);
+  const [visibleModal, setVisibleModal] = useState(false);
   const [registros, setRegistros] = useState<TipoIngresso[]>([]);
-
-  const handleChange = (field: any, value: string) => {
-    // setRegistros({ ...registros, [field]: value });
-  };
+  const [id, setid] = useState(0);
 
   const data = [
     { label: "Tipo", content: "Ingresso Individual" },
@@ -54,18 +49,27 @@ export default function Index() {
   ];
 
   const getRegistros = async () => {
-    const response = await apiGeral.getResource<TipoIngresso>("/tipoingresso");
+    const response = await apiGeral.getResource<TipoIngresso>(endpointApi);
     const registrosData = response.data ?? [];
 
-    console.log("Registros", registrosData);
     setRegistros(registrosData);
   };
 
   useFocusEffect(
     useCallback(() => {
       getRegistros();
-    }, [])
+    }, [visibleModal])
   );
+
+  const handleModal = (id: number) => {
+    setid(id);
+    setVisibleModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setVisibleModal(false);
+    getRegistros();
+  };
 
   return (
     <LinearGradient
@@ -97,9 +101,18 @@ export default function Index() {
               {registros.map((item: TipoIngresso, index: number) => (
                 <CustomGrid
                   key={index}
+                  onItemPress={handleModal}
                   data={[
-                    { label: data[0].label, content: item.descricao },
-                    { label: data[1].label, content: item.qtde.toString() },
+                    {
+                      label: data[0].label,
+                      content: item.descricao,
+                      id: item.id,
+                    },
+                    {
+                      label: data[1].label,
+                      content: item.qtde.toString(),
+                      id: item.id,
+                    },
                   ]}
                 />
               ))}
@@ -113,8 +126,7 @@ export default function Index() {
                     width: Platform.OS === "web" ? 200 : 100,
                     alignItems: "center",
                   }}
-                  // onPress={() => setVisibleMsg(true)}
-                  onPress={() => getRegistros()}
+                  onPress={() => setVisibleModal(true)}
                 >
                   <Text style={{ color: "white", fontWeight: "bold" }}>
                     Novo
@@ -132,8 +144,9 @@ export default function Index() {
           }}
         >
           <ModalAddTipoIngresso
-            visible={visibleMsg}
-            onClose={() => setVisibleMsg(false)}
+            id={id}
+            visible={visibleModal}
+            onClose={handleCloseModal}
           />
         </View>
       </View>

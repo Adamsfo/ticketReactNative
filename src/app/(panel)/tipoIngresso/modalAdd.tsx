@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Platform,
   StyleSheet,
@@ -10,33 +10,78 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { View, TouchableWithoutFeedback, ScrollView } from "react-native";
 import colors from "@/src/constants/colors";
+import { apiGeral } from "@/src/lib/geral";
+import { TipoIngresso } from "@/src/types/geral";
+import { useFocusEffect } from "expo-router";
 
 interface ModalMsgProps {
+  id: number;
   visible: boolean;
   onClose: () => void;
 }
 
 export default function ModalAddTipoIngresso({
+  id,
   visible,
   onClose,
 }: ModalMsgProps) {
+  const endpointApi = "/tipoingresso";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const [count, setCount] = useState(1);
-  const [formData, setFormData] = useState({
-    nome: "",
+  // const [count, setCount] = useState(1);
+  const [formData, setFormData] = useState<TipoIngresso>({
+    id: 0,
     descricao: "",
+    qtde: 0,
   });
 
-  const handleChange = (field: any, value: string) => {
+  const handleChange = (field: any, value: string | number) => {
     setFormData({ ...formData, [field]: value });
   };
 
   const handleSave = () => {
-    // Implementar lógica de salvar
-    console.log("Salvar", formData);
+    setErrors({});
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    if (id > 0) {
+      apiGeral.updateResorce<TipoIngresso>(endpointApi, formData);
+    } else {
+      apiGeral.createResource<TipoIngresso>(endpointApi, formData);
+    }
+
     onClose();
   };
+
+  const validate = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formData.descricao) newErrors.descricao = "Descrição é obrigatório.";
+    if (!formData.qtde && formData.qtde < 1)
+      newErrors.qtde = "Qtde não pode ser menor que 1.";
+
+    return newErrors;
+  };
+
+  const getRegistros = async () => {
+    const response = await apiGeral.getResourceById<TipoIngresso>(
+      endpointApi,
+      id
+    );
+
+    setFormData(response as TipoIngresso);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (visible) {
+        getRegistros();
+      }
+    }, [visible])
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -68,11 +113,11 @@ export default function ModalAddTipoIngresso({
                   style={styles.input}
                   placeholder="Ingresso Individual..."
                   keyboardType="default"
-                  value={formData.nome}
-                  onChangeText={(text) => handleChange("nome", text)}
+                  value={formData.descricao}
+                  onChangeText={(text) => handleChange("descricao", text)}
                 ></TextInput>
-                {errors.nome && (
-                  <Text style={styles.labelError}>{errors.nome}</Text>
+                {errors.descricao && (
+                  <Text style={styles.labelError}>{errors.descricao}</Text>
                 )}
               </View>
 
@@ -93,22 +138,28 @@ export default function ModalAddTipoIngresso({
                         backgroundColor: "rgb(0, 146, 250)",
                         borderRadius: 5,
                       }}
-                      onPress={() => setCount(count + 1)}
+                      // onPress={() => setCount(count + 1)}
+                      onPress={() => handleChange("qtde", formData.qtde + 1)}
                     >
                       <Feather name="plus" size={28} color="white"></Feather>
                     </TouchableOpacity>
                     <Text style={{ fontSize: 18, marginHorizontal: 5 }}>
-                      {count}
+                      {formData.qtde}
                     </Text>
                     <TouchableOpacity
                       style={{
                         backgroundColor: "rgb(0, 146, 250)",
                         borderRadius: 5,
                       }}
-                      onPress={() => setCount(count - 1)}
+                      onPress={() => handleChange("qtde", formData.qtde - 1)}
                     >
                       <Feather name="minus" size={28} color="white"></Feather>
                     </TouchableOpacity>
+                  </View>
+                  <View style={{ marginTop: 20 }}>
+                    {errors.qtde && (
+                      <Text style={styles.labelError}>{errors.qtde}</Text>
+                    )}
                   </View>
                 </View>
               </View>
