@@ -1,41 +1,25 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Text,
   StyleSheet,
-  Modal,
   Platform,
   Dimensions,
   View,
-  Image,
   TouchableOpacity,
-  FlatList,
-  TextInput,
-  SafeAreaView,
   ScrollView,
-  KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import FormattedTextEditor from "@/src/components/FormattedTextEditor";
-import QuillEditorWeb from "@/src/components/QuillEditorWeb";
-import QuillEditorMobile from "../../../components/QuillEditorMobile";
-import ImageUploader from "@/src/components/ImageUploader";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import DatePickerComponente from "@/src/components/DatePickerComponente";
-import TimePickerComponente from "@/src/components/TimePickerComponente";
-import AddressPicker from "../../../components/AddressPicker";
 import CustomGrid from "@/src/components/CustomGrid";
-import { Feather } from "@expo/vector-icons";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
 import ModalAddTipoIngresso from "./modalAdd";
-import { QueryParams, TipoIngresso } from "@/src/types/geral";
+import { TipoIngresso } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 
 const { width } = Dimensions.get("window");
-let timer: NodeJS.Timeout;
 
 export default function Index() {
   const endpointApi = "/tipoingresso";
@@ -61,12 +45,18 @@ export default function Index() {
     }, [visibleModal])
   );
 
-  const handleModal = (id: number) => {
+  const handleModalEdit = (id: number) => {
     setid(id);
     setVisibleModal(true);
   };
 
+  const handleModalNovo = () => {
+    setid(0);
+    setVisibleModal(true);
+  };
+
   const handleCloseModal = () => {
+    setRegistros([]);
     setVisibleModal(false);
     getRegistros();
   };
@@ -80,62 +70,54 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        >
-          {/* <View style={styles.area}> */}
-          <Text style={styles.titulo}>Tipo Ingresso</Text>
-          {/* </View> */}
+        <Text style={styles.titulo}>Tipo Ingresso</Text>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false} // Esconde a barra de rolagem vertical
-            showsHorizontalScrollIndicator={false}
-            style={{
-              flex: 1,
-              borderRadius: 8,
-            }}
-          >
-            <View style={styles.area}>
-              {Platform.OS === "web" && <CustomGridTitle data={data} />}
-              {registros.map((item: TipoIngresso, index: number) => (
-                <CustomGrid
-                  key={index}
-                  onItemPress={handleModal}
-                  data={[
-                    {
-                      label: data[0].label,
-                      content: item.descricao,
-                      id: item.id,
-                    },
-                    {
-                      label: data[1].label,
-                      content: item.qtde.toString(),
-                      id: item.id,
-                    },
-                  ]}
-                />
-              ))}
-              <View style={{ alignItems: "flex-end" }}>
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: colors.azul,
-                    borderRadius: 5,
-                    padding: 10,
-                    marginTop: 10,
-                    width: Platform.OS === "web" ? 200 : 100,
-                    alignItems: "center",
-                  }}
-                  onPress={() => setVisibleModal(true)}
-                >
-                  <Text style={{ color: "white", fontWeight: "bold" }}>
-                    Novo
-                  </Text>
-                </TouchableOpacity>
-              </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            borderRadius: 8,
+            flexGrow: 1,
+            height: "100%",
+          }}
+        >
+          <View style={styles.area}>
+            {Platform.OS === "web" && <CustomGridTitle data={data} />}
+            {registros.map((item: TipoIngresso, index: number) => (
+              <CustomGrid
+                key={index}
+                onItemPress={handleModalEdit}
+                data={[
+                  {
+                    label: data[0].label,
+                    content: item.descricao,
+                    id: item.id,
+                  },
+                  {
+                    label: data[1].label,
+                    content: item.qtde.toString(),
+                    id: item.id,
+                  },
+                ]}
+              />
+            ))}
+            <View style={{ alignItems: "flex-end" }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.azul,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginTop: 10,
+                  width: Platform.OS === "web" ? 200 : 100,
+                  alignItems: "center",
+                }}
+                onPress={handleModalNovo}
+              >
+                <Text style={{ color: "white", fontWeight: "bold" }}>Novo</Text>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
         <View
           style={{
             flex: 1,
@@ -161,6 +143,7 @@ const styles = StyleSheet.create({
     marginRight: Platform.OS === "web" ? 200 : 20,
     marginLeft: Platform.OS === "web" ? 200 : 20,
     marginBottom: 20,
+    height: 500,
   },
   titulo: {
     fontSize: 24,
@@ -179,6 +162,7 @@ const styles = StyleSheet.create({
     marginLeft: Platform.OS === "web" ? 200 : 0,
     paddingBottom: 25,
     borderRadius: 20,
+    flex: 1,
   },
   areaTitulo: {
     fontSize: 22,

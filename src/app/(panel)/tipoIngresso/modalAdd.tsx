@@ -39,7 +39,7 @@ export default function ModalAddTipoIngresso({
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setErrors({});
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -48,9 +48,9 @@ export default function ModalAddTipoIngresso({
     }
 
     if (id > 0) {
-      apiGeral.updateResorce<TipoIngresso>(endpointApi, formData);
+      await apiGeral.updateResorce<TipoIngresso>(endpointApi, formData);
     } else {
-      apiGeral.createResource<TipoIngresso>(endpointApi, formData);
+      await apiGeral.createResource<TipoIngresso>(endpointApi, formData);
     }
 
     onClose();
@@ -78,7 +78,11 @@ export default function ModalAddTipoIngresso({
   useFocusEffect(
     useCallback(() => {
       if (visible) {
-        getRegistros();
+        if (id > 0) {
+          getRegistros();
+        } else {
+          setFormData({ id: 0, descricao: "", qtde: 1 });
+        }
       }
     }, [visible])
   );

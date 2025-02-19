@@ -32,7 +32,7 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
           <TouchableOpacity
             key={index}
             style={styles.box}
-            onPress={() => onItemPress(item.id)}
+            onPress={() => onItemPress(data[0].id)}
           >
             {Platform.OS !== "web" && (
               <Text style={styles.textLabel}>{item.label + ":"}</Text>
@@ -40,9 +40,12 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
             <Text style={styles.text}>{item.content}</Text>
           </TouchableOpacity>
         ))}
-        <View style={styles.boxIcone}>
+        <TouchableOpacity
+          style={styles.boxIcone}
+          onPress={() => onItemPress(data[0].id)}
+        >
           <Feather name="edit" size={18} color={colors.branco} />
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
