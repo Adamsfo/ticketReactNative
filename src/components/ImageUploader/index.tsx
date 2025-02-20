@@ -1,8 +1,22 @@
 import React, { useState } from "react";
-import { View, Image, Button, Alert, ActivityIndicator } from "react-native";
+import {
+  View,
+  Image,
+  Button,
+  Alert,
+  ActivityIndicator,
+  Text,
+} from "react-native";
+import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
+import { api } from "@/src/lib/api";
 
-export default function ImageUploader() {
+interface ImageUploaderProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -31,6 +45,7 @@ export default function ImageUploader() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
       allowsEditing: true,
+      base64: true,
     };
 
     const result = fromCamera
@@ -38,8 +53,14 @@ export default function ImageUploader() {
       : await ImagePicker.launchImageLibraryAsync(options);
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      if (result.assets[0].base64) {
+        setImage(result.assets[0].base64);
+      } else {
+        Alert.alert("Erro", "Erro ao selecionar imagem.");
+      }
     }
+
+    await uploadImage();
   };
 
   // 🚀 Enviar imagem para API
@@ -51,30 +72,26 @@ export default function ImageUploader() {
 
     setUploading(true);
 
-    const formData = new FormData();
-    formData.append("file", {
-      uri: image,
-      name: "upload.jpg",
-      type: "image/jpeg",
-    } as any);
-
-    try {
-      const response = await fetch("https://sua-api.com/upload", {
-        method: "POST",
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        body: formData,
+    axios
+      .post(
+        api.getBaseApi() + "/upload",
+        { file: image, Codigo: "0" },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      .then((response) => {
+        console.log("Imagem enviada:", response.data.filename);
+        onChange(response.data.filename);
+        setUploading(false);
+      })
+      .catch((error) => {
+        setUploading(false);
+        Alert.alert("Erro", "Erro ao enviar imagem.");
+        console.error("Erro ao carregar arquivos:", error);
       });
-
-      const data = await response.json();
-      Alert.alert("Sucesso!", "Imagem enviada com sucesso.");
-    } catch (error) {
-      Alert.alert("Erro", "Erro ao enviar imagem.");
-      console.error(error);
-    } finally {
-      setUploading(false);
-    }
   };
 
   return (
@@ -85,17 +102,24 @@ export default function ImageUploader() {
         marginBottom: 20,
       }}
     >
-      {image && (
+      {/* {image && (
         <Image
-          source={{ uri: image }}
+          source={{ uri: `data:image/jpeg;base64,${image}` }}
+          style={{ width: 200, height: 200, marginBottom: 20 }}
+        />
+      )} */}
+      {value && (
+        <Image
+          source={{ uri: api.getBaseApi() + "/uploads/" + value }}
           style={{ width: 200, height: 200, marginBottom: 20 }}
         />
       )}
 
+      {/* <Text>{api.getBaseApi() + "/" + value}</Text> */}
       <Button title="Selecionar Imagem" onPress={() => pickImage(false)} />
       {/* <Button title="Tirar Foto" onPress={() => pickImage(true)} /> */}
 
-      {/* {uploading ? (
+      {uploading ? (
         <ActivityIndicator
           size="large"
           color="#0000ff"
@@ -103,7 +127,7 @@ export default function ImageUploader() {
         />
       ) : (
         <Button title="Enviar Imagem" onPress={uploadImage} />
-      )} */}
+      )}
     </View>
   );
 }

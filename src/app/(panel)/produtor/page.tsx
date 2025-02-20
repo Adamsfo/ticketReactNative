@@ -1,51 +1,61 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Text,
   StyleSheet,
-  Modal,
   Platform,
   Dimensions,
   View,
-  Image,
-  TouchableOpacity,
-  FlatList,
-  TextInput,
-  SafeAreaView,
   ScrollView,
-  KeyboardAvoidingView,
+  TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import FormattedTextEditor from "@/src/components/FormattedTextEditor";
-import QuillEditorWeb from "@/src/components/QuillEditorWeb";
-import QuillEditorMobile from "../../../components/QuillEditorMobile";
-import ImageUploader from "@/src/components/ImageUploader";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import DatePickerComponente from "@/src/components/DatePickerComponente";
-import TimePickerComponente from "@/src/components/TimePickerComponente";
-import AddressPicker from "../../../components/AddressPicker";
+import { Produtor } from "@/src/types/geral";
+import { apiGeral } from "@/src/lib/geral";
+import { useFocusEffect } from "expo-router";
+import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
+import ModalProdutor from "./modalProdutor";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    nome: "",
-    descricao: "",
-  });
+  const endpointApi = "/produtor";
+  const [visibleModal, setVisibleModal] = useState(false);
+  const [registros, setRegistros] = useState<Produtor[]>([]);
+  const [id, setid] = useState(0);
 
-  const [content, setContent] = useState("");
+  const data = [{ label: "Nome", content: "Nome" }];
 
-  const handleChange = (field: any, value: string) => {
-    setFormData({ ...formData, [field]: value });
+  const getRegistros = async () => {
+    const response = await apiGeral.getResource<Produtor>(endpointApi);
+    const registrosData = response.data ?? [];
+
+    setRegistros(registrosData);
   };
 
-  const handleEditorChange = (html: string) => {
-    console.log("Editor content:", html);
+  useFocusEffect(
+    useCallback(() => {
+      getRegistros();
+    }, [visibleModal])
+  );
+
+  const handleModalEdit = (id: number) => {
+    setid(id);
+    setVisibleModal(true);
+  };
+
+  const handleModalNovo = () => {
+    setid(0);
+    setVisibleModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setRegistros([]);
+    setVisibleModal(false);
+    getRegistros();
   };
 
   return (
@@ -57,67 +67,62 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        <Text style={styles.titulo}>Produtor</Text>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            borderRadius: 8,
+            flexGrow: 1,
+            height: "100%",
+          }}
         >
-          {/* <View style={styles.area}> */}
-          <Text style={styles.titulo}>Produtor</Text>
-          {/* </View> */}
-
-          <ScrollView
-            showsVerticalScrollIndicator={false} // Esconde a barra de rolagem vertical
-            showsHorizontalScrollIndicator={false}
-            style={{
-              flex: 1,
-              borderRadius: 8,
-            }}
-          >
-            <View style={styles.area}>
-              <Text style={styles.areaTitulo}>Principais informações</Text>
-
-              <View>
-                <Text style={styles.label}>Nome</Text>
-                <TextInput
-                  style={styles.input}
-                  multiline={Platform.OS === "web" ? false : true}
-                  placeholder="Nome..."
-                  keyboardType="default"
-                  value={formData.nome}
-                  onChangeText={(text) => handleChange("nome", text)}
-                ></TextInput>
-                {errors.nome && (
-                  <Text style={styles.labelError}>{errors.nome}</Text>
-                )}
-              </View>
-
-              <View>
-                <Text style={styles.label}>Logo do Produtor</Text>
-                <ImageUploader />
-              </View>
-
-              <View
+          <View style={styles.area}>
+            {Platform.OS === "web" && <CustomGridTitle data={data} />}
+            {registros.map((item: Produtor, index: number) => (
+              <CustomGrid
+                key={index}
+                onItemPress={handleModalEdit}
+                data={[
+                  {
+                    label: data[0].label,
+                    content: item.nome,
+                    id: item.id,
+                  },
+                ]}
+              />
+            ))}
+            <View style={{ alignItems: "flex-end" }}>
+              <TouchableOpacity
                 style={{
-                  marginBottom: 16,
-                  flex: 1,
-                  minHeight: Platform.OS === "web" ? 200 : 350,
+                  backgroundColor: colors.azul,
+                  borderRadius: 5,
+                  padding: 10,
+                  marginTop: 10,
+                  width: Platform.OS === "web" ? 200 : 100,
+                  alignItems: "center",
                 }}
+                onPress={handleModalNovo}
               >
-                <SafeAreaView style={{ height: "100%" }}>
-                  <Text>Descrição do Produtor</Text>
-                  {Platform.OS === "web" ? (
-                    <QuillEditorWeb />
-                  ) : (
-                    <QuillEditorMobile />
-                  )}
-                </SafeAreaView>
-                {errors.descricao && (
-                  <Text style={styles.labelError}>{errors.descricao}</Text>
-                )}
-              </View>
+                <Text style={{ color: "white", fontWeight: "bold" }}>Novo</Text>
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ModalProdutor
+            id={id}
+            visible={visibleModal}
+            onClose={handleCloseModal}
+          />
+        </View>
       </View>
     </LinearGradient>
   );
@@ -130,6 +135,7 @@ const styles = StyleSheet.create({
     marginRight: Platform.OS === "web" ? 200 : 20,
     marginLeft: Platform.OS === "web" ? 200 : 20,
     marginBottom: 20,
+    height: 500,
   },
   titulo: {
     fontSize: 24,
@@ -148,6 +154,7 @@ const styles = StyleSheet.create({
     marginLeft: Platform.OS === "web" ? 200 : 0,
     paddingBottom: 25,
     borderRadius: 20,
+    flex: 1,
   },
   areaTitulo: {
     fontSize: 22,

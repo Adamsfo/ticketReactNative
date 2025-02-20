@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     marginRight: 5,
     marginBottom: 2,
     backgroundColor: colors.azul,
+    borderRadius: 5,
   },
   row: {
     flexDirection: "row",

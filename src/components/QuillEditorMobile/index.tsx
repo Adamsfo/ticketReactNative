@@ -1,11 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { WebView } from "react-native-webview";
-import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { Asset } from "expo-asset";
 import colors from "@/src/constants/colors";
 
-export default function QuillEditorMobile() {
+interface QuillEditorMobileProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+const QuillEditorMobile: React.FC<QuillEditorMobileProps> = ({
+  value,
+  onChange,
+}) => {
   const [htmlUri, setHtmlUri] = useState<string | null>(null);
+  const webViewRef = useRef<WebView | null>(null);
 
   const loadHtml = async () => {
     try {
@@ -24,9 +33,26 @@ export default function QuillEditorMobile() {
 
   useEffect(() => {
     loadHtml();
+    console.log(value);
   }, []);
 
-  // Se o arquivo ainda não carregou, exibir apenas um texto
+  useEffect(() => {
+    if (webViewRef.current && htmlUri) {
+      webViewRef.current.injectJavaScript(`
+        (function() {
+          if (window.editor) {
+            window.editor.root.innerHTML = ${JSON.stringify(value)};
+          }
+        })();
+      `);
+    }
+  }, [htmlUri, value]);
+
+  const onMessage = (event: any) => {
+    const data = event.nativeEvent.data;
+    onChange(data);
+  };
+
   if (!htmlUri) {
     return <Text style={styles.loadingText}>Carregando Editor...</Text>;
   }
@@ -36,17 +62,29 @@ export default function QuillEditorMobile() {
       <Text style={{ color: colors.red, fontSize: 12 }}>
         Recomendado editar na plataforma Web
       </Text>
-      <WebView
+      {/* <WebView
+        ref={webViewRef}
         originWhitelist={["*"]}
         source={{ uri: htmlUri }}
         allowFileAccess={true}
         allowUniversalAccessFromFileURLs={true}
         mixedContentMode="always"
         style={styles.webview}
-      />
+        onMessage={onMessage}
+        injectedJavaScript={`
+          (function() {
+            document.addEventListener('message', function(event) {
+              if (window.editor) {
+                window.editor.root.innerHTML = event.data;
+              }
+            });
+            window.ReactNativeWebView.postMessage(window.editor.root.innerHTML);
+          })();
+        `}
+      /> */}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -64,3 +102,5 @@ const styles = StyleSheet.create({
     color: "gray",
   },
 });
+
+export default QuillEditorMobile;

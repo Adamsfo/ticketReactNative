@@ -43,6 +43,10 @@ class Api {
     return query ? `?${query}` : "";
   }
 
+  public getBaseApi() {
+    return BASEAPI[0];
+  }
+
   public async request<T>(
     endpoint: string,
     method: "GET" | "POST" | "PUT" | "DELETE",

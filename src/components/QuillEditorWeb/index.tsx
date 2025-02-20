@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
 import "react-quill/dist/quill.snow.css";
 
-const QuillEditorWeb = () => {
-  const [value, setValue] = useState("");
+interface QuillEditorWebProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+const QuillEditorWeb: React.FC<QuillEditorWebProps> = ({ value, onChange }) => {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -13,11 +17,7 @@ const QuillEditorWeb = () => {
 
   const ReactQuill = require("react-quill"); // Importa apenas no cliente
 
-  return (
-    <div>
-      <ReactQuill value={value} onChange={setValue} />
-    </div>
-  );
+  return <ReactQuill value={value} onChange={onChange} />;
 };
 
 export default QuillEditorWeb;

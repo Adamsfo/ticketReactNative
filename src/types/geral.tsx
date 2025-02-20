@@ -42,6 +42,13 @@ export interface TipoIngresso {
   qtde: number;
 }
 
+export interface Produtor {
+  id: number;
+  nome: string;
+  descricao?: string;
+  logo?: string;
+}
+
 export interface FormPropsEdit {
   id?: string;
   onClose?: () => void;
