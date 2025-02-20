@@ -55,27 +55,20 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
     if (!result.canceled) {
       if (result.assets[0].base64) {
         setImage(result.assets[0].base64);
+        await uploadImage(result.assets[0].base64);
       } else {
         Alert.alert("Erro", "Erro ao selecionar imagem.");
       }
     }
-
-    await uploadImage();
   };
 
-  // 🚀 Enviar imagem para API
-  const uploadImage = async () => {
-    if (!image) {
-      Alert.alert("Erro", "Selecione uma imagem primeiro!");
-      return;
-    }
-
+  const uploadImage = async (base64Image: string) => {
     setUploading(true);
 
     axios
       .post(
         api.getBaseApi() + "/upload",
-        { file: image, Codigo: "0" },
+        { file: base64Image, Codigo: "0" },
         {
           headers: {
             "Content-Type": "application/json",
@@ -102,12 +95,6 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
         marginBottom: 20,
       }}
     >
-      {/* {image && (
-        <Image
-          source={{ uri: `data:image/jpeg;base64,${image}` }}
-          style={{ width: 200, height: 200, marginBottom: 20 }}
-        />
-      )} */}
       {value && (
         <Image
           source={{ uri: api.getBaseApi() + "/uploads/" + value }}
@@ -115,18 +102,14 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
         />
       )}
 
-      {/* <Text>{api.getBaseApi() + "/" + value}</Text> */}
       <Button title="Selecionar Imagem" onPress={() => pickImage(false)} />
-      {/* <Button title="Tirar Foto" onPress={() => pickImage(true)} /> */}
 
-      {uploading ? (
+      {uploading && (
         <ActivityIndicator
           size="large"
           color="#0000ff"
           style={{ marginTop: 20 }}
         />
-      ) : (
-        <Button title="Enviar Imagem" onPress={uploadImage} />
       )}
     </View>
   );
