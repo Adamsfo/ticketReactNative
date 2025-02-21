@@ -43,6 +43,7 @@ const DatePickerComponente = () => {
             portalId="root-portal"
             popperPlacement="bottom-start"
             locale="pt"
+            className="custom-datepicker"
           />
         </View>
       ) : (
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     marginBottom: 16,
-    zIndex: 1000, // Adiciona zIndex para garantir que o datepicker apareça corretamente
+    zIndex: 20000, // Adiciona zIndex para garantir que o datepicker apareça corretamente
   },
   text: {
     marginTop: 20,

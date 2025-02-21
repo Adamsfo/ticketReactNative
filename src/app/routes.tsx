@@ -9,7 +9,7 @@ import Login from "./(auth)/singin/page";
 import Signup from "./(auth)/signup/page";
 import Profile from "./(panel)/profile/page";
 import Evento from "./(panel)/evento/page";
-import CriaEvento from "./(panel)/criaEvento/page";
+import MeusEventos from "./(panel)/meuseventos/page";
 import Produtor from "./(panel)/produtor/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -98,11 +98,11 @@ function Routes() {
           }}
         />
         <Drawer.Screen
-          name="criaevento"
-          component={CriaEvento}
+          name="meusevento"
+          component={MeusEventos}
           options={{
             headerShown: false,
-            title: "Cria Evento",
+            title: "Meus Evento",
           }}
         />
         <Drawer.Screen

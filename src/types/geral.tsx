@@ -49,6 +49,27 @@ export interface Produtor {
   logo?: string;
 }
 
+export enum Status {
+  Disponivel = "Ativo",
+  Oculto = "Oculto",
+  Finalizado = "Finalizado",
+}
+
+export interface Evento {
+  id: number;
+  nome: string;
+  descricao: string;
+  imagem?: string;
+  mapa?: string;
+  data_hora_inicio: Date;
+  data_hora_fim: Date;
+  local: string;
+  endereco: string;
+  id_usuario: number;
+  id_produtor: number;
+  status?: Status;
+}
+
 export interface FormPropsEdit {
   id?: string;
   onClose?: () => void;
