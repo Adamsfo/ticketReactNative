@@ -12,7 +12,12 @@ import { Feather } from "@expo/vector-icons";
 import { View, TouchableWithoutFeedback, ScrollView } from "react-native";
 import colors from "@/src/constants/colors";
 import { apiGeral } from "@/src/lib/geral";
-import { Evento, Produtor } from "@/src/types/geral";
+import {
+  Evento,
+  EventoIngresso,
+  Produtor,
+  QueryParams,
+} from "@/src/types/geral";
 import { useFocusEffect } from "expo-router";
 import ImageUploader from "@/src/components/ImageUploader";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,18 +25,32 @@ import QuillEditorWeb from "@/src/components/QuillEditorWeb";
 import QuillEditorMobile from "@/src/components/QuillEditorMobile";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
+import CustomGridTitle from "@/src/components/CustomGridTitle";
+import CustomGrid from "@/src/components/CustomGrid";
+import formatCurrency from "@/src/components/FormatCurrency";
+import ModalEventoIngresso from "./modalEventoIngresso";
 
-interface ModalProps {
+const { width } = Dimensions.get("window");
+
+interface ModalMeusEventosProps {
   id: number;
   visible: boolean;
   onClose: () => void;
 }
 
-const { width } = Dimensions.get("window");
-
-export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
+export default function ModalMeusEventos({
+  id,
+  visible,
+  onClose,
+}: ModalMeusEventosProps) {
   const endpointApi = "/evento";
+  const endpointApiIngressos = "/eventoingresso";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
+    EventoIngresso[]
+  >([]);
+  const [modalEventoIngresso, setModalEventoIngresso] = useState(true);
+  const [idEventoIngresso, setIdEventoIngresso] = useState(0);
 
   // const [count, setCount] = useState(1);
   const [formData, setFormData] = useState<Evento>({
@@ -47,8 +66,26 @@ export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
     id_produtor: 0,
   });
 
-  const handleChange = (field: any, value: string | number) => {
+  const dataEventoIngressos = [
+    { label: "Nome", content: "" },
+    { label: "Valor a Receber", content: "" },
+    { label: "Taxa", content: "" },
+    { label: "Valor Venda", content: "" },
+    { label: "Status", content: "" },
+  ];
+
+  const handleChange = (field: any, value: string | number | Date) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  const getRegistrosIngressos = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<EventoIngresso>(
+      endpointApiIngressos,
+      { ...params, pageSize: 200 }
+    );
+    const registrosData = response.data ?? [];
+
+    setRegistrosEventoIngressos(registrosData);
   };
 
   const handleSave = async () => {
@@ -80,8 +117,11 @@ export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
   const getRegistros = async () => {
     const response = await apiGeral.getResourceById<Evento>(endpointApi, id);
 
-    console.log("response", response);
-    setFormData(response as Evento);
+    let data = response as unknown as Evento;
+    data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
+    data.data_hora_fim = new Date(data.data_hora_fim.toString());
+    getRegistrosIngressos({ filters: { idEvento: id } });
+    setFormData(data as Evento);
   };
 
   useFocusEffect(
@@ -106,6 +146,16 @@ export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
       }
     }, [visible])
   );
+
+  const handleModalEdit = (id: number) => {
+    setIdEventoIngresso(id);
+    setModalEventoIngresso(true);
+  };
+
+  const handleCloseModalEventoIngresso = () => {
+    setModalEventoIngresso(false);
+    getRegistrosIngressos({ filters: { idEvento: id } });
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -140,7 +190,7 @@ export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
             </View>
 
             <View>
-              <Text style={styles.label}>Imagem do evento</Text>
+              <Text style={styles.label}>Imagem</Text>
               <ImageUploader
                 value={formData.imagem || ""}
                 onChange={(value) => handleChange("imagem", value)}
@@ -155,7 +205,7 @@ export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
               }}
             >
               <SafeAreaView style={{ height: "100%" }}>
-                <Text>Descrição do Evento</Text>
+                <Text style={styles.label}>Descrição</Text>
                 {Platform.OS === "web" ? (
                   <QuillEditorWeb
                     value={formData.descricao || ""}
@@ -174,27 +224,129 @@ export default function ModalMeusEventos({ id, visible, onClose }: ModalProps) {
             </View>
 
             <View style={styles.eventDetails}>
+              <Text style={styles.label}>Data e Hora</Text>
               <View style={styles.eventDetailItem}>
-                <Text style={styles.labelData}>Data Inicio do Evento:</Text>
-                <DatePickerComponente />
+                <Text style={styles.labelData}>Data Inicio:</Text>
+                <DatePickerComponente
+                  value={formData.data_hora_inicio || ""}
+                  onChange={(value) => handleChange("data_hora_inicio", value)}
+                />
               </View>
               <View style={styles.eventDetailItem}>
-                <Text style={styles.labelData}>Hora Inicio do Evento:</Text>
-                <TimePickerComponente />
+                <Text style={styles.labelData}>Hora Inicio:</Text>
+                <TimePickerComponente
+                  value={formData.data_hora_inicio || ""}
+                  onChange={(value) => handleChange("data_hora_inicio", value)}
+                />
               </View>
 
               <View style={styles.eventDetailItem}>
-                <Text style={styles.labelData}>Data Fim do Evento:</Text>
-                <DatePickerComponente />
+                <Text style={styles.labelData}>Data Fim:</Text>
+                <DatePickerComponente
+                  value={formData.data_hora_fim || ""}
+                  onChange={(value) => handleChange("data_hora_fim", value)}
+                />
               </View>
               <View style={styles.eventDetailItem}>
-                <Text style={styles.labelData}>Hora Fim do Evento:</Text>
-                <TimePickerComponente />
+                <Text style={styles.labelData}>Hora Fim:</Text>
+                <TimePickerComponente
+                  value={formData.data_hora_fim || ""}
+                  onChange={(value) => handleChange("data_hora_fim", value)}
+                />
               </View>
               {errors.nomeCompleto && (
                 <Text style={styles.labelError}>{errors.descricao}</Text>
               )}
             </View>
+
+            <View>
+              <Text style={styles.label}>Mapa</Text>
+              <ImageUploader
+                value={formData.mapa || ""}
+                onChange={(value) => handleChange("mapa", value)}
+              />
+            </View>
+
+            <View>
+              <Text style={styles.label}>Ingressos</Text>
+              {Platform.OS === "web" && (
+                <CustomGridTitle data={dataEventoIngressos} />
+              )}
+              {registrosEventoIngressos.map(
+                (item: EventoIngresso, index: number) => (
+                  <CustomGrid
+                    key={index}
+                    onItemPress={handleModalEdit}
+                    data={[
+                      {
+                        label: dataEventoIngressos[0].label,
+                        content: item.nome,
+                        id: item.id,
+                      },
+                      {
+                        label: dataEventoIngressos[1].label,
+                        content: formatCurrency(item.preco),
+                        id: item.id,
+                      },
+                      {
+                        label: dataEventoIngressos[2].label,
+                        content: formatCurrency(item.taxaServico),
+                        id: item.id,
+                      },
+                      {
+                        label: dataEventoIngressos[3].label,
+                        content: formatCurrency(item.valor),
+                        id: item.id,
+                      },
+                      {
+                        label: dataEventoIngressos[4].label,
+                        content: formatCurrency(item.status),
+                        id: item.id,
+                      },
+                    ]}
+                  />
+                )
+              )}
+            </View>
+
+            {/* <View style={styles.area}>
+              {Platform.OS === "web" && <CustomGridTitle data={data} />}
+              {registros.map((item: Produtor, index: number) => (
+                <CustomGrid
+                  key={index}
+                  onItemPress={handleModalEdit}
+                  data={[
+                    {
+                      label: data[0].label,
+                      content: item.nome,
+                      id: item.id,
+                    },
+                  ]}
+                />
+              ))}
+              <View style={{ alignItems: "flex-end" }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: colors.azul,
+                    borderRadius: 5,
+                    padding: 10,
+                    marginTop: 10,
+                    width: Platform.OS === "web" ? 200 : 100,
+                    alignItems: "center",
+                  }}
+                  onPress={handleModalNovo}
+                >
+                  <Text style={{ color: "white", fontWeight: "bold" }}>
+                    Novo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View> */}
+            <ModalEventoIngresso
+              id={idEventoIngresso}
+              visible={modalEventoIngresso}
+              onClose={handleCloseModalEventoIngresso}
+            />
           </ScrollView>
 
           <View style={styles.footer}>
@@ -261,6 +413,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.zinc,
     marginBottom: 4,
+    fontWeight: "bold",
   },
   input: {
     borderWidth: 1,

@@ -15,14 +15,22 @@ import { pt } from "date-fns/locale/pt";
 
 registerLocale("pt", pt); // Registra a localidade em português
 
-const DatePickerComponente = () => {
-  const [date, setDate] = useState(new Date());
+interface DatePickerComponenteProps {
+  value: Date;
+  onChange: (date: Date) => void;
+}
+
+const DatePickerComponente = ({
+  value,
+  onChange,
+}: DatePickerComponenteProps) => {
+  // const [date, setDate] = useState(new Date());
   const [show, setShow] = useState(false);
 
-  const onChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || date;
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || value;
     setShow(false);
-    setDate(currentDate);
+    onChange(currentDate);
   };
 
   const showpicker = () => {
@@ -34,8 +42,8 @@ const DatePickerComponente = () => {
       {Platform.OS === "web" ? (
         <View style={styles.webContainer}>
           <DatePicker
-            selected={date}
-            onChange={(date) => setDate(date || new Date())}
+            selected={value}
+            onChange={(date) => onChange(date || new Date())}
             dateFormat="P"
             timeFormat="HH:mm"
             // showTimeSelect
@@ -51,7 +59,7 @@ const DatePickerComponente = () => {
           <View>
             <Button
               onPress={showpicker}
-              title={date.toLocaleDateString("pt-BR", {
+              title={value.toLocaleDateString("pt-BR", {
                 day: "2-digit",
                 month: "2-digit",
                 year: "numeric",
@@ -61,11 +69,11 @@ const DatePickerComponente = () => {
           {show && (
             <DateTimePicker
               testID="dateTimePicker"
-              value={date}
+              value={value}
               mode="date"
               is24Hour={true}
               display="default"
-              onChange={onChange}
+              onChange={handleDateChange}
             />
           )}
         </View>
@@ -82,7 +90,7 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     marginBottom: 16,
-    zIndex: 20000, // Adiciona zIndex para garantir que o datepicker apareça corretamente
+    zIndex: 1000, // Adiciona zIndex para garantir que o datepicker apareça corretamente
   },
   text: {
     marginTop: 20,

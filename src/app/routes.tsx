@@ -10,6 +10,7 @@ import Signup from "./(auth)/signup/page";
 import Profile from "./(panel)/profile/page";
 import Evento from "./(panel)/evento/page";
 import MeusEventos from "./(panel)/meuseventos/page";
+import MeusEventosEdit from "./(panel)/meuseventos/pageEdit";
 import Produtor from "./(panel)/produtor/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -103,6 +104,16 @@ function Routes() {
           options={{
             headerShown: false,
             title: "Meus Evento",
+          }}
+        />
+        <Drawer.Screen
+          name="meuseventoedit"
+          component={MeusEventosEdit}
+          options={{
+            headerShown: false,
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
           }}
         />
         <Drawer.Screen

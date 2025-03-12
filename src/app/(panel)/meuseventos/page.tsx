@@ -19,6 +19,7 @@ import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
 import { format, parseISO } from "date-fns";
 import ModalMeusEventos from "./modalMeusEventos";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -27,6 +28,7 @@ export default function Index() {
   const [visibleModal, setVisibleModal] = useState(false);
   const [registros, setRegistros] = useState<Evento[]>([]);
   const [id, setid] = useState(0);
+  const navigation = useNavigation() as any;
 
   const data = [{ label: "Nome" }, { label: "Inicio" }, { label: "Fim" }];
 
@@ -44,13 +46,11 @@ export default function Index() {
   );
 
   const handleModalEdit = (id: number) => {
-    setid(id);
-    setVisibleModal(true);
+    navigation.navigate("meuseventoedit", { id });
   };
 
   const handleModalNovo = () => {
-    setid(0);
-    setVisibleModal(true);
+    navigation.navigate("meuseventoedit", { id: 0 });
   };
 
   const handleCloseModal = () => {
@@ -94,25 +94,15 @@ export default function Index() {
                   {
                     label: data[1].label,
                     content: format(
-                      parseISO(
-                        item.data_hora_inicio
-                          .toString()
-                          .replace(" ", "T")
-                          .replace("Z", "")
-                      ),
+                      parseISO(item.data_hora_inicio.toString()),
                       "dd/MM/yyyy HH:mm:ss"
                     ),
                     id: item.id,
                   },
                   {
-                    label: data[1].label,
+                    label: data[2].label,
                     content: format(
-                      parseISO(
-                        item.data_hora_fim
-                          .toString()
-                          .replace(" ", "T")
-                          .replace("Z", "")
-                      ),
+                      parseISO(item.data_hora_fim.toString()),
                       "dd/MM/yyyy HH:mm:ss"
                     ),
                     id: item.id,
@@ -138,19 +128,6 @@ export default function Index() {
           </View>
         </ScrollView>
       </View>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ModalMeusEventos
-          id={id}
-          visible={visibleModal}
-          onClose={handleCloseModal}
-        />
-      </View>
     </LinearGradient>
   );
 }
@@ -162,14 +139,13 @@ const styles = StyleSheet.create({
     marginRight: Platform.OS === "web" ? 200 : 20,
     marginLeft: Platform.OS === "web" ? 200 : 20,
     marginBottom: 20,
-    height: 500,
   },
   titulo: {
     fontSize: 24,
     fontWeight: "bold",
     marginTop: 10,
     marginBottom: 3,
-    marginLeft: Platform.OS === "web" ? 200 : 20,
+    textAlign: "center",
   },
   area: {
     backgroundColor: "rgba(255,255,255, 0.21)",
@@ -177,8 +153,8 @@ const styles = StyleSheet.create({
     paddingRight: 25,
     paddingLeft: 25,
     paddingTop: 15,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    // marginRight: Platform.OS === "web" ? 200 : 0,
+    // marginLeft: Platform.OS === "web" ? 200 : 0,
     paddingBottom: 25,
     borderRadius: 20,
     flex: 1,

@@ -8,14 +8,22 @@ import { pt } from "date-fns/locale/pt";
 
 registerLocale("pt", pt); // Registra a localidade em português
 
-const TimePickerComponente = () => {
-  const [date, setDate] = useState(new Date());
+interface DatePickerComponenteProps {
+  value: Date;
+  onChange: (date: Date) => void;
+}
+
+const TimePickerComponente = ({
+  value,
+  onChange,
+}: DatePickerComponenteProps) => {
+  // const [date, setDate] = useState(new Date());
   const [show, setShow] = useState(false);
 
-  const onChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || date;
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || value;
     setShow(false);
-    setDate(currentDate);
+    onChange(currentDate);
   };
 
   const showpicker = () => {
@@ -27,8 +35,8 @@ const TimePickerComponente = () => {
       {Platform.OS === "web" ? (
         <View style={styles.webContainer}>
           <DatePicker
-            selected={date}
-            onChange={(date) => setDate(date || new Date())}
+            selected={value}
+            onChange={(date) => onChange(date || new Date())}
             dateFormat="p"
             timeFormat="HH:mm"
             showTimeSelect
@@ -44,7 +52,7 @@ const TimePickerComponente = () => {
           <View>
             <Button
               onPress={showpicker}
-              title={date.toLocaleTimeString("pt-BR", {
+              title={value.toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -53,11 +61,11 @@ const TimePickerComponente = () => {
           {show && (
             <DateTimePicker
               testID="dateTimePicker"
-              value={date}
+              value={value}
               mode="time"
               is24Hour={true}
               display="default"
-              onChange={onChange}
+              onChange={handleDateChange}
             />
           )}
         </View>

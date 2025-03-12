@@ -1,4 +1,6 @@
+.react-datepicker-popper {
+  z-index: 20000 !important; /* Adjust z-index to ensure DatePicker appears above modal */
+}
 .react-datepicker__triangle {
   left: 10px !important; /* Define o indicador para aparecer à esquerda */
-  z-index: 20000 !important; /* Ajuste o z-index para garantir que o datepicker fique acima do modal */
 }

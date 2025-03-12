@@ -2,21 +2,30 @@ import React, { useState } from "react";
 import { View, StyleSheet, Text } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 
-const Select = () => {
-  const [selectedItem, setSelectedItem] = useState(null);
+interface SelectProps {
+  items: { label: string; value: any }[];
+  currentValue: any;
+  onValueChange: (value: any) => void;
+}
 
-  const items = [
-    { label: "Item 1", value: "item1" },
-    { label: "Item 2", value: "item2" },
-    { label: "Item 3", value: "item3" },
-  ];
+const Select: React.FC<SelectProps> = ({
+  items,
+  currentValue,
+  onValueChange,
+}) => {
+  const [selectedItem, setSelectedItem] = useState(currentValue);
+
+  const handleValueChange = (value: any) => {
+    setSelectedItem(value);
+    onValueChange(value);
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Selecione o produtor do evento</Text>
       <RNPickerSelect
-        onValueChange={(value) => setSelectedItem(value)}
+        onValueChange={handleValueChange}
         items={items}
+        value={selectedItem}
         style={pickerSelectStyles}
         placeholder={{ label: "Selecione um item...", value: null }}
       />
@@ -72,9 +81,6 @@ const pickerSelectStyles = StyleSheet.create({
     borderRadius: 4,
     color: "black",
     paddingRight: 30,
-    // appearance: "none",
-    // WebkitAppearance: "none",
-    // MozAppearance: "none",
   },
 });
 

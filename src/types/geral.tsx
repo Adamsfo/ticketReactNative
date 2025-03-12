@@ -70,6 +70,26 @@ export interface Evento {
   status?: Status;
 }
 
+export enum StatusEventoIngresso {
+  Disponivel = "Ativo",
+  Oculto = "Oculto",
+  Finalizado = "Finalizado",
+}
+
+export interface EventoIngresso {
+  id: number;
+  nome: string;
+  descricao?: string;
+  idTipoIngresso: number;
+  idEvento: number;
+  qtde: number;
+  preco: number;
+  taxaServico: number;
+  valor: number;
+  lote?: string;
+  status: StatusEventoIngresso;
+}
+
 export interface FormPropsEdit {
   id?: string;
   onClose?: () => void;
