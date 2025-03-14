@@ -33,12 +33,13 @@ const FloatingMenu = ({ color }: { color?: string }) => {
 
       if (response) {
         setUsuario(response as unknown as Usuario);
-        console.log("User set:", response); // Verifique se o usuário está sendo definido
+        await AsyncStorage.setItem("usuario", JSON.stringify(response));
       } else {
         setUsuario({} as Usuario);
       }
     } else {
       setUsuario({} as Usuario);
+      await AsyncStorage.removeItem("usuario");
     }
   };
 

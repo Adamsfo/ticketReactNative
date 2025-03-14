@@ -18,7 +18,6 @@ import { useFocusEffect } from "expo-router";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
 import { format, parseISO } from "date-fns";
-import ModalMeusEventos from "./modalMeusEventos";
 import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Text } from "react-native";
 import RNPickerSelect from "react-native-picker-select";
 
@@ -19,6 +19,12 @@ const Select: React.FC<SelectProps> = ({
     setSelectedItem(value);
     onValueChange(value);
   };
+
+  useEffect(() => {
+    if (currentValue != null) {
+      setSelectedItem(currentValue);
+    }
+  }, [currentValue]);
 
   return (
     <View style={styles.container}>

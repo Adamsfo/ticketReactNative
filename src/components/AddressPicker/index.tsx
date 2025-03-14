@@ -14,10 +14,18 @@ import MapViewer from "../MapViewer";
 Geocoder.init("AIzaSyDOKub2Z7hwFD9BiMxNfXPSSwKJ--YG_rU");
 
 interface AddressPickerProps {
-  onSave?: (location: { latitude: number; longitude: number }) => void;
+  onSave?: (location: {
+    latitude: number;
+    longitude: number;
+    endereco: string;
+  }) => void;
+  initialAddress?: string;
 }
 
-const AddressPicker: React.FC<AddressPickerProps> = ({ onSave }) => {
+const AddressPicker: React.FC<AddressPickerProps> = ({
+  onSave,
+  initialAddress,
+}) => {
   const [address, setAddress] = useState<string>("");
   const [location, setLocation] = useState<{
     latitude: number;
@@ -31,15 +39,16 @@ const AddressPicker: React.FC<AddressPickerProps> = ({ onSave }) => {
     setAddress(input);
   };
 
-  const handleFindLocation = async () => {
+  const handleFindLocation = async (busca: string) => {
     try {
-      const json = await Geocoder.from(address);
+      const json = await Geocoder.from(busca);
       if (json.results.length > 0) {
         const location = json.results[0].geometry.location;
         setLocation({
           latitude: location.lat,
           longitude: location.lng,
         });
+        handleSaveLocation(location.lat, location.lng, busca);
       } else {
         Alert.alert(
           "Endereço não encontrado",
@@ -63,11 +72,22 @@ const AddressPicker: React.FC<AddressPickerProps> = ({ onSave }) => {
     }
   };
 
-  const handleSaveLocation = () => {
+  const handleSaveLocation = (lat: number, long: number, end: string) => {
     if (onSave) {
-      onSave(location);
+      onSave({
+        latitude: lat,
+        longitude: long,
+        endereco: end,
+      });
     }
   };
+
+  useEffect(() => {
+    if (initialAddress) {
+      setAddress(initialAddress);
+      handleFindLocation(initialAddress);
+    }
+  }, [initialAddress]);
 
   return (
     <View style={styles.container}>
@@ -77,9 +97,12 @@ const AddressPicker: React.FC<AddressPickerProps> = ({ onSave }) => {
         value={address}
         onChangeText={handleAddressChange}
       />
-      <Button title="Encontrar localização" onPress={handleFindLocation} />
+      <Button
+        title="Encontrar localização"
+        onPress={() => handleFindLocation(address)}
+      />
       <MapViewer location={location} setLocation={setLocation} />
-      <Button title="Salvar localização" onPress={handleSaveLocation} />
+      {/* <Button title="Salvar localização" onPress={handleSaveLocation} /> */}
     </View>
   );
 };

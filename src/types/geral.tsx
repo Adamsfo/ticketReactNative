@@ -63,10 +63,11 @@ export interface Evento {
   mapa?: string;
   data_hora_inicio: Date;
   data_hora_fim: Date;
-  local: string;
+  latitude?: string;
+  longitude?: string;
   endereco: string;
-  id_usuario: number;
-  id_produtor: number;
+  idUsuario: number;
+  idProdutor: number;
   status?: Status;
 }
 
@@ -88,6 +89,7 @@ export interface EventoIngresso {
   valor: number;
   lote?: string;
   status: StatusEventoIngresso;
+  TipoIngresso_descricao?: StatusEventoIngresso;
 }
 
 export interface FormPropsEdit {

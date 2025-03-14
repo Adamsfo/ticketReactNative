@@ -6,6 +6,7 @@ import {
   QueryParams,
 } from "../types/geral";
 import { api } from "../lib/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 class ApiGeral {
   //Empresa
@@ -88,7 +89,9 @@ class ApiGeral {
     endpoint: string,
     data: any
   ): Promise<ApiResponse> {
-    return await api.request<T>(endpoint, "POST", data);
+    const usuario = JSON.parse((await AsyncStorage.getItem("usuario")) || "{}");
+    return api.request<T>(endpoint, "POST", { ...data, idUsuario: usuario.id });
+    // return await api.request<T>(endpoint, "POST", {data });
   }
 
   public async updateResorce<T>(

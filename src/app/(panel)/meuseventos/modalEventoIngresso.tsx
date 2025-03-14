@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   StyleSheet,
@@ -13,32 +13,32 @@ import colors from "@/src/constants/colors";
 import { apiGeral } from "@/src/lib/geral";
 import {
   EventoIngresso,
-  Produtor,
   StatusEventoIngresso,
   TipoIngresso,
 } from "@/src/types/geral";
-import { useFocusEffect } from "expo-router";
-import ImageUploader from "@/src/components/ImageUploader";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QuillEditorWeb from "@/src/components/QuillEditorWeb";
 import QuillEditorMobile from "@/src/components/QuillEditorMobile";
 import Select from "@/src/components/Select";
+import formatCurrency from "@/src/components/FormatCurrency";
+import CurrencyInput from "@/src/components/CurrencyInput";
 
 interface ModalMsgProps {
   id: number;
+  idEvento: number;
   visible: boolean;
   onClose: () => void;
 }
 
 export default function ModalEventoIngresso({
   id,
+  idEvento,
   visible,
   onClose,
 }: ModalMsgProps) {
   const endpointApi = "/eventoingresso";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // const [count, setCount] = useState(1);
   const [formData, setFormData] = useState<EventoIngresso>({
     id: 0,
     nome: "",
@@ -57,8 +57,24 @@ export default function ModalEventoIngresso({
     { value: number; label: string }[]
   >([]);
 
+  const itensStatus = [
+    { value: "Ativo", label: "Ativo" },
+    { value: "Oculto", label: "Oculto" },
+    { value: "Finalizado", label: "Finalizado" },
+  ];
+
   const handleChange = (field: any, value: string | number) => {
-    setFormData({ ...formData, [field]: value });
+    if (field === "preco") {
+      let taxa = parseFloat(
+        value.toString().replace("R$ ", "").replace(",", ".")
+      );
+      const taxaCalculada = ((taxa * 5) / 100).toFixed(2).toString();
+      taxa = parseFloat(taxaCalculada);
+      const valor = taxa + parseFloat(value.toString().replace("R$ ", ""));
+      setFormData({ ...formData, taxaServico: taxa, [field]: value, valor });
+    } else {
+      setFormData({ ...formData, [field]: value });
+    }
   };
 
   const handleSave = async () => {
@@ -66,6 +82,7 @@ export default function ModalEventoIngresso({
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      console.log(validationErrors);
       return;
     }
 
@@ -83,6 +100,13 @@ export default function ModalEventoIngresso({
 
     if (!formData.nome) newErrors.nome = "Descrição é obrigatório.";
     if (!formData.descricao) newErrors.descricao = "Descrição é obrigatório.";
+    if (!formData.idTipoIngresso)
+      newErrors.idTipoIngresso = "Tipo de Ingresso é obrigatório.";
+    if (!formData.lote) newErrors.lote = "Lote é obrigatório.";
+    if (!formData.qtde) newErrors.qtde = "Quantidade é obrigatório.";
+    if (!formData.preco) newErrors.preco = "Valor é obrigatório.";
+    if (!formData.taxaServico) newErrors.taxaServico = "Taxa é obrigatório.";
+    if (!formData.valor) newErrors.valor = "Valor de venda é obrigatório.";
 
     return newErrors;
   };
@@ -94,44 +118,44 @@ export default function ModalEventoIngresso({
     );
 
     const registro = response as EventoIngresso;
-    console.log("registro", registro);
-    formData.id = registro.id;
-    formData.nome = registro.nome;
-    // formData.descricao = registro.descricao;
-    formData.idTipoIngresso = registro.idTipoIngresso;
-    formData.idEvento = registro.idEvento;
-    formData.qtde = registro.qtde;
-    formData.preco = registro.preco;
-    formData.taxaServico = registro.taxaServico;
-    formData.valor = registro.valor;
-    formData.lote = registro.lote;
-    formData.status = registro.status;
+    setFormData({
+      id: registro.id,
+      nome: registro.nome,
+      descricao: registro.descricao,
+      idTipoIngresso: registro.idTipoIngresso,
+      idEvento: registro.idEvento,
+      qtde: registro.qtde,
+      preco: registro.preco,
+      taxaServico: registro.taxaServico,
+      valor: registro.valor,
+      lote: registro.lote,
+      status: registro.status,
+    });
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (visible) {
-        if (id > 0) {
-          getRegistrosTipoIngresso();
-          getRegistros();
-        } else {
-          setFormData({
-            id: 0,
-            nome: "",
-            descricao: "",
-            idTipoIngresso: 0,
-            idEvento: 0,
-            qtde: 0,
-            preco: 0,
-            taxaServico: 0,
-            valor: 0,
-            lote: "",
-            status: "Oculto" as StatusEventoIngresso,
-          });
-        }
+  useEffect(() => {
+    if (visible) {
+      setErrors({});
+      if (id > 0) {
+        getRegistrosTipoIngresso();
+        getRegistros();
+      } else {
+        setFormData({
+          id: 0,
+          nome: "",
+          descricao: "",
+          idTipoIngresso: 0,
+          idEvento: idEvento,
+          qtde: 0,
+          preco: 0,
+          taxaServico: 0,
+          valor: 0,
+          lote: "",
+          status: "Oculto" as StatusEventoIngresso,
+        });
       }
-    }, [visible, id])
-  );
+    }
+  }, [visible, id]);
 
   const getRegistrosTipoIngresso = async () => {
     const response = await apiGeral.getResource<TipoIngresso>("/tipoingresso");
@@ -159,14 +183,38 @@ export default function ModalEventoIngresso({
           </View>
 
           <ScrollView contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Informações do Ingresso</Text>
+            <View
+              style={{
+                flexDirection: Platform.OS === "web" ? "row" : "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text style={styles.title}>Informações do Ingresso</Text>
+              <Select
+                items={itensStatus}
+                currentValue={formData.status}
+                onValueChange={(text) => handleChange("status", text)}
+              ></Select>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={styles.label}>Tipo</Text>
+              <Select
+                items={itemsTipoIngresso}
+                currentValue={formData.idTipoIngresso}
+                onValueChange={(text) => handleChange("idTipoIngresso", text)}
+              ></Select>
+              {errors.idTipoIngresso && (
+                <Text style={styles.labelError}>{errors.idTipoIngresso}</Text>
+              )}
+            </View>
 
             <View>
               <Text style={styles.label}>Nome</Text>
               <TextInput
                 style={styles.input}
                 multiline={Platform.OS === "web" ? false : true}
-                placeholder="Nome..."
+                placeholder="Exemplo: Adulto, Criança, Inteiro, Meia..."
                 keyboardType="default"
                 value={formData.nome}
                 onChangeText={(text) => handleChange("nome", text)}
@@ -174,6 +222,90 @@ export default function ModalEventoIngresso({
               {errors.nome && (
                 <Text style={styles.labelError}>{errors.nome}</Text>
               )}
+            </View>
+
+            <View style={{ flexDirection: "row" }}>
+              <View>
+                <Text style={styles.label}>Lote</Text>
+                <TextInput
+                  style={styles.input}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Exemplo: Lote 1..."
+                  keyboardType="default"
+                  value={formData.lote}
+                  onChangeText={(text) => handleChange("lote", text)}
+                ></TextInput>
+                {errors.lote && (
+                  <Text style={styles.labelError}>{errors.lote}</Text>
+                )}
+              </View>
+
+              <View style={{ marginLeft: 10 }}>
+                <Text style={styles.label}>Quantidade</Text>
+                <TextInput
+                  style={styles.input}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Exemplo: 100"
+                  keyboardType="default"
+                  value={formData.qtde.toString()}
+                  onChangeText={(text) => handleChange("qtde", text)}
+                ></TextInput>
+                {errors.qtde && (
+                  <Text style={styles.labelError}>{errors.qtde}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row" }}>
+              <View>
+                <Text style={styles.label}>Valor</Text>
+                <TextInput
+                  style={styles.input}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Exemplo: 60,00"
+                  keyboardType="numeric"
+                  value={formatCurrency(formData.preco)}
+                  onChangeText={(text) =>
+                    handleChange(
+                      "preco",
+                      text.replace("R$ ", "").replace(",", ".")
+                    )
+                  }
+                ></TextInput>
+                {errors.preco && (
+                  <Text style={styles.labelError}>{errors.preco}</Text>
+                )}
+              </View>
+
+              <View style={{ marginLeft: 10 }}>
+                <Text style={styles.label}>Taxa</Text>
+                <TextInput
+                  style={styles.inputNoEdit}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Exemplo: 5,00"
+                  keyboardType="numeric"
+                  editable={false}
+                  value={formatCurrency(formData.taxaServico)}
+                ></TextInput>
+                {errors.taxaServico && (
+                  <Text style={styles.labelError}>{errors.taxaServico}</Text>
+                )}
+              </View>
+
+              <View style={{ marginLeft: 10 }}>
+                <Text style={styles.label}>Valor de Venda</Text>
+                <TextInput
+                  style={styles.inputNoEdit}
+                  editable={false}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Exemplo: 5,00"
+                  keyboardType="numeric"
+                  value={formatCurrency(formData.valor)}
+                ></TextInput>
+                {errors.valor && (
+                  <Text style={styles.labelError}>{errors.valor}</Text>
+                )}
+              </View>
             </View>
 
             <View
@@ -199,18 +331,6 @@ export default function ModalEventoIngresso({
               </SafeAreaView>
               {errors.descricao && (
                 <Text style={styles.labelError}>{errors.descricao}</Text>
-              )}
-            </View>
-
-            <View>
-              <Text style={styles.label}>Tipo</Text>
-              <Select
-                items={itemsTipoIngresso}
-                currentValue={formData.idTipoIngresso}
-                onValueChange={(text) => handleChange("idTipoIngresso", text)}
-              ></Select>
-              {errors.nome && (
-                <Text style={styles.labelError}>{errors.nome}</Text>
               )}
             </View>
           </ScrollView>
@@ -279,6 +399,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.zinc,
     marginBottom: 4,
+    fontWeight: "bold",
   },
   input: {
     borderWidth: 1,
@@ -288,6 +409,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 14,
     paddingBottom: 14,
+  },
+  inputNoEdit: {
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 8,
+    marginBottom: 18,
+    paddingHorizontal: 8,
+    paddingTop: 14,
+    paddingBottom: 14,
+    backgroundColor: colors.gray,
   },
   labelError: {
     color: colors.red,

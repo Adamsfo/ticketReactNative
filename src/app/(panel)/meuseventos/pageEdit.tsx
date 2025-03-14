@@ -24,7 +24,6 @@ import { useFocusEffect } from "expo-router";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
 import { format, parseISO } from "date-fns";
-import ModalMeusEventos from "./modalMeusEventos";
 import ImageUploader from "@/src/components/ImageUploader";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QuillEditorWeb from "@/src/components/QuillEditorWeb";
@@ -33,6 +32,12 @@ import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useRoute } from "@react-navigation/native";
+import { Modal } from "react-native-paper";
+import ModalEventoIngresso from "./modalEventoIngresso";
+import { useNavigation } from "@react-navigation/native";
+import WebMap from "@/src/components/WebMap";
+import AddressPicker from "@/src/components/AddressPicker";
+import Select from "@/src/components/Select";
 
 const { width } = Dimensions.get("window");
 
@@ -40,6 +45,7 @@ export default function Index() {
   const route = useRoute();
   const { id } = route.params as { id: number };
   const endpointApi = "/evento";
+  const navigation = useNavigation() as any;
   const endpointApiIngressos = "/eventoingresso";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
@@ -48,6 +54,9 @@ export default function Index() {
   const [modalEventoIngressoVisible, setModalEventoIngressoVisible] =
     useState(false);
   const [idEventoIngresso, setIdEventoIngresso] = useState(0);
+  const [itemsProdutor, setItemsProdutor] = useState<
+    { value: number; label: string }[]
+  >([]);
 
   const [formData, setFormData] = useState<Evento>({
     id: 0,
@@ -56,13 +65,13 @@ export default function Index() {
     imagem: "",
     data_hora_inicio: new Date(),
     data_hora_fim: new Date(),
-    local: "",
     endereco: "",
-    id_usuario: 0,
-    id_produtor: 0,
+    idUsuario: 0,
+    idProdutor: 0,
   });
 
   const dataEventoIngressos = [
+    { label: "Tipo", content: "" },
     { label: "Nome", content: "" },
     { label: "Valor a Receber", content: "" },
     { label: "Taxa", content: "" },
@@ -89,6 +98,7 @@ export default function Index() {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      console.log("validationErrors", validationErrors);
       return;
     }
 
@@ -97,6 +107,8 @@ export default function Index() {
     } else {
       await apiGeral.createResource<Evento>(endpointApi, formData);
     }
+
+    navigation.navigate("meusevento");
   };
 
   const validate = () => {
@@ -104,11 +116,20 @@ export default function Index() {
 
     if (!formData.nome) newErrors.nome = "Nome é obrigatório.";
     if (!formData.descricao) newErrors.descricao = "Descrição é obrigatório.";
+    if (!formData.data_hora_inicio)
+      newErrors.data_hora_inicio = "Data Inicio é obrigatório.";
+    if (!formData.data_hora_fim)
+      newErrors.data_hora_fim = "Data Fim é obrigatório.";
+    if (!formData.idProdutor) newErrors.idProdutor = "Produtor é obrigatório.";
+    if (!formData.endereco) newErrors.endereco = "Endereço é obrigatório.";
+    if (!formData.latitude) newErrors.endereco = "Latitude é obrigatório.";
+    if (!formData.latitude) newErrors.endereco = "Longitude é obrigatório.";
 
     return newErrors;
   };
 
   const getRegistros = async (id: number) => {
+    await getRegistrosProdutor();
     if (id > 0) {
       const response = await apiGeral.getResourceById<Evento>(endpointApi, id);
 
@@ -118,23 +139,26 @@ export default function Index() {
       getRegistrosIngressos({ filters: { idEvento: id } });
       setFormData(data as Evento);
     } else {
+      formData.id = 0;
       formData.nome = "";
       formData.descricao = "";
       formData.imagem = "";
       formData.data_hora_inicio = new Date();
       formData.data_hora_fim = new Date();
-      formData.local = "";
       formData.endereco = "";
-      formData.id_usuario = 0;
-      formData.id_produtor = 0;
+      formData.idUsuario = 0;
+      formData.idProdutor = 0;
       formData.mapa = "";
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      setRegistrosEventoIngressos([]);
-      getRegistros(id);
+      const fetchData = async () => {
+        setRegistrosEventoIngressos([]);
+        await getRegistros(id);
+      };
+      fetchData();
     }, [id])
   );
 
@@ -143,9 +167,39 @@ export default function Index() {
     setModalEventoIngressoVisible(true);
   };
 
+  const handleModalNovo = () => {
+    setIdEventoIngresso(0);
+    setModalEventoIngressoVisible(true);
+  };
+
   const handleCloseModalEventoIngresso = () => {
     setModalEventoIngressoVisible(false);
     getRegistrosIngressos({ filters: { idEvento: id } });
+  };
+
+  const onClose = () => {
+    navigation.navigate("meusevento");
+  };
+
+  const handleSaveLocation = (location: {
+    latitude: number;
+    longitude: number;
+    endereco: string;
+  }) => {
+    formData.latitude = location.latitude.toString();
+    formData.longitude = location.longitude.toString();
+    formData.endereco = location.endereco;
+  };
+
+  const getRegistrosProdutor = async () => {
+    const response = await apiGeral.getResource<Produtor>("/produtor");
+
+    const registrosData = (response.data ?? []).map((record: Produtor) => ({
+      value: record.id,
+      label: record.nome,
+    }));
+
+    setItemsProdutor(registrosData);
   };
 
   return (
@@ -258,14 +312,14 @@ export default function Index() {
           </View>
 
           <View>
-            <Text style={styles.label}>Mapa</Text>
+            <Text style={styles.label}>Mapa do Evento</Text>
             <ImageUploader
               value={formData.mapa || ""}
               onChange={(value) => handleChange("mapa", value)}
             />
           </View>
 
-          <View>
+          <View style={{ marginBottom: 16 }}>
             <Text style={styles.label}>Ingressos</Text>
             {Platform.OS === "web" && (
               <CustomGridTitle data={dataEventoIngressos} />
@@ -278,41 +332,90 @@ export default function Index() {
                   data={[
                     {
                       label: dataEventoIngressos[0].label,
-                      content: item.nome,
+                      content: item.TipoIngresso_descricao?.toString() || "",
                       id: item.id,
                     },
                     {
                       label: dataEventoIngressos[1].label,
-                      content: formatCurrency(item.preco),
+                      content: item.nome,
                       id: item.id,
                     },
                     {
                       label: dataEventoIngressos[2].label,
-                      content: formatCurrency(item.taxaServico),
+                      content: formatCurrency(item.preco),
                       id: item.id,
                     },
                     {
                       label: dataEventoIngressos[3].label,
-                      content: formatCurrency(item.valor),
+                      content: formatCurrency(item.taxaServico),
                       id: item.id,
                     },
                     {
                       label: dataEventoIngressos[4].label,
-                      content: formatCurrency(item.status),
+                      content: formatCurrency(item.valor),
+                      id: item.id,
+                    },
+                    {
+                      label: dataEventoIngressos[5].label,
+                      content: item.status,
                       id: item.id,
                     },
                   ]}
                 />
               )
             )}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+              <TouchableOpacity
+                style={[styles.buttonNovoItem]}
+                onPress={handleModalNovo}
+              >
+                <Text style={styles.buttonText}>Novo</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+
+          <View>
+            <Text style={styles.label}>Localização</Text>
+            <AddressPicker
+              onSave={handleSaveLocation}
+              initialAddress={formData.endereco}
+            />
+          </View>
+
+          <View style={{ marginBottom: 16 }}>
+            <Text style={styles.label}>Produtor</Text>
+            <Select
+              items={itemsProdutor}
+              currentValue={formData.idProdutor}
+              onValueChange={(text) => handleChange("idProdutor", text)}
+            ></Select>
+            {errors.idProdutor && (
+              <Text style={styles.labelError}>{errors.idProdutor}</Text>
+            )}
+          </View>
+
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonClose]}
+              onPress={onClose}
+            >
+              <Text style={styles.buttonText}>Voltar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSave]}
+              onPress={handleSave}
+            >
+              <Text style={styles.buttonText}>Salvar</Text>
+            </TouchableOpacity>
+          </View>
+          <ModalEventoIngresso
+            id={idEventoIngresso}
+            idEvento={id}
+            visible={modalEventoIngressoVisible}
+            onClose={handleCloseModalEventoIngresso}
+          />
         </ScrollView>
       </View>
-      <ModalMeusEventos
-        id={idEventoIngresso}
-        visible={modalEventoIngressoVisible}
-        onClose={handleCloseModalEventoIngresso}
-      />
     </LinearGradient>
   );
 }
@@ -384,5 +487,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: Platform.OS === "web" ? "flex-start" : "center",
     marginBottom: 5,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingVertical: 10,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  button: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  buttonClose: {
+    backgroundColor: "rgb(211, 211, 211)",
+  },
+  buttonSave: {
+    backgroundColor: colors.azul,
+  },
+  buttonText: {
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  buttonNovoItem: {
+    backgroundColor: colors.azul,
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginLeft: 10,
   },
 });
