@@ -70,7 +70,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
               <TouchableOpacity
                 style={{
                   backgroundColor: "rgb(0, 146, 250)",
-                  borderRadius: 5,
+                  borderRadius: 7,
                 }}
                 onPress={() => setCount(count + 1)}
               >
@@ -80,7 +80,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
               <TouchableOpacity
                 style={{
                   backgroundColor: "rgb(0, 146, 250)",
-                  borderRadius: 5,
+                  borderRadius: 7,
                 }}
                 onPress={() => setCount(count - 1)}
               >

@@ -106,26 +106,6 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
-        <View style={styles.areaEvento}>
-          <Image
-            source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
-            style={styles.imagem}
-          />
-          <View>
-            <Text
-              style={[
-                styles.titulo,
-                { marginLeft: 10, textAlign: "left", fontSize: 22 },
-              ]}
-            >
-              {formData.nome}
-            </Text>
-            <Text style={{ marginLeft: 10, fontSize: 16 }}>
-              {formData.endereco}
-            </Text>
-          </View>
-        </View>
-
         <Text style={styles.titulo}>Ingressos</Text>
 
         <ScrollView
@@ -137,6 +117,26 @@ export default function Index() {
             height: "100%",
           }}
         >
+          <View style={styles.areaEvento}>
+            <Image
+              source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
+              style={styles.imagem}
+            />
+            <View>
+              <Text
+                style={[
+                  styles.titulo,
+                  { marginLeft: 10, textAlign: "left", fontSize: 22 },
+                ]}
+              >
+                {formData.nome}
+              </Text>
+              <Text style={{ marginLeft: 10, fontSize: 16 }}>
+                {formData.endereco}
+              </Text>
+            </View>
+          </View>
+
           <View style={styles.area}>
             {tipoIngressoDescricoes.map((descricao, index) => (
               <Accordion
@@ -153,17 +153,13 @@ export default function Index() {
                       <CounterTicket data={ingresso} />
                     </View>
                   ))}
-                <View style={{ height: 40 }}></View>
               </Accordion>
             ))}
+            <View style={{ height: 100 }}></View>
           </View>
         </ScrollView>
       </View>
-      {modalVisible && (
-        <View style={styles.modal}>
-          <ModalResumoIngresso onClose={handleCloseModal} />
-        </View>
-      )}
+      {modalVisible && <ModalResumoIngresso onClose={handleCloseModal} />}
     </LinearGradient>
   );
 }
@@ -258,15 +254,5 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
     borderRadius: 20,
     flexDirection: "row",
-  },
-  modal: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    // height: 200,
   },
 });
