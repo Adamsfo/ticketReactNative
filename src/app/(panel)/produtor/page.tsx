@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 10,
     marginBottom: 3,
-    marginLeft: Platform.OS === "web" ? 200 : 20,
+    textAlign: "center",
   },
   area: {
     backgroundColor: "rgba(255,255,255, 0.21)",

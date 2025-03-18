@@ -6,6 +6,7 @@ import {
   Alert,
   ActivityIndicator,
   Text,
+  StyleSheet,
 } from "react-native";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
@@ -17,10 +18,8 @@ interface ImageUploaderProps {
 }
 
 export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
-  const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // 🔹 Solicitar permissões
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     const { status: cameraStatus } =
@@ -36,7 +35,6 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
     return true;
   };
 
-  // 📷 Selecionar imagem da galeria ou câmera
   const pickImage = async (fromCamera = false) => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
@@ -52,13 +50,10 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
       ? await ImagePicker.launchCameraAsync(options)
       : await ImagePicker.launchImageLibraryAsync(options);
 
-    if (!result.canceled) {
-      if (result.assets[0].base64) {
-        setImage(result.assets[0].base64);
-        await uploadImage(result.assets[0].base64);
-      } else {
-        Alert.alert("Erro", "Erro ao selecionar imagem.");
-      }
+    if (!result.canceled && result.assets[0].base64) {
+      await uploadImage(result.assets[0].base64);
+    } else {
+      Alert.alert("Erro", "Erro ao selecionar imagem.");
     }
   };
 
@@ -88,29 +83,42 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
   };
 
   return (
-    <View
-      style={{
-        justifyContent: "center",
-        alignItems: "flex-start",
-        marginBottom: 20,
-      }}
-    >
-      {value && (
+    <View style={styles.container}>
+      {value ? (
         <Image
           source={{ uri: api.getBaseApi() + "/uploads/" + value }}
-          style={{ width: 200, height: 200, marginBottom: 20 }}
+          style={styles.image}
         />
+      ) : (
+        <Text style={styles.placeholder}>Nenhuma imagem selecionada</Text>
       )}
 
       <Button title="Selecionar Imagem" onPress={() => pickImage(false)} />
 
       {uploading && (
-        <ActivityIndicator
-          size="large"
-          color="#0000ff"
-          style={{ marginTop: 20 }}
-        />
+        <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    justifyContent: "center",
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  image: {
+    width: 300,
+    height: 300,
+    marginBottom: 20,
+  },
+  placeholder: {
+    fontSize: 16,
+    color: "#888",
+    marginBottom: 20,
+  },
+  loader: {
+    marginTop: 20,
+  },
+});

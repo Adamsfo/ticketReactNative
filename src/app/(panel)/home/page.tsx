@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Text,
   StyleSheet,
@@ -16,12 +16,18 @@ import { FlatList } from "react-native-gesture-handler";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
 import { useNavigation } from "@react-navigation/native";
+import { apiGeral } from "@/src/lib/geral";
+import { Evento, EventoIngresso, QueryParams } from "@/src/types/geral";
+import { useFocusEffect } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
+  const endpointApi = "/evento";
+  const endpointApiIngressos = "/eventoingresso";
   const [visibleMsg, setVisibleMsg] = useState(false);
   const navigation = useNavigation() as any;
+  const [registros, setRegistros] = useState<Evento[]>([]);
 
   const widthCardItem = 460;
 
@@ -29,6 +35,42 @@ export default function Index() {
     Platform.OS === "web"
       ? Math.floor((Dimensions.get("window").width - 140) / widthCardItem)
       : 1;
+
+  const getRegistros = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<Evento>(endpointApi, {
+      ...params,
+      pageSize: 200,
+    });
+    const registrosData = response.data ?? [];
+
+    for (let i = 0; i < registrosData.length; i++) {
+      const precoMin = await getMenorValor({
+        filters: { idEvento: registrosData[i].id, status: "Ativo" },
+      });
+      registrosData[i].MenorValor = precoMin;
+    }
+
+    setRegistros(registrosData);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      getRegistros({ filters: { status: "Ativo" } });
+    }, [])
+  );
+
+  const getMenorValor = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<EventoIngresso>(
+      endpointApiIngressos,
+      { ...params, pageSize: 200 }
+    );
+    const registrosData = response.data ?? [];
+
+    const precos = registrosData.map((item) => item.preco);
+
+    const precoMin = Math.min(...precos);
+    return precoMin;
+  };
 
   return (
     <LinearGradient
@@ -48,18 +90,15 @@ export default function Index() {
         <Text style={styles.titulo}>Eventos</Text>
 
         <FlatList
-          data={[
-            { id: 1, nome: "Day Use Jango" },
-            { id: 2, nome: "Pousada" },
-          ]}
+          data={registros}
           style={styles.listaEventos}
           keyExtractor={(item) => item.id.toString()}
           numColumns={numColumns}
-          renderItem={({ item }: { item: any }) => (
+          renderItem={({ item }: { item: Evento }) => (
             <CardEvento
               data={item}
               onPress={() => {
-                navigation.navigate("evento");
+                navigation.navigate("evento", { id: item.id });
               }}
               widthCardItem={widthCardItem}
             />
@@ -100,7 +139,7 @@ const styles = StyleSheet.create({
   },
   imagem: {
     width: Platform.OS === "web" ? "60%" : "100%", // 100% para web, largura da tela para mobile
-    height: Platform.OS === "web" ? 600 : 200,
+    height: Platform.OS === "web" ? 400 : 200,
     resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
   },
 });

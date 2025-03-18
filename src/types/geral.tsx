@@ -69,6 +69,7 @@ export interface Evento {
   idUsuario: number;
   idProdutor: number;
   status?: Status;
+  MenorValor?: number;
 }
 
 export enum StatusEventoIngresso {

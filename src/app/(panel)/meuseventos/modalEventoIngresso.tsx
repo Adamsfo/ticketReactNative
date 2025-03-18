@@ -99,7 +99,7 @@ export default function ModalEventoIngresso({
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.nome) newErrors.nome = "Descrição é obrigatório.";
-    if (!formData.descricao) newErrors.descricao = "Descrição é obrigatório.";
+    // if (!formData.descricao) newErrors.descricao = "Descrição é obrigatório.";
     if (!formData.idTipoIngresso)
       newErrors.idTipoIngresso = "Tipo de Ingresso é obrigatório.";
     if (!formData.lote) newErrors.lote = "Lote é obrigatório.";
@@ -136,8 +136,8 @@ export default function ModalEventoIngresso({
   useEffect(() => {
     if (visible) {
       setErrors({});
+      getRegistrosTipoIngresso();
       if (id > 0) {
-        getRegistrosTipoIngresso();
         getRegistros();
       } else {
         setFormData({
@@ -158,7 +158,9 @@ export default function ModalEventoIngresso({
   }, [visible, id]);
 
   const getRegistrosTipoIngresso = async () => {
-    const response = await apiGeral.getResource<TipoIngresso>("/tipoingresso");
+    const response = await apiGeral.getResource<TipoIngresso>("/tipoingresso", {
+      pageSize: 100,
+    });
 
     const registrosData = (response.data ?? []).map((record: TipoIngresso) => ({
       value: record.id,
@@ -308,30 +310,16 @@ export default function ModalEventoIngresso({
               </View>
             </View>
 
-            <View
-              style={{
-                marginBottom: 16,
-                flex: 1,
-                minHeight: Platform.OS === "web" ? 200 : 350,
-              }}
-            >
-              <SafeAreaView style={{ height: "100%" }}>
-                <Text>Descrição</Text>
-                {Platform.OS === "web" ? (
-                  <QuillEditorWeb
-                    value={formData.descricao || ""}
-                    onChange={(value) => handleChange("descricao", value)}
-                  />
-                ) : (
-                  <QuillEditorMobile
-                    value={formData.descricao || ""}
-                    onChange={(value) => handleChange("descricao", value)}
-                  />
-                )}
-              </SafeAreaView>
-              {errors.descricao && (
-                <Text style={styles.labelError}>{errors.descricao}</Text>
-              )}
+            <View>
+              <Text style={styles.label}>Informações adicionais</Text>
+              <TextInput
+                style={styles.input}
+                multiline={true}
+                placeholder="Exemplo: Adulto, Criança, Inteiro, Meia..."
+                keyboardType="default"
+                value={formData.descricao}
+                onChangeText={(text) => handleChange("descricao", text)}
+              ></TextInput>
             </View>
           </ScrollView>
 

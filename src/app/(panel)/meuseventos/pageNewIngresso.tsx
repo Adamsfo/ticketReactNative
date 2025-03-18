@@ -18,7 +18,6 @@ import {
   EventoIngresso,
   Produtor,
   QueryParams,
-  Status,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -33,8 +32,10 @@ import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useRoute } from "@react-navigation/native";
+import { Modal } from "react-native-paper";
 import ModalEventoIngresso from "./modalEventoIngresso";
 import { useNavigation } from "@react-navigation/native";
+import WebMap from "@/src/components/WebMap";
 import AddressPicker from "@/src/components/AddressPicker";
 import Select from "@/src/components/Select";
 
@@ -67,7 +68,6 @@ export default function Index() {
     endereco: "",
     idUsuario: 0,
     idProdutor: 0,
-    status: "Ativo" as Status,
   });
 
   const dataEventoIngressos = [
@@ -77,12 +77,6 @@ export default function Index() {
     { label: "Taxa", content: "" },
     { label: "Valor Venda", content: "" },
     { label: "Status", content: "" },
-  ];
-
-  const itensStatus = [
-    { value: "Ativo", label: "Ativo" },
-    { value: "Oculto", label: "Oculto" },
-    { value: "Finalizado", label: "Finalizado" },
   ];
 
   const handleChange = (field: any, value: string | number | Date) => {
@@ -110,11 +104,11 @@ export default function Index() {
 
     if (id > 0) {
       await apiGeral.updateResorce<Evento>(endpointApi, formData);
-      navigation.navigate("meusevento");
     } else {
-      const ret = await apiGeral.createResource<Evento>(endpointApi, formData);
-      navigation.navigate("meuseventonewingresso", { id: ret.data.id });
+      await apiGeral.createResource<Evento>(endpointApi, formData);
     }
+
+    navigation.navigate("meusevento");
   };
 
   const validate = () => {
@@ -136,7 +130,6 @@ export default function Index() {
 
   const getRegistros = async (id: number) => {
     await getRegistrosProdutor();
-    console.log("id", id);
     if (id > 0) {
       const response = await apiGeral.getResourceById<Evento>(endpointApi, id);
 
@@ -144,20 +137,7 @@ export default function Index() {
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
       getRegistrosIngressos({ filters: { idEvento: id } });
-      // setFormData(data as Evento);
-      formData.id = data.id;
-      formData.nome = data.nome;
-      formData.imagem = data.imagem;
-      formData.data_hora_inicio = data.data_hora_inicio;
-      formData.data_hora_fim = data.data_hora_fim;
-      formData.endereco = data.endereco;
-      formData.idUsuario = data.idUsuario;
-      formData.idProdutor = data.idProdutor;
-      formData.mapa = data.mapa;
-      formData.status = data.status;
-      formData.latitude = data.latitude;
-      formData.longitude = data.longitude;
-      formData.descricao = data.descricao;
+      setFormData(data as Evento);
     } else {
       formData.id = 0;
       formData.nome = "";
@@ -178,9 +158,7 @@ export default function Index() {
         setRegistrosEventoIngressos([]);
         await getRegistros(id);
       };
-      if (id) {
-        fetchData();
-      }
+      fetchData();
     }, [id])
   );
 
@@ -244,112 +222,6 @@ export default function Index() {
             height: "100%",
           }}
         >
-          <View style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>Status</Text>
-            <Select
-              items={itensStatus}
-              currentValue={formData.status ?? ""}
-              onValueChange={(text) => handleChange("status", text)}
-            ></Select>
-          </View>
-
-          <View>
-            <Text style={styles.label}>Nome</Text>
-            <TextInput
-              style={styles.input}
-              multiline={Platform.OS === "web" ? false : true}
-              placeholder="Nome..."
-              keyboardType="default"
-              value={formData.nome}
-              onChangeText={(text) => handleChange("nome", text)}
-            ></TextInput>
-            {errors.nome && (
-              <Text style={styles.labelError}>{errors.nome}</Text>
-            )}
-          </View>
-
-          <View>
-            <Text style={styles.label}>Imagem</Text>
-            <ImageUploader
-              value={formData.imagem || ""}
-              onChange={(value) => handleChange("imagem", value)}
-            />
-          </View>
-
-          <View
-            style={{
-              marginBottom: 45,
-              flex: 1,
-              minHeight: Platform.OS === "web" ? 200 : 350,
-            }}
-          >
-            <SafeAreaView style={{ height: "100%" }}>
-              <Text style={styles.label}>Informações</Text>
-              {Platform.OS === "web" ? (
-                <QuillEditorWeb
-                  value={formData.descricao || ""}
-                  onChange={(value) => handleChange("descricao", value)}
-                />
-              ) : (
-                <QuillEditorMobile
-                  value={formData.descricao || ""}
-                  onChange={(value) => handleChange("descricao", value)}
-                />
-              )}
-            </SafeAreaView>
-            {errors.descricao && (
-              <Text style={styles.labelError}>{errors.descricao}</Text>
-            )}
-          </View>
-
-          <Text style={styles.label}>Data e Hora</Text>
-          <View style={styles.eventDetails}>
-            <View style={styles.eventDetailItem}>
-              <Text style={styles.labelData}>Data Inicio:</Text>
-              <DatePickerComponente
-                value={formData.data_hora_inicio || ""}
-                onChange={(value) => handleChange("data_hora_inicio", value)}
-              />
-            </View>
-            <View style={styles.eventDetailItem}>
-              <Text style={styles.labelData}>Hora Inicio:</Text>
-              <TimePickerComponente
-                value={formData.data_hora_inicio || ""}
-                onChange={(value) => handleChange("data_hora_inicio", value)}
-              />
-            </View>
-            {errors.nomeCompleto && (
-              <Text style={styles.labelError}>{errors.descricao}</Text>
-            )}
-          </View>
-          <View style={styles.eventDetails}>
-            <View style={styles.eventDetailItem}>
-              <Text style={styles.labelData}>Data Fim:</Text>
-              <DatePickerComponente
-                value={formData.data_hora_fim || ""}
-                onChange={(value) => handleChange("data_hora_fim", value)}
-              />
-            </View>
-            <View style={styles.eventDetailItem}>
-              <Text style={styles.labelData}>Hora Fim:</Text>
-              <TimePickerComponente
-                value={formData.data_hora_fim || ""}
-                onChange={(value) => handleChange("data_hora_fim", value)}
-              />
-            </View>
-            {errors.nomeCompleto && (
-              <Text style={styles.labelError}>{errors.descricao}</Text>
-            )}
-          </View>
-
-          <View>
-            <Text style={styles.label}>Mapa do Evento</Text>
-            <ImageUploader
-              value={formData.mapa || ""}
-              onChange={(value) => handleChange("mapa", value)}
-            />
-          </View>
-
           {id > 0 && (
             <View style={{ marginBottom: 16 }}>
               <Text style={styles.label}>Ingressos</Text>
@@ -409,26 +281,6 @@ export default function Index() {
             </View>
           )}
 
-          <View>
-            <Text style={styles.label}>Localização</Text>
-            <AddressPicker
-              onSave={handleSaveLocation}
-              initialAddress={formData.endereco}
-            />
-          </View>
-
-          <View style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>Produtor</Text>
-            <Select
-              items={itemsProdutor}
-              currentValue={formData.idProdutor}
-              onValueChange={(text) => handleChange("idProdutor", text)}
-            ></Select>
-            {errors.idProdutor && (
-              <Text style={styles.labelError}>{errors.idProdutor}</Text>
-            )}
-          </View>
-
           <View style={styles.footer}>
             <TouchableOpacity
               style={[styles.button, styles.buttonClose]}
@@ -440,9 +292,7 @@ export default function Index() {
               style={[styles.button, styles.buttonSave]}
               onPress={handleSave}
             >
-              <Text style={styles.buttonText}>
-                {id > 0 ? "Salvar" : "Proximo"}{" "}
-              </Text>
+              <Text style={styles.buttonText}>Salvar</Text>
             </TouchableOpacity>
           </View>
           <ModalEventoIngresso
@@ -494,7 +344,6 @@ const styles = StyleSheet.create({
     color: colors.zinc,
     marginBottom: 4,
     fontWeight: "bold",
-    fontSize: 16,
   },
   labelData: {
     color: colors.zinc,

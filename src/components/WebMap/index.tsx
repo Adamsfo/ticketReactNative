@@ -23,7 +23,7 @@ const WebMap: React.FC<WebMapProps> = ({ location }) => {
           width="100%"
           height="1000"
           style={{ border: 0 }}
-          src="https://www.google.com/maps/embed/v1/place?key=AIzaSyDOKub2Z7hwFD9BiMxNfXPSSwKJ--YG_rU&q=${latitude},${longitude}&zoom=18"
+          src="https://www.google.com/maps/embed/v1/place?key=AIzaSyDOKub2Z7hwFD9BiMxNfXPSSwKJ--YG_rU&q=${latitude},${longitude}&zoom=17"
           allowfullscreen>
         </iframe>
       </body>
@@ -66,7 +66,7 @@ const WebMap: React.FC<WebMapProps> = ({ location }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: 400,
+    height: 300,
     marginVertical: 8,
   },
   webMap: {

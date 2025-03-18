@@ -33,7 +33,9 @@ export default function Index() {
   ];
 
   const getRegistros = async () => {
-    const response = await apiGeral.getResource<TipoIngresso>(endpointApi);
+    const response = await apiGeral.getResource<TipoIngresso>(endpointApi, {
+      pageSize: 200,
+    });
     const registrosData = response.data ?? [];
 
     setRegistros(registrosData);
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 10,
     marginBottom: 3,
-    marginLeft: Platform.OS === "web" ? 200 : 20,
+    textAlign: "center",
   },
   area: {
     backgroundColor: "rgba(255,255,255, 0.21)",

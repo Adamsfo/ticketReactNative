@@ -8,9 +8,13 @@ import {
   Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { Evento } from "@/src/types/geral";
+import { format, parseISO } from "date-fns";
+import formatCurrency from "../FormatCurrency";
+import { api } from "@/src/lib/api";
 
 interface CardEventoProps {
-  data: { id: string; nome: string };
+  data: Evento;
   onPress: () => void;
   widthCardItem: number;
 }
@@ -39,7 +43,7 @@ export default function CardEvento({
 
         <View style={styles.viewImagem}>
           <Image
-            source={require("../../assets/eventoDayUse.png")}
+            source={{ uri: api.getBaseApi() + "/uploads/" + data.imagem }}
             style={styles.imagem}
           />
         </View>
@@ -51,19 +55,31 @@ export default function CardEvento({
           <View style={{ flexDirection: "row" }}>
             <Text style={{ fontWeight: "bold" }}>Local:</Text>
             <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
-              Pesque Pague Jango
+              {data.endereco}
             </Text>
           </View>
 
           <View style={{ flexDirection: "row" }}>
             <Text style={{ fontWeight: "bold" }}>Data:</Text>
             <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
-              Aberto todos os dias exceto 4ª feira
+              {format(
+                parseISO(data.data_hora_inicio.toString()),
+                "dd/MM/yyyy HH:mm"
+              )}{" "}
+              a{" "}
+              {format(
+                parseISO(data.data_hora_fim.toString()),
+                "dd/MM/yyyy HH:mm"
+              )}
             </Text>
           </View>
 
           <Text style={{ fontWeight: "normal" }}>
-            Valores a partir de R$ 55,00.
+            Valores a partir de{" "}
+            {data.MenorValor !== undefined
+              ? formatCurrency(data.MenorValor.toFixed(2))
+              : "N/A"}
+            .
           </Text>
         </View>
       </TouchableOpacity>
