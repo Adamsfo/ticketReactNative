@@ -32,7 +32,7 @@ import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
-import { initMercadoPago } from "@mercadopago/sdk-react";
+import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 
 const { width } = Dimensions.get("window");
 
@@ -42,6 +42,7 @@ export default function Index() {
   const route = useRoute();
   const { state, dispatch } = useCart();
   const { id } = route.params as { id: number };
+  initMercadoPago("TEST-98f4cccd-2514-4062-a671-68df4b579410");
   const [formData, setFormData] = useState<Evento>({
     id: 0,
     nome: "",
@@ -140,25 +141,59 @@ export default function Index() {
       .toFixed(2);
   };
 
-  const renderTicketInputs = (item: any) => {
-    return Array.from({ length: item.qtde }).map((_, index) => (
-      <View key={index} style={styles.inputCard}>
-        <Text style={styles.inputLabel}>Nome Completo:</Text>
-        <TextInput style={styles.input} placeholder="Nome Completo" />
-        <Text style={styles.inputLabel}>Email:</Text>
-        <TextInput style={styles.input} placeholder="Email" />
-      </View>
-    ));
+  const initialization = {
+    amount: 100,
+    preferenceId: "<PREFERENCE_ID>",
   };
 
-  const renderUserInputs = () => (
-    <View style={styles.inputCard}>
-      <Text style={styles.inputLabel}>Nome Completo:</Text>
-      <TextInput style={styles.input} placeholder="Nome Completo" />
-      <Text style={styles.inputLabel}>Email:</Text>
-      <TextInput style={styles.input} placeholder="Email" />
-    </View>
-  );
+  const customization = {
+    paymentMethods: {
+      ticket: "all",
+      bankTransfer: "all",
+      creditCard: "all",
+      prepaidCard: ["all"],
+      debitCard: "all",
+      mercadoPago: "all",
+    },
+  };
+
+  const onSubmit = async ({
+    selectedPaymentMethod,
+    formData,
+  }: {
+    selectedPaymentMethod: string;
+    formData: any;
+  }) => {
+    // callback chamado ao clicar no botão de submissão dos dados
+    return new Promise<void>((resolve, reject) => {
+      fetch(api.getBaseApi() + "/pagamento", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+        .then((response) => response.json())
+        .then((response) => {
+          // receber o resultado do pagamento
+          resolve();
+        })
+        .catch((error) => {
+          // lidar com a resposta de erro ao tentar criar o pagamento
+          reject();
+        });
+    });
+  };
+  const onError = async (error: any) => {
+    // callback chamado para todos os casos de erro do Brick
+    console.log(error);
+  };
+  const onReady = async () => {
+    /*
+   Callback chamado quando o Brick estiver pronto.
+   Aqui você pode ocultar loadings do seu site, por exemplo.
+ */
+  };
 
   return (
     <LinearGradient
@@ -292,7 +327,15 @@ export default function Index() {
             </View>
           </View>
 
-          <View style={styles.eventDetailItem}></View>
+          {/* <View style={styles.eventDetailItem}> */}
+          <Payment
+            initialization={initialization}
+            customization={customization}
+            onSubmit={onSubmit}
+            onReady={onReady}
+            onError={onError}
+          />
+          {/* </View> */}
         </ScrollView>
       </View>
       {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} step={2} />}
