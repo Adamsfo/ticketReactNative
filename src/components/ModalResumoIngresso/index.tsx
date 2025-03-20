@@ -18,10 +18,12 @@ import { useRoute } from "@react-navigation/native";
 
 interface ModalResumoIngressoProps {
   zerarItem: (id: number) => void;
+  step: number;
 }
 
 export default function ModalResumoIngresso({
   zerarItem,
+  step,
 }: ModalResumoIngressoProps) {
   const route = useRoute();
   const { state, dispatch } = useCart();
@@ -160,11 +162,18 @@ export default function ModalResumoIngresso({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSave]}
-              onPress={() =>
-                navigation.navigate("conferencia", {
-                  id: id,
-                })
-              }
+              onPress={() => {
+                if (step === 1) {
+                  navigation.navigate("conferencia", {
+                    id: id,
+                  });
+                }
+                if (step === 2) {
+                  navigation.navigate("pagamento", {
+                    id: id,
+                  });
+                }
+              }}
             >
               <Text style={styles.buttonText}>Proximo</Text>
             </TouchableOpacity>

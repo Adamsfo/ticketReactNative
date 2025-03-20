@@ -32,6 +32,7 @@ import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
+import { initMercadoPago } from "@mercadopago/sdk-react";
 
 const { width } = Dimensions.get("window");
 
@@ -169,9 +170,9 @@ export default function Index() {
 
       <View style={styles.container}>
         <View style={styles.areaStep}>
-          <StepIndicator currentStep={2} />
+          <StepIndicator currentStep={3} />
         </View>
-        <Text style={styles.titulo}>Conferência e atribuição</Text>
+        <Text style={styles.titulo}>Pagamento</Text>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -291,21 +292,7 @@ export default function Index() {
             </View>
           </View>
 
-          <View style={styles.eventDetailItem}>
-            <Text style={styles.titulo}>Preencha os dados dos ingressos</Text>
-            <FlatList
-              data={state.items}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.ticketContainer}>
-                  <Text style={styles.ticketTitle}>
-                    {item.eventoIngresso.nome} - {item.qtde} ingressos
-                  </Text>
-                  {renderTicketInputs(item)}
-                </View>
-              )}
-            />
-          </View>
+          <View style={styles.eventDetailItem}></View>
         </ScrollView>
       </View>
       {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} step={2} />}
