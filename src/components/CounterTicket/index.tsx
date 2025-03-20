@@ -3,14 +3,29 @@ import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { View, Text, Button, StyleSheet, TouchableOpacity } from "react-native";
 import formatCurrency from "../FormatCurrency";
+import { useCart } from "@/src/contexts_/CartContext";
 
 interface CounterTicketProps {
-  data: any; // Replace 'any' with the appropriate type if known
+  data: any;
 }
 
 const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
-  // State to hold the counter value
-  const [count, setCount] = useState(0);
+  // const [count, setCount] = useState(0);
+  const { state, dispatch } = useCart();
+
+  const addItemToCart = (qtde: number) => {
+    if (qtde < 0) {
+      return;
+    }
+    if (qtde === 0) {
+      dispatch({ type: "REMOVE_ITEM", id: data.id });
+    } else {
+      dispatch({
+        type: "ADD_ITEM",
+        item: { id: data.id, qtde: qtde, eventoIngresso: data },
+      });
+    }
+  };
 
   return (
     <View
@@ -49,7 +64,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
               <Text
                 style={{ fontWeight: "normal", paddingLeft: 5, fontSize: 18 }}
               >
-                {formatCurrency(data.valor)}
+                {formatCurrency(data.preco)}
               </Text>
             </View>
           </View>
@@ -72,17 +87,29 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                   backgroundColor: "rgb(0, 146, 250)",
                   borderRadius: 7,
                 }}
-                onPress={() => setCount(count + 1)}
+                onPress={() =>
+                  addItemToCart(
+                    (state.items.find((item) => item.id === data.id)?.qtde ||
+                      0) + 1
+                  )
+                }
               >
                 <Feather name="plus" size={28} color="white"></Feather>
               </TouchableOpacity>
-              <Text style={{ fontSize: 18, marginHorizontal: 5 }}>{count}</Text>
+              <Text style={{ fontSize: 18, marginHorizontal: 5 }}>
+                {state.items.find((item) => item.id === data.id)?.qtde || 0}
+              </Text>
               <TouchableOpacity
                 style={{
                   backgroundColor: "rgb(0, 146, 250)",
                   borderRadius: 7,
                 }}
-                onPress={() => setCount(count - 1)}
+                onPress={() =>
+                  addItemToCart(
+                    (state.items.find((item) => item.id === data.id)?.qtde ||
+                      0) - 1
+                  )
+                }
               >
                 <Feather name="minus" size={28} color="white"></Feather>
               </TouchableOpacity>

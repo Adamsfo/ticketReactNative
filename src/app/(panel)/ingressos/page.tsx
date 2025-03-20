@@ -27,6 +27,7 @@ import Accordion from "@/src/components/Accordion";
 import CounterTicket from "@/src/components/CounterTicket";
 import { api } from "@/src/lib/api";
 import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
+import StepIndicator from "@/src/components/StepIndicator";
 
 const { width } = Dimensions.get("window");
 
@@ -97,6 +98,19 @@ export default function Index() {
     setModalVisible(false);
   };
 
+  const zerarItem = (id: number) => {
+    console.log("zerarItem");
+    const reg = registrosEventoIngressos.map((ingresso) => {
+      if (ingresso.id === id) {
+        ingresso.qtde = 0;
+      }
+      return ingresso;
+    });
+
+    setRegistrosEventoIngressos([]);
+    setRegistrosEventoIngressos(reg);
+  };
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -106,6 +120,9 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
+        <View style={styles.areaStep}>
+          <StepIndicator currentStep={1} />
+        </View>
         <Text style={styles.titulo}>Ingressos</Text>
 
         <ScrollView
@@ -159,7 +176,7 @@ export default function Index() {
           </View>
         </ScrollView>
       </View>
-      {modalVisible && <ModalResumoIngresso onClose={handleCloseModal} />}
+      {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} />}
     </LinearGradient>
   );
 }
@@ -248,11 +265,15 @@ const styles = StyleSheet.create({
     marginTop: 7,
     paddingRight: 5,
     paddingLeft: 5,
-    paddingTop: 15,
+    paddingTop: 10,
     marginRight: Platform.OS === "web" ? 200 : 0,
     marginLeft: Platform.OS === "web" ? 200 : 0,
-    paddingBottom: 25,
+    paddingBottom: 10,
     borderRadius: 20,
     flexDirection: "row",
+  },
+  areaStep: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

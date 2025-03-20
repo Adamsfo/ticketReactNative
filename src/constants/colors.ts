@@ -9,6 +9,7 @@ export default {
   red: '#FF0000',
   laranjado: '#FFA500',
   azul: '#0073E6',
+  // azul: 'rgb(113, 175, 220)',
   cinza: '#424242',
   roxo: 'rgb(78, 57, 117)',
   line: 'rgb(227, 227, 229)',

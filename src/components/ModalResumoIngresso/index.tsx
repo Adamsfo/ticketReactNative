@@ -6,18 +6,42 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
   Platform,
+  FlatList,
+  Button,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
 import formatCurrency from "../FormatCurrency";
+import { useCart } from "@/src/contexts_/CartContext";
+import { useNavigation } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 
 interface ModalResumoIngressoProps {
-  onClose: () => void;
+  zerarItem: (id: number) => void;
 }
 
 export default function ModalResumoIngresso({
-  onClose,
+  zerarItem,
 }: ModalResumoIngressoProps) {
+  const route = useRoute();
+  const { state, dispatch } = useCart();
+  const [visibleDetalhe, setVisibleDetalhe] = React.useState(false);
+  const navigation = useNavigation() as any;
+  const { id } = route.params as { id: number };
+
+  const removeItemFromCart = (id: number) => {
+    dispatch({ type: "REMOVE_ITEM", id });
+    zerarItem(id);
+  };
+
+  const calculateTotal = () => {
+    return state.items
+      .reduce((total, item) => {
+        return total + item.qtde * item.eventoIngresso.preco;
+      }, 0)
+      .toFixed(2);
+  };
+
   return (
     <View style={styles.modal}>
       <View style={styles.modalContainer}>
@@ -44,20 +68,93 @@ export default function ModalResumoIngresso({
               }}
             >
               <Text style={styles.title}>
-                Total: {formatCurrency(500.12)} + taxas
+                Total: {formatCurrency(calculateTotal())} + taxas
               </Text>
-              <Feather
-                style={{ paddingLeft: 20 }}
-                name="arrow-up-circle"
-                size={30}
-                color={colors.azul}
-              />
+              <TouchableOpacity
+                onPress={() => setVisibleDetalhe(!visibleDetalhe)}
+              >
+                <Feather
+                  style={{ paddingLeft: 20 }}
+                  name={
+                    visibleDetalhe ? "arrow-down-circle" : "arrow-up-circle"
+                  }
+                  size={30}
+                  color={colors.azul}
+                />
+              </TouchableOpacity>
             </View>
+            {visibleDetalhe && (
+              <View style={{ flexDirection: "row" }}>
+                <FlatList
+                  data={state.items}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingVertical: 3,
+                        marginHorizontal: 5,
+                      }}
+                    >
+                      <View>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              paddingHorizontal: 3,
+                              fontWeight: "bold",
+                              fontSize: 14,
+                            }}
+                          >
+                            {item.qtde} x
+                          </Text>
+                          <Text style={{ paddingHorizontal: 3, fontSize: 14 }}>
+                            {item.eventoIngresso.TipoIngresso_descricao}
+                          </Text>
+                          <Text style={{ paddingHorizontal: 3, fontSize: 14 }}>
+                            {item.eventoIngresso.nome}
+                          </Text>
+                        </View>
+                        <View>
+                          <Text
+                            style={{
+                              paddingHorizontal: 3,
+                              fontWeight: "bold",
+                              fontSize: 14,
+                            }}
+                          >
+                            {formatCurrency(
+                              (item.qtde * item.eventoIngresso.preco).toFixed(2)
+                            )}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ alignItems: "flex-end", flex: 1 }}>
+                        <TouchableOpacity
+                          style={[styles.button, styles.buttonRemove]}
+                          onPress={() => removeItemFromCart(item.id)}
+                        >
+                          <Text style={[styles.buttonTextRemove]}>Remover</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                />
+              </View>
+            )}
           </View>
           <View style={styles.footer}>
             <TouchableOpacity
               style={[styles.button, styles.buttonClose]}
-              // onPress={onClose}
+              onPress={() =>
+                navigation.navigate("evento", {
+                  id: id,
+                })
+              }
             >
               <Text style={styles.buttonText}>Voltar</Text>
             </TouchableOpacity>
@@ -96,15 +193,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: colors.cinza,
-  },
-  mensagem: {
-    fontSize: 17,
-    color: "#1a7a7a7",
-    // marginBottom: 30,
-    // marginTop: 10,
   },
   modal: {
     position: "absolute",
@@ -137,6 +228,13 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFF",
+    fontWeight: "bold",
+  },
+  buttonRemove: {
+    backgroundColor: colors.branco,
+  },
+  buttonTextRemove: {
+    color: colors.azul,
     fontWeight: "bold",
   },
 });
