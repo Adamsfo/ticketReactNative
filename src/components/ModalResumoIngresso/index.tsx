@@ -160,7 +160,11 @@ export default function ModalResumoIngresso({
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSave]}
-              // onPress={handleSave}
+              onPress={() =>
+                navigation.navigate("conferencia", {
+                  id: id,
+                })
+              }
             >
               <Text style={styles.buttonText}>Proximo</Text>
             </TouchableOpacity>

@@ -15,6 +15,7 @@ import MeusEventoNewIngresso from "./(panel)/meuseventos/pageNewIngresso";
 import Produtor from "./(panel)/produtor/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
 import Ingressos from "./(panel)/ingressos/page";
+import Conferencia from "./(panel)/conferencia/page";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const Drawer = createDrawerNavigator();
@@ -131,6 +132,16 @@ function Routes() {
         <Drawer.Screen
           name="ingressos"
           component={Ingressos}
+          options={{
+            headerShown: false,
+            drawerLabel: () => null, // Oculta o rótulo do menu
+            drawerIcon: () => null, // Oculta o ícone do menu
+            drawerItemStyle: { display: "none" }, // Oculta completamente o item do menu
+          }}
+        />
+        <Drawer.Screen
+          name="conferencia"
+          component={Conferencia}
           options={{
             headerShown: false,
             drawerLabel: () => null, // Oculta o rótulo do menu

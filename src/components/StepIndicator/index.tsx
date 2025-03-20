@@ -19,7 +19,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep }) => {
             ]}
           >
             {currentStep > index + 1 ? (
-              <Feather name="check" size={24} color={colors.white} />
+              <Feather name="check" size={20} color={colors.green} />
             ) : (
               <Text
                 style={[
