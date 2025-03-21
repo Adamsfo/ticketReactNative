@@ -32,17 +32,25 @@ import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
-import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import { CardPayment, initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import CreditCardForm from "@/src/components/CreditCardForm";
+import WebViewMP from "@/src/components/WebViewMP";
+import CheckoutMercadoPago from "@/src/components/CheckoutMercadoPago";
+import ChecoutMP from "../checkoutmp/page";
+import WebView from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
+  const navigation = useNavigation() as any;
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
   const { state, dispatch } = useCart();
   const { id } = route.params as { id: number };
-  initMercadoPago("TEST-98f4cccd-2514-4062-a671-68df4b579410");
+  initMercadoPago("TEST-98f4cccd-2514-4062-a671-68df4b579410", {
+    locale: "pt-BR",
+  });
   const [formData, setFormData] = useState<Evento>({
     id: 0,
     nome: "",
@@ -141,11 +149,6 @@ export default function Index() {
       .toFixed(2);
   };
 
-  const initialization = {
-    amount: 100,
-    preferenceId: "<PREFERENCE_ID>",
-  };
-
   const customization = {
     paymentMethods: {
       ticket: "all",
@@ -155,6 +158,28 @@ export default function Index() {
       debitCard: "all",
       mercadoPago: "all",
     },
+  };
+
+  const onSubmitBrinck = async (formData: any) => {
+    // callback chamado ao clicar no botão de submissão dos dados
+    return new Promise<void>((resolve, reject) => {
+      fetch("/process_payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+        .then((response) => response.json())
+        .then((response) => {
+          // receber o resultado do pagamento
+          resolve();
+        })
+        .catch((error) => {
+          // lidar com a resposta de erro ao tentar criar o pagamento
+          reject();
+        });
+    });
   };
 
   const onSubmit = async ({
@@ -176,6 +201,7 @@ export default function Index() {
         .then((response) => response.json())
         .then((response) => {
           // receber o resultado do pagamento
+          console.log(response);
           resolve();
         })
         .catch((error) => {
@@ -327,15 +353,27 @@ export default function Index() {
             </View>
           </View>
 
-          {/* <View style={styles.eventDetailItem}> */}
-          <Payment
+          {/* <CardPayment
             initialization={initialization}
-            customization={customization}
-            onSubmit={onSubmit}
+            onSubmit={onSubmitBrinck}
             onReady={onReady}
             onError={onError}
-          />
-          {/* </View> */}
+          /> */}
+
+          {/* <WebViewMP /> */}
+          {/* <ChecoutMP /> */}
+
+          <View style={styles.eventDetailItem}>
+            {/* <CreditCardForm /> */}
+            {/* <Payment
+              initialization={{ amount: parseFloat(calculateTotal()) }}
+              customization={customization}
+              onSubmit={onSubmit}
+              onReady={onReady}
+              onError={onError}
+            /> */}
+            <CheckoutMercadoPago />
+          </View>
         </ScrollView>
       </View>
       {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} step={2} />}

@@ -9,16 +9,32 @@ import {
   Platform,
   TouchableOpacity,
 } from "react-native";
-import { Link } from "expo-router";
-import { navigate } from "expo-router/build/global-state/routing";
+import { useNavigation } from "@react-navigation/native";
+import { SplashScreen } from "expo-router";
 
-export default function Index() {
+export default function Index({ route }: any) {
+  const navigation = useNavigation() as any;
+  let param = "";
+  param = route.params.params;
+
   useEffect(() => {
     if (Platform.OS === "web") {
       const rootPortal = document.createElement("div");
       rootPortal.setAttribute("id", "root-portal");
       document.body.appendChild(rootPortal);
     }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (param.includes("checkoutmp")) {
+        navigation.navigate("checkoutmp");
+      } else {
+        navigation.navigate("home");
+      }
+    }, 300);
+
+    return () => clearTimeout(timer); // Limpa o temporizador na desmontagem do componente
   }, []);
 
   return (
