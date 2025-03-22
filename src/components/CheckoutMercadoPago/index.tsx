@@ -73,7 +73,7 @@ export default function CheckoutMercadoPago() {
         />
       ) : (
         <WebView
-          source={{ uri: "http://10.1.1.209:8081/checkoutmp?id=23" }} // URL da rota do seu app
+          source={{ uri: "http://192.168.18.95:8081/checkoutmp?id=23" }} // URL da rota do seu app
           style={{ flex: 1, height: 500, width: "100%" }}
           originWhitelist={["*"]}
           startInLoadingState={true}

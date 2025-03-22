@@ -39,7 +39,9 @@ export default function Index({ route }: any) {
 
   return (
     <View style={style.container}>
-      <Image source={require("../assets/logoJango.png")} />
+      {!param.includes("checkoutmp") ? (
+        <Image source={require("../assets/logoJango.png")} />
+      ) : null}
     </View>
   );
 }

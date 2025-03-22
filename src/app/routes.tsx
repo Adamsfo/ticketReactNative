@@ -18,8 +18,6 @@ import Ingressos from "./(panel)/ingressos/page";
 import Conferencia from "./(panel)/conferencia/page";
 import Pagamento from "./(panel)/pagamento/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SplashScreen, useFocusEffect, useNavigation } from "expo-router";
 import {
   ActivityIndicator,
   Image,
@@ -40,18 +38,26 @@ function Routes() {
     if (url) {
       setParams(url);
     }
+
+    return url;
   };
 
   useEffect(() => {
     const fetchData = async () => {
       // Simula um carregamento inicial com duração de 3 segundos
-      const timer = setTimeout(() => {
+      let url = "";
+      url = (await getUrlAsync()) ?? "";
+      if (url.includes("checkoutmp")) {
         setIsLoading(false);
-      }, 1000);
+      } else {
+        const timer = setTimeout(() => {
+          setIsLoading(false);
+        }, 1000);
 
-      return () => clearTimeout(timer); // Limpa o temporizador na desmontagem do componente
+        return () => clearTimeout(timer); // Limpa o temporizador na desmontagem do componente
+      }
     };
-    getUrlAsync();
+
     fetchData();
   }, []);
 

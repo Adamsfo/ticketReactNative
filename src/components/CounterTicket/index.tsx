@@ -1,7 +1,7 @@
 import colors from "@/src/constants/colors";
 import { Feather } from "@expo/vector-icons";
-import React, { useState } from "react";
-import { View, Text, Button, StyleSheet, TouchableOpacity } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import formatCurrency from "../FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
 
@@ -90,12 +90,13 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                 onPress={() =>
                   addItemToCart(
                     (state.items.find((item) => item.id === data.id)?.qtde ||
-                      0) + 1
+                      0) - 1
                   )
                 }
               >
-                <Feather name="plus" size={28} color="white"></Feather>
+                <Feather name="minus" size={28} color="white"></Feather>
               </TouchableOpacity>
+
               <Text style={{ fontSize: 18, marginHorizontal: 5 }}>
                 {state.items.find((item) => item.id === data.id)?.qtde || 0}
               </Text>
@@ -107,11 +108,11 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                 onPress={() =>
                   addItemToCart(
                     (state.items.find((item) => item.id === data.id)?.qtde ||
-                      0) - 1
+                      0) + 1
                   )
                 }
               >
-                <Feather name="minus" size={28} color="white"></Feather>
+                <Feather name="plus" size={28} color="white"></Feather>
               </TouchableOpacity>
             </View>
           </View>

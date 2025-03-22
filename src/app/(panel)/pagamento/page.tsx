@@ -6,47 +6,32 @@ import {
   Dimensions,
   View,
   ScrollView,
-  TouchableOpacity,
   Image,
   FlatList,
-  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import {
-  Evento,
-  EventoIngresso,
-  Produtor,
-  QueryParams,
-} from "@/src/types/geral";
+import { Evento, EventoIngresso, QueryParams } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
-import { useNavigation } from "@react-navigation/native";
-import Accordion from "@/src/components/Accordion";
-import CounterTicket from "@/src/components/CounterTicket";
 import { api } from "@/src/lib/api";
 import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
-import { CardPayment, initMercadoPago, Payment } from "@mercadopago/sdk-react";
-import CreditCardForm from "@/src/components/CreditCardForm";
-import WebViewMP from "@/src/components/WebViewMP";
+import { initMercadoPago } from "@mercadopago/sdk-react";
 import CheckoutMercadoPago from "@/src/components/CheckoutMercadoPago";
-import ChecoutMP from "../checkoutmp/page";
-import WebView from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
-  const navigation = useNavigation() as any;
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
-  const { state, dispatch } = useCart();
+  const { state } = useCart();
   const { id } = route.params as { id: number };
   initMercadoPago("TEST-98f4cccd-2514-4062-a671-68df4b579410", {
     locale: "pt-BR",
@@ -99,19 +84,6 @@ export default function Index() {
     }, [id])
   );
 
-  // Filtrar os diferentes TipoIngresso_descricao
-  const tipoIngressoDescricoes = Array.from(
-    new Set(
-      registrosEventoIngressos.map(
-        (ingresso) => ingresso.TipoIngresso_descricao
-      )
-    )
-  );
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-  };
-
   const zerarItem = (id: number) => {
     console.log("zerarItem");
     const reg = registrosEventoIngressos.map((ingresso) => {
@@ -147,78 +119,6 @@ export default function Index() {
         return total + item.qtde * item.eventoIngresso.valor;
       }, 0)
       .toFixed(2);
-  };
-
-  const customization = {
-    paymentMethods: {
-      ticket: "all",
-      bankTransfer: "all",
-      creditCard: "all",
-      prepaidCard: ["all"],
-      debitCard: "all",
-      mercadoPago: "all",
-    },
-  };
-
-  const onSubmitBrinck = async (formData: any) => {
-    // callback chamado ao clicar no botão de submissão dos dados
-    return new Promise<void>((resolve, reject) => {
-      fetch("/process_payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-        .then((response) => response.json())
-        .then((response) => {
-          // receber o resultado do pagamento
-          resolve();
-        })
-        .catch((error) => {
-          // lidar com a resposta de erro ao tentar criar o pagamento
-          reject();
-        });
-    });
-  };
-
-  const onSubmit = async ({
-    selectedPaymentMethod,
-    formData,
-  }: {
-    selectedPaymentMethod: string;
-    formData: any;
-  }) => {
-    // callback chamado ao clicar no botão de submissão dos dados
-    return new Promise<void>((resolve, reject) => {
-      fetch(api.getBaseApi() + "/pagamento", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-        .then((response) => response.json())
-        .then((response) => {
-          // receber o resultado do pagamento
-          console.log(response);
-          resolve();
-        })
-        .catch((error) => {
-          // lidar com a resposta de erro ao tentar criar o pagamento
-          reject();
-        });
-    });
-  };
-  const onError = async (error: any) => {
-    // callback chamado para todos os casos de erro do Brick
-    console.log(error);
-  };
-  const onReady = async () => {
-    /*
-   Callback chamado quando o Brick estiver pronto.
-   Aqui você pode ocultar loadings do seu site, por exemplo.
- */
   };
 
   return (
@@ -332,46 +232,33 @@ export default function Index() {
                 paddingRight: 8,
               }}
             >
-              <Text style={{ fontSize: 16 }}>
-                Total Ingressos:
-                <Text style={{ fontWeight: "bold", paddingLeft: 10 }}>
+              <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+                Total Ingressos:{" "}
+                <Text style={{ fontWeight: "bold" }}>
                   {formatCurrency(calculateTotalPreco())}
                 </Text>
               </Text>
-              <Text style={{ fontSize: 16 }}>
-                Total Taxa:
-                <Text style={{ fontWeight: "bold", paddingLeft: 10 }}>
+              <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+                Taxa:{" "}
+                <Text style={{ fontWeight: "bold" }}>
                   {formatCurrency(calculateTotalTaxa())}
                 </Text>
               </Text>
-              <Text style={{ fontSize: 16 }}>
-                Total incluindo taxas:
-                <Text style={{ fontWeight: "bold", paddingLeft: 10 }}>
+              <Text style={{ fontSize: 16, paddingBottom: 5 }}>
+                Total incluindo taxa:{" "}
+                <Text style={{ fontWeight: "bold" }}>
                   {formatCurrency(calculateTotal())}
                 </Text>
               </Text>
             </View>
           </View>
 
-          {/* <CardPayment
-            initialization={initialization}
-            onSubmit={onSubmitBrinck}
-            onReady={onReady}
-            onError={onError}
-          /> */}
-
-          {/* <WebViewMP /> */}
-          {/* <ChecoutMP /> */}
-
-          <View style={styles.eventDetailItem}>
-            {/* <CreditCardForm /> */}
-            {/* <Payment
-              initialization={{ amount: parseFloat(calculateTotal()) }}
-              customization={customization}
-              onSubmit={onSubmit}
-              onReady={onReady}
-              onError={onError}
-            /> */}
+          <View
+            style={[
+              styles.eventDetailItem,
+              { paddingBottom: 100, height: 1500 },
+            ]}
+          >
             <CheckoutMercadoPago />
           </View>
         </ScrollView>
