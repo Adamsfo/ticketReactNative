@@ -173,7 +173,7 @@ function Routes() {
         component={MeusEventos}
         options={{
           headerShown: false,
-          title: "Meus Evento",
+          title: "Meus Eventos",
         }}
       />
       <Drawer.Screen

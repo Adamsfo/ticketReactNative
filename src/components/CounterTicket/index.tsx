@@ -17,9 +17,13 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
     if (qtde < 0) {
       return;
     }
+
     if (qtde === 0) {
       dispatch({ type: "REMOVE_ITEM", id: data.id });
     } else {
+      if (qtde > data.qtde) {
+        qtde = data.qtde;
+      }
       dispatch({
         type: "ADD_ITEM",
         item: { id: data.id, qtde: qtde, eventoIngresso: data },

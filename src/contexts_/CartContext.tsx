@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useContext } from "react";
-import { EventoIngresso } from "../types/geral";
+import { EventoIngresso, Ingresso } from "../types/geral";
 
 interface CartItem {
   id: number;
@@ -9,6 +9,7 @@ interface CartItem {
 
 interface CartState {
   items: CartItem[];
+  ingressos: Ingresso[];
 }
 
 interface CartProviderProps {
@@ -18,7 +19,9 @@ interface CartProviderProps {
 type CartAction =
   | { type: "ADD_ITEM"; item: CartItem }
   | { type: "REMOVE_ITEM"; id: number }
-  | { type: "UPDATE_QUANTITY"; id: number; qtde: number };
+  | { type: "UPDATE_QUANTITY"; id: number; qtde: number }
+  | { type: "ADD_INGRESSO"; ingresso: Ingresso }
+  | { type: "UPDATE_INGRESSO"; ingressoId: number; ingresso: Ingresso };
 
 const CartContext = createContext<
   { state: CartState; dispatch: React.Dispatch<CartAction> } | undefined
@@ -42,7 +45,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         };
       }
 
-      return { ...state, items: [...state.items, action.item] };
+      return {
+        ...state,
+        items: [...state.items, action.item],
+      };
     case "REMOVE_ITEM":
       return {
         ...state,
@@ -52,7 +58,19 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       return {
         ...state,
         items: state.items.map((item) =>
-          item.id === action.id ? { ...item, quantity: action.qtde } : item
+          item.id === action.id ? { ...item, qtde: action.qtde } : item
+        ),
+      };
+    case "ADD_INGRESSO":
+      return {
+        ...state,
+        ingressos: [...state.ingressos, action.ingresso],
+      };
+    case "UPDATE_INGRESSO":
+      return {
+        ...state,
+        ingressos: state.ingressos.map((ingresso) =>
+          ingresso.id === action.ingressoId ? action.ingresso : ingresso
         ),
       };
     default:
@@ -61,7 +79,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 };
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(cartReducer, { items: [] });
+  const [state, dispatch] = useReducer(cartReducer, {
+    items: [],
+    ingressos: [],
+  });
 
   return (
     <CartContext.Provider value={{ state, dispatch }}>

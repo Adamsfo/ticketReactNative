@@ -62,7 +62,7 @@ export default function Index() {
       let data = response as unknown as Evento;
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      getRegistrosIngressos({ filters: { idEvento: id } });
+      getRegistrosIngressos({ filters: { idEvento: id, status: "Ativo" } });
       setFormData(data as Evento);
     }
   };
@@ -98,18 +98,18 @@ export default function Index() {
     setModalVisible(false);
   };
 
-  const zerarItem = (id: number) => {
-    console.log("zerarItem");
-    const reg = registrosEventoIngressos.map((ingresso) => {
-      if (ingresso.id === id) {
-        ingresso.qtde = 0;
-      }
-      return ingresso;
-    });
+  // const zerarItem = (id: number) => {
+  //   console.log("zerarItem");
+  //   const reg = registrosEventoIngressos.map((ingresso) => {
+  //     if (ingresso.id === id) {
+  //       ingresso.qtde = 0;
+  //     }
+  //     return ingresso;
+  //   });
 
-    setRegistrosEventoIngressos([]);
-    setRegistrosEventoIngressos(reg);
-  };
+  //   setRegistrosEventoIngressos([]);
+  //   setRegistrosEventoIngressos(reg);
+  // };
 
   return (
     <LinearGradient
@@ -176,7 +176,7 @@ export default function Index() {
           </View>
         </ScrollView>
       </View>
-      {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} step={1} />}
+      {modalVisible && <ModalResumoIngresso step={1} />}
     </LinearGradient>
   );
 }

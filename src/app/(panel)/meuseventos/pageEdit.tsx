@@ -76,6 +76,7 @@ export default function Index() {
     { label: "Valor a Receber", content: "" },
     { label: "Taxa", content: "" },
     { label: "Valor Venda", content: "" },
+    { label: "Quantidade", content: "" },
     { label: "Status", content: "" },
   ];
 
@@ -389,6 +390,11 @@ export default function Index() {
                       },
                       {
                         label: dataEventoIngressos[5].label,
+                        content: item.qtde.toString(),
+                        id: item.id,
+                      },
+                      {
+                        label: dataEventoIngressos[6].label,
                         content: item.status,
                         id: item.id,
                       },

@@ -299,3 +299,35 @@ export interface TicketHistorico {
   usuarioId: number;
   status: "DISPONÍVEL" | "PENDENTE" | "CANCELADO" | "UTILIZADO";
 }
+
+export interface Ingresso {
+  id: number;
+  idEvento: number;
+  idEventoIngresso: number;
+  idTipoIngresso: number;
+  idUsuario: number;
+  atribuirOutroUsuario?: boolean;
+  idUsuarioAtribuido?: number;
+  dataNascimento?: Date;
+  status:
+    | "Reservado"
+    | "Cancelado"
+    | "Confirmado"
+    | "Reembolsado"
+    | "Utilizado";
+  nome: string;
+}
+
+export interface Transacao {
+  id: number;
+  idUsuario: number;
+  dataTransacao: Date;
+  preco: number;
+  taxaServico: number;
+  valorTotal: number;
+  status:
+    | "Aguardando pagamento"
+    | "Aguardando confirmação"
+    | "Pago"
+    | "Cancelado";
+}

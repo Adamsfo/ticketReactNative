@@ -17,12 +17,10 @@ import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
 
 interface ModalResumoIngressoProps {
-  zerarItem: (id: number) => void;
   step: number;
 }
 
 export default function ModalResumoIngresso({
-  zerarItem,
   step,
 }: ModalResumoIngressoProps) {
   const route = useRoute();
@@ -33,7 +31,6 @@ export default function ModalResumoIngresso({
 
   const removeItemFromCart = (id: number) => {
     dispatch({ type: "REMOVE_ITEM", id });
-    zerarItem(id);
   };
 
   const calculateTotal = () => {
@@ -52,12 +49,7 @@ export default function ModalResumoIngresso({
         </TouchableWithoutFeedback>
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity>
-              {/* <Feather name="share" size={30} color="#212743" /> */}
-            </TouchableOpacity>
-            {/* <TouchableOpacity onPress={onClose}>
-            <Feather name="x" size={30} color="#212743" />
-          </TouchableOpacity> */}
+            <TouchableOpacity></TouchableOpacity>
           </View>
 
           <View style={styles.area}>

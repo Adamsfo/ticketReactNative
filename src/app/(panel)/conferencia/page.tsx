@@ -18,8 +18,10 @@ import BarMenu from "@/src/components/BarMenu";
 import {
   Evento,
   EventoIngresso,
+  Ingresso,
   Produtor,
   QueryParams,
+  Usuario,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -32,6 +34,7 @@ import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
@@ -41,6 +44,7 @@ export default function Index() {
   const route = useRoute();
   const { state, dispatch } = useCart();
   const { id } = route.params as { id: number };
+
   const [formData, setFormData] = useState<Evento>({
     id: 0,
     nome: "",
@@ -52,12 +56,7 @@ export default function Index() {
     idUsuario: 0,
     idProdutor: 0,
   });
-  const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
-    EventoIngresso[]
-  >([]);
   const [modalVisible, setModalVisible] = useState(true);
-
-  const data = [{ label: "Nome", content: "Nome" }];
 
   const getRegistros = async (id: number) => {
     if (id > 0) {
@@ -66,54 +65,56 @@ export default function Index() {
       let data = response as unknown as Evento;
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      getRegistrosIngressos({ filters: { idEvento: id } });
+      // getRegistrosIngressos({ filters: { idEvento: id } });
       setFormData(data as Evento);
     }
   };
-  const getRegistrosIngressos = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<EventoIngresso>(
-      endpointApiIngressos,
-      { ...params, pageSize: 200 }
-    );
-    const registrosData = response.data ?? [];
 
-    setRegistrosEventoIngressos(registrosData);
+  const gerarIngressos = async () => {
+    const usuarioString = await AsyncStorage.getItem("usuario");
+    const usuario: Usuario = usuarioString ? JSON.parse(usuarioString) : null;
+
+    if (state.items.length > 0) {
+      for (let i = 0; i < state.items.length; i++) {
+        const item = state.items[i];
+        for (let j = 0; j < item.qtde; j++) {
+          let json = await apiGeral.createResource<Ingresso>("/ingresso", {
+            idEvento: item.eventoIngresso.idEvento,
+            idEventoIngresso: item.eventoIngresso.id,
+            idTipoIngresso: item.eventoIngresso.idTipoIngresso,
+            idUsuario: usuario.id,
+          });
+          let ingresso = json.data as unknown as Ingresso;
+
+          dispatch({
+            type: "ADD_INGRESSO",
+            ingresso: ingresso,
+          });
+
+          console.log("Ingresso gerado:", ingresso); // Verifique o ingresso gerado
+        }
+      }
+    }
   };
+
+  // const getRegistrosIngressos = async (params: QueryParams) => {
+  //   const response = await apiGeral.getResource<EventoIngresso>(
+  //     endpointApiIngressos,
+  //     { ...params, pageSize: 200 }
+  //   );
+  //   const registrosData = response.data ?? [];
+
+  //   setRegistrosEventoIngressos(registrosData);
+  // };
 
   useFocusEffect(
     useCallback(() => {
       if (id > 0) {
         getRegistros(id);
-        getRegistrosIngressos({ filters: { idEvento: id } });
+        // getRegistrosIngressos({ filters: { idEvento: id } });
       }
     }, [id])
   );
-
-  // Filtrar os diferentes TipoIngresso_descricao
-  const tipoIngressoDescricoes = Array.from(
-    new Set(
-      registrosEventoIngressos.map(
-        (ingresso) => ingresso.TipoIngresso_descricao
-      )
-    )
-  );
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-  };
-
-  const zerarItem = (id: number) => {
-    console.log("zerarItem");
-    const reg = registrosEventoIngressos.map((ingresso) => {
-      if (ingresso.id === id) {
-        ingresso.qtde = 0;
-      }
-      return ingresso;
-    });
-
-    setRegistrosEventoIngressos([]);
-    setRegistrosEventoIngressos(reg);
-  };
 
   const calculateTotalPreco = () => {
     return state.items
@@ -149,15 +150,6 @@ export default function Index() {
       </View>
     ));
   };
-
-  const renderUserInputs = () => (
-    <View style={styles.inputCard}>
-      <Text style={styles.inputLabel}>Nome Completo:</Text>
-      <TextInput style={styles.input} placeholder="Nome Completo" />
-      <Text style={styles.inputLabel}>Email:</Text>
-      <TextInput style={styles.input} placeholder="Email" />
-    </View>
-  );
 
   return (
     <LinearGradient
@@ -290,17 +282,20 @@ export default function Index() {
               </Text>
             </View>
           </View>
-
+          <TouchableOpacity>
+            <Text onPress={() => gerarIngressos()}>gerar ingresso</Text>
+          </TouchableOpacity>
           <View style={styles.eventDetailItem}>
             <Text style={styles.titulo}>Preencha os dados dos ingressos</Text>
             <FlatList
-              data={state.items}
+              data={state.ingressos}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <View style={styles.ticketContainer}>
                   <Text style={styles.ticketTitle}>
-                    {item.eventoIngresso.nome} - {item.qtde} ingressos
+                    {/* {item.eventoIngresso.nome} - {item.qtde} ingressos */}
                   </Text>
+                  <Text style={styles.ticketTitle}> Status {item.status}</Text>
                   {renderTicketInputs(item)}
                 </View>
               )}
@@ -308,7 +303,7 @@ export default function Index() {
           </View>
         </ScrollView>
       </View>
-      {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} step={2} />}
+      {modalVisible && <ModalResumoIngresso step={2} />}
     </LinearGradient>
   );
 }

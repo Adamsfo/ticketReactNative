@@ -263,7 +263,7 @@ export default function Index() {
           </View>
         </ScrollView>
       </View>
-      {modalVisible && <ModalResumoIngresso zerarItem={zerarItem} step={2} />}
+      {modalVisible && <ModalResumoIngresso step={2} />}
     </LinearGradient>
   );
 }
