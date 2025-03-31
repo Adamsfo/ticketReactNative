@@ -14,7 +14,11 @@ import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import { useNavigation } from "@react-navigation/native";
 
-export default function Login() {
+interface ModalMsgProps {
+  onClose?: () => void;
+}
+
+export default function Login({ onClose }: ModalMsgProps) {
   const navigation = useNavigation() as any;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,8 +35,12 @@ export default function Login() {
       //   let usuario = response.data[0];
       // }
 
-      setLoading(false);
-      navigation.navigate("home");
+      if (onClose) {
+        onClose();
+      } else {
+        setLoading(false);
+        navigation.navigate("home");
+      }
     } else {
       setError(result.message || "Erro desconhecido");
       setLoading(false);

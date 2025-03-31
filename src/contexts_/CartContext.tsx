@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useContext } from "react";
-import { EventoIngresso, Ingresso } from "../types/geral";
+import { EventoIngresso, Ingresso, Transacao } from "../types/geral";
 
 interface CartItem {
   id: number;
@@ -9,7 +9,8 @@ interface CartItem {
 
 interface CartState {
   items: CartItem[];
-  ingressos: Ingresso[];
+  // ingressos: Ingresso[];
+  transacao: Transacao | null;
 }
 
 interface CartProviderProps {
@@ -20,8 +21,9 @@ type CartAction =
   | { type: "ADD_ITEM"; item: CartItem }
   | { type: "REMOVE_ITEM"; id: number }
   | { type: "UPDATE_QUANTITY"; id: number; qtde: number }
-  | { type: "ADD_INGRESSO"; ingresso: Ingresso }
-  | { type: "UPDATE_INGRESSO"; ingressoId: number; ingresso: Ingresso };
+  // | { type: "ADD_INGRESSO"; ingresso: Ingresso }
+  // | { type: "UPDATE_INGRESSO"; ingressoId: number; ingresso: Ingresso }
+  | { type: "ADD_TRANSACAO"; transacao: Transacao };
 
 const CartContext = createContext<
   { state: CartState; dispatch: React.Dispatch<CartAction> } | undefined
@@ -61,17 +63,22 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           item.id === action.id ? { ...item, qtde: action.qtde } : item
         ),
       };
-    case "ADD_INGRESSO":
+    // case "ADD_INGRESSO":
+    //   return {
+    //     ...state,
+    //     ingressos: [...state.ingressos, action.ingresso],
+    //   };
+    // case "UPDATE_INGRESSO":
+    //   return {
+    //     ...state,
+    //     ingressos: state.ingressos.map((ingresso) =>
+    //       ingresso.id === action.ingressoId ? action.ingresso : ingresso
+    //     ),
+    //   };
+    case "ADD_TRANSACAO":
       return {
         ...state,
-        ingressos: [...state.ingressos, action.ingresso],
-      };
-    case "UPDATE_INGRESSO":
-      return {
-        ...state,
-        ingressos: state.ingressos.map((ingresso) =>
-          ingresso.id === action.ingressoId ? action.ingresso : ingresso
-        ),
+        transacao: action.transacao,
       };
     default:
       return state;
@@ -81,7 +88,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, {
     items: [],
-    ingressos: [],
+    // ingressos: [],
+    transacao: null,
   });
 
   return (

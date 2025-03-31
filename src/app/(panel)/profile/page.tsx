@@ -1,7 +1,7 @@
 import Menu from "@/src/components/Menu";
 import { View, Text, StyleSheet } from "react-native";
 
-export default function Login() {
+export default function Profile() {
   return (
     <View style={style.container}>
       <Menu />

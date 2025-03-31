@@ -12,6 +12,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./DatePickerComponente.css"; // Importa o arquivo CSS personalizado
 import { pt } from "date-fns/locale/pt";
+import { format, parseISO } from "date-fns";
 
 registerLocale("pt", pt); // Registra a localidade em português
 
@@ -56,7 +57,7 @@ const DatePickerComponente = ({
         </View>
       ) : (
         <View>
-          <View>
+          {/* <View>
             <Button
               onPress={showpicker}
               title={value.toLocaleDateString("pt-BR", {
@@ -64,18 +65,19 @@ const DatePickerComponente = ({
                 month: "2-digit",
                 year: "numeric",
               })}
+              // title={format(parseISO(value.toString()), "dd/MM/yyyy")}
             />
           </View>
-          {show && (
-            <DateTimePicker
-              testID="dateTimePicker"
-              value={value}
-              mode="date"
-              is24Hour={true}
-              display="default"
-              onChange={handleDateChange}
-            />
-          )}
+          {show && ( */}
+          <DateTimePicker
+            testID="dateTimePicker"
+            value={value}
+            mode="date"
+            is24Hour={true}
+            display="default"
+            onChange={handleDateChange}
+          />
+          {/* )} */}
         </View>
       )}
     </View>

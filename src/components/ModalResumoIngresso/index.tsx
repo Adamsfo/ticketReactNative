@@ -8,6 +8,7 @@ import {
   Platform,
   FlatList,
   Button,
+  Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
@@ -15,6 +16,14 @@ import formatCurrency from "../FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
 import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ingresso, Transacao, Usuario } from "@/src/types/geral";
+import { apiGeral } from "@/src/lib/geral";
+import ModalMsg from "../ModalMsg";
+import Login from "@/src/app/(auth)/singin/page";
+import { apiAuth } from "@/src/lib/auth";
+import ModalLogin from "@/src/app/(auth)/singin/ModalLogin";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 interface ModalResumoIngressoProps {
   step: number;
@@ -28,17 +37,97 @@ export default function ModalResumoIngresso({
   const [visibleDetalhe, setVisibleDetalhe] = React.useState(false);
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };
+  const [visibleMsg, setVisibleMsg] = React.useState(false);
+  const [msg, setMsg] = React.useState("");
+  const { user } = useAuth();
 
   const removeItemFromCart = (id: number) => {
     dispatch({ type: "REMOVE_ITEM", id });
   };
 
-  const calculateTotal = () => {
+  const calculatePreco = () => {
     return state.items
       .reduce((total, item) => {
         return total + item.qtde * item.eventoIngresso.preco;
       }, 0)
       .toFixed(2);
+  };
+
+  const calculateValor = () => {
+    return state.items
+      .reduce((total, item) => {
+        return total + item.qtde * item.eventoIngresso.valor;
+      }, 0)
+      .toFixed(2);
+  };
+
+  const calculateTaxa = () => {
+    return state.items
+      .reduce((total, item) => {
+        return total + item.qtde * item.eventoIngresso.taxaServico;
+      }, 0)
+      .toFixed(2);
+  };
+
+  const handleCriarTransacao = async () => {
+    try {
+      if (!user?.id) {
+        setMsg("Necessário cadastrar e entrar com sua conta.");
+        setVisibleMsg(true);
+        return;
+      }
+
+      console.log("Criando transação...");
+      console.log("user", user);
+
+      const response = await apiGeral.createResource<Transacao>("/transacao", {
+        idUsuario: user.id,
+        preco: calculatePreco(),
+        taxaServico: calculateTaxa(),
+        valorTotal: calculateValor(),
+      });
+
+      dispatch({
+        type: "ADD_TRANSACAO",
+        transacao: response.data,
+      });
+
+      console.log("Transação criada com sucesso:", response.data);
+      await gerarIngressos(response.data.id);
+    } catch (error) {}
+  };
+
+  const gerarIngressos = async (idTransacao: number) => {
+    const usuarioString = await AsyncStorage.getItem("usuario");
+    const usuario: Usuario = usuarioString ? JSON.parse(usuarioString) : null;
+
+    if (state.items.length > 0) {
+      for (let i = 0; i < state.items.length; i++) {
+        const item = state.items[i];
+        for (let j = 0; j < item.qtde; j++) {
+          let json = await apiGeral.createResource<Ingresso>("/ingresso", {
+            idEvento: item.eventoIngresso.idEvento,
+            idEventoIngresso: item.eventoIngresso.id,
+            idTipoIngresso: item.eventoIngresso.idTipoIngresso,
+            idUsuario: usuario.id,
+            idTransacao: idTransacao,
+          });
+          let ingresso = json.data as unknown as Ingresso;
+
+          console.log("Ingresso gerado:", ingresso); // Verifique o ingresso gerado
+        }
+      }
+    }
+
+    navigation.navigate("conferencia", {
+      idTransacao: idTransacao,
+      idEvento: id,
+    });
+  };
+
+  const handelClose = () => {
+    setVisibleMsg(false);
+    navigation.navigate("ingressos", { id: id });
   };
 
   return (
@@ -62,7 +151,7 @@ export default function ModalResumoIngresso({
               }}
             >
               <Text style={styles.title}>
-                Total: {formatCurrency(calculateTotal())} + taxas
+                Total: {formatCurrency(calculatePreco())} + taxas
               </Text>
               <TouchableOpacity
                 onPress={() => setVisibleDetalhe(!visibleDetalhe)}
@@ -156,9 +245,7 @@ export default function ModalResumoIngresso({
               style={[styles.button, styles.buttonSave]}
               onPress={() => {
                 if (step === 1) {
-                  navigation.navigate("conferencia", {
-                    id: id,
-                  });
+                  handleCriarTransacao();
                 }
                 if (step === 2) {
                   navigation.navigate("pagamento", {
@@ -171,6 +258,14 @@ export default function ModalResumoIngresso({
             </TouchableOpacity>
           </View>
         </View>
+        {/* <Modal visible={visibleMsg} transparent animationType="slide">
+          <ModalMsg onClose={() => setVisibleMsg(false)} msg={msg} />
+        </Modal> */}
+        {/* {visibleMsg && ( */}
+        <Modal visible={visibleMsg} transparent animationType="slide">
+          <ModalLogin onClose={() => handelClose()} />
+        </Modal>
+        {/* )} */}
       </View>
     </View>
   );

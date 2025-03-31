@@ -1,4 +1,5 @@
 import colors from "@/src/constants/colors";
+import { useAuth } from "@/src/contexts_/AuthContext";
 import { apiAuth } from "@/src/lib/auth";
 import { Usuario } from "@/src/types/geral";
 import { Feather } from "@expo/vector-icons";
@@ -19,8 +20,9 @@ import { FAB } from "react-native-paper";
 const FloatingMenu = ({ color }: { color?: string }) => {
   const [open, setOpen] = React.useState(false);
   const toggleMenu = () => setOpen(!open);
-  const [usuario, setUsuario] = React.useState<Usuario>({} as Usuario);
+  // const [usuario, setUsuario] = React.useState<Usuario>({} as Usuario);
   const navigation = useNavigation() as any;
+  const { user, setAuth } = useAuth();
 
   const fetchToken = async () => {
     console.log("Fetching token...");
@@ -32,13 +34,16 @@ const FloatingMenu = ({ color }: { color?: string }) => {
       console.log("API Response:", response); // Verifique a resposta da API
 
       if (response) {
-        setUsuario(response as unknown as Usuario);
+        setAuth(response as unknown as Usuario);
+        // setUsuario(response as unknown as Usuario);
         await AsyncStorage.setItem("usuario", JSON.stringify(response));
       } else {
-        setUsuario({} as Usuario);
+        // setUsuario({} as Usuario);
+        setAuth({} as Usuario);
       }
     } else {
-      setUsuario({} as Usuario);
+      // setUsuario({} as Usuario);
+      setAuth({} as Usuario);
       await AsyncStorage.removeItem("usuario");
     }
   };
@@ -61,7 +66,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
         onPress={toggleMenu}
         activeOpacity={0.5}
       >
-        {!usuario.nomeCompleto && (
+        {user && !user.nomeCompleto && (
           <View style={styles.containerUsuario}>
             <Text
               style={[
@@ -79,7 +84,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
           </View>
         )}
 
-        {usuario.nomeCompleto && (
+        {user && user.nomeCompleto && (
           <View style={styles.containerUsuario}>
             <Text
               style={[
@@ -88,7 +93,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
               ]}
               numberOfLines={1}
             >
-              {usuario?.nomeCompleto}
+              {user?.nomeCompleto}
             </Text>
             <Feather
               name="user"

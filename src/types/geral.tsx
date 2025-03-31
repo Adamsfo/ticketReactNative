@@ -28,6 +28,7 @@ export interface Usuario {
   alterarSenha?: boolean;
   idFuncaoUsuario?: number;
   token?: string;
+  success?: boolean;
 }
 
 export interface Cidade {
@@ -330,4 +331,17 @@ export interface Transacao {
     | "Aguardando confirmação"
     | "Pago"
     | "Cancelado";
+}
+
+export interface IngressoTransacao {
+  id: number;
+  idTransacao: number;
+  idIngresso: number;
+  preco: number;
+  taxaServico: number;
+  valorTotal: number;
+  Ingresso_status: string;
+  Ingresso_Evento?: Evento;
+  Ingresso_EventoIngresso?: EventoIngresso;
+  Ingresso_dataValidade: Date;
 }

@@ -19,8 +19,10 @@ import {
   Evento,
   EventoIngresso,
   Ingresso,
+  IngressoTransacao,
   Produtor,
   QueryParams,
+  Transacao,
   Usuario,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
@@ -35,6 +37,9 @@ import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { format, parseISO } from "date-fns";
+import DatePickerComponente from "@/src/components/DatePickerComponente";
+import TimePickerComponente from "@/src/components/TimePickerComponente";
 
 const { width } = Dimensions.get("window");
 
@@ -43,7 +48,10 @@ export default function Index() {
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
   const { state, dispatch } = useCart();
-  const { id } = route.params as { id: number };
+  const { idTransacao, idEvento } = route.params as {
+    idTransacao: number;
+    idEvento: number;
+  };
 
   const [formData, setFormData] = useState<Evento>({
     id: 0,
@@ -57,6 +65,10 @@ export default function Index() {
     idProdutor: 0,
   });
   const [modalVisible, setModalVisible] = useState(true);
+  const [registroTransacao, setRegistrosTransacao] = useState<Transacao[]>([]);
+  const [registrosIngressoTransacao, setRegistrosIngressoTransacao] = useState<
+    IngressoTransacao[]
+  >([]);
 
   const getRegistros = async (id: number) => {
     if (id > 0) {
@@ -65,55 +77,46 @@ export default function Index() {
       let data = response as unknown as Evento;
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      // getRegistrosIngressos({ filters: { idEvento: id } });
       setFormData(data as Evento);
     }
   };
 
-  const gerarIngressos = async () => {
-    const usuarioString = await AsyncStorage.getItem("usuario");
-    const usuario: Usuario = usuarioString ? JSON.parse(usuarioString) : null;
+  const getTransacao = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<Transacao>("/transacao", {
+      ...params,
+      pageSize: 200,
+    });
+    const registrosData = response.data ?? [];
+    console.log("registrosData", registrosData);
 
-    if (state.items.length > 0) {
-      for (let i = 0; i < state.items.length; i++) {
-        const item = state.items[i];
-        for (let j = 0; j < item.qtde; j++) {
-          let json = await apiGeral.createResource<Ingresso>("/ingresso", {
-            idEvento: item.eventoIngresso.idEvento,
-            idEventoIngresso: item.eventoIngresso.id,
-            idTipoIngresso: item.eventoIngresso.idTipoIngresso,
-            idUsuario: usuario.id,
-          });
-          let ingresso = json.data as unknown as Ingresso;
+    setRegistrosTransacao(registrosData);
 
-          dispatch({
-            type: "ADD_INGRESSO",
-            ingresso: ingresso,
-          });
-
-          console.log("Ingresso gerado:", ingresso); // Verifique o ingresso gerado
-        }
-      }
-    }
+    getIngressoTransacao({
+      filters: { idTransacao: state.transacao?.id },
+    });
   };
 
-  // const getRegistrosIngressos = async (params: QueryParams) => {
-  //   const response = await apiGeral.getResource<EventoIngresso>(
-  //     endpointApiIngressos,
-  //     { ...params, pageSize: 200 }
-  //   );
-  //   const registrosData = response.data ?? [];
+  const getIngressoTransacao = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<IngressoTransacao>(
+      "/ingressotransacao",
+      {
+        ...params,
+        pageSize: 200,
+      }
+    );
+    const registrosData = response.data ?? [];
+    console.log("ingressotransacao", registrosData);
 
-  //   setRegistrosEventoIngressos(registrosData);
-  // };
+    setRegistrosIngressoTransacao(registrosData);
+  };
 
   useFocusEffect(
     useCallback(() => {
-      if (id > 0) {
-        getRegistros(id);
-        // getRegistrosIngressos({ filters: { idEvento: id } });
+      if (idTransacao > 0) {
+        getRegistros(idEvento);
+        getTransacao({ filters: { id: state.transacao?.id } });
       }
-    }, [id])
+    }, [idEvento, idTransacao])
   );
 
   const calculateTotalPreco = () => {
@@ -141,15 +144,63 @@ export default function Index() {
   };
 
   const renderTicketInputs = (item: any) => {
-    return Array.from({ length: item.qtde }).map((_, index) => (
-      <View key={index} style={styles.inputCard}>
+    return (
+      <View style={styles.inputCard}>
         <Text style={styles.inputLabel}>Nome Completo:</Text>
         <TextInput style={styles.input} placeholder="Nome Completo" />
-        <Text style={styles.inputLabel}>Email:</Text>
-        <TextInput style={styles.input} placeholder="Email" />
+        {item?.Ingresso_EventoIngresso?.nome.includes("Criança") && (
+          <Text style={styles.inputLabel}>
+            Data Nascimento:
+            <DatePickerComponente
+              value={new Date(item.Ingresso_dataNascimento) || ""}
+              onChange={(value) =>
+                handleDataNascimentoChange(
+                  item.id,
+                  "Ingresso_dataNascimento",
+                  value
+                )
+              }
+            />
+            Idade : {calcularIdade(item.Ingresso_dataNascimento)} anos
+          </Text>
+        )}
       </View>
-    ));
+    );
   };
+
+  const handleDataNascimentoChange = (
+    id: number,
+    field: any,
+    value: string | number | Date
+  ) => {
+    setRegistrosIngressoTransacao((prevState) =>
+      prevState.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  function calcularIdade(dataNascimento: string | Date) {
+    const hoje = new Date();
+    if (dataNascimento === null) {
+      return 0;
+    }
+
+    const nascimento = new Date(dataNascimento);
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const mes = hoje.getMonth() - nascimento.getMonth();
+
+    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+    return idade;
+  }
+
+  // const testeGet = async () => {
+  //   getRegistros(idEvento);
+  //   getTransacao({ filters: { id: state.transacao?.id } });
+  //   // get nos itens da transacao agora com os ingressos
+  // };
 
   return (
     <LinearGradient
@@ -282,21 +333,35 @@ export default function Index() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity>
-            <Text onPress={() => gerarIngressos()}>gerar ingresso</Text>
-          </TouchableOpacity>
+          {/* <TouchableOpacity onPress={testeGet}>
+            <Text>teste</Text>
+          </TouchableOpacity> */}
           <View style={styles.eventDetailItem}>
             <Text style={styles.titulo}>Preencha os dados dos ingressos</Text>
             <FlatList
-              data={state.ingressos}
+              data={registrosIngressoTransacao}
+              scrollEnabled={false}
               keyExtractor={(item) => item.id.toString()}
+              style={{ marginBottom: 100 }}
               renderItem={({ item }) => (
                 <View style={styles.ticketContainer}>
                   <Text style={styles.ticketTitle}>
-                    {/* {item.eventoIngresso.nome} - {item.qtde} ingressos */}
+                    {item.Ingresso_Evento?.nome}{" "}
+                    {item.Ingresso_EventoIngresso?.nome}
                   </Text>
-                  <Text style={styles.ticketTitle}> Status {item.status}</Text>
-                  {renderTicketInputs(item)}
+                  <Text style={styles.label}>
+                    {item.Ingresso_EventoIngresso?.descricao}
+                  </Text>
+                  <Text style={styles.labelDataIngresso}>
+                    Válido a partir de{" "}
+                    {format(
+                      parseISO(item.Ingresso_dataValidade?.toString()),
+                      "dd/MM/yyyy"
+                    )}
+                  </Text>
+
+                  {/* <Text style={styles.ticketTitle}> Status {item.status}</Text> */}
+                  {/* {renderTicketInputs(item)} */}
                 </View>
               )}
             />
@@ -343,6 +408,10 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.zinc,
+    marginBottom: 4,
+  },
+  labelDataIngresso: {
+    color: colors.red,
     marginBottom: 4,
   },
   labelData: {

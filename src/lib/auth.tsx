@@ -7,6 +7,7 @@ import { Platform } from "react-native";
 class ApiAuth {
   public async login(data: Login): Promise<ApiResponse> {
     const req = await api.request<ApiResponse>("/login", "POST", data);
+    // setAuth(req.data as Usuario); // Define o novo usuário após o login
     if (req.success && req.data) {
       if (Platform.OS === "web") {
         localStorage.setItem("token", req.data.data as string);
