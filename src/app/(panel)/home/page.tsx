@@ -119,9 +119,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 200 : 20,
-    marginLeft: Platform.OS === "web" ? 200 : 20,
-    marginBottom: 20,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    // marginBottom: 20,
   },
   titulo: {
     fontSize: 24,
@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   imagem: {
-    width: Platform.OS === "web" ? "60%" : "100%", // 100% para web, largura da tela para mobile
-    height: Platform.OS === "web" ? 400 : 200,
+    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%", // 100% para web, largura da tela para mobile
+    height: Platform.OS === "web" ? (width <= 1000 ? 200 : 400) : 200,
     resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
   },
 });

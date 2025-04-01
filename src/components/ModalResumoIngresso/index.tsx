@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Platform,
   FlatList,
-  Button,
+  Dimensions,
   Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -24,6 +24,8 @@ import Login from "@/src/app/(auth)/singin/page";
 import { apiAuth } from "@/src/lib/auth";
 import ModalLogin from "@/src/app/(auth)/singin/ModalLogin";
 import { useAuth } from "@/src/contexts_/AuthContext";
+
+const { width } = Dimensions.get("window");
 
 interface ModalResumoIngressoProps {
   step: number;
@@ -137,35 +139,58 @@ export default function ModalResumoIngresso({
           <View style={{ flex: 1 }}></View>
         </TouchableWithoutFeedback>
         <View style={styles.container}>
-          <View style={styles.header}>
+          <View
+            style={[
+              styles.header,
+              {
+                paddingVertical: 3,
+              },
+            ]}
+          >
             <TouchableOpacity></TouchableOpacity>
           </View>
 
           <View style={styles.area}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                // width: "100%",
-                paddingHorizontal: 30,
-              }}
-            >
-              <Text style={styles.title}>
-                Total: {formatCurrency(calculatePreco())} + taxas
-              </Text>
-              <TouchableOpacity
-                onPress={() => setVisibleDetalhe(!visibleDetalhe)}
+            {step === 1 && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  // width: "100%",
+                  paddingHorizontal: 30,
+                }}
               >
-                <Feather
-                  style={{ paddingLeft: 20 }}
-                  name={
-                    visibleDetalhe ? "arrow-down-circle" : "arrow-up-circle"
-                  }
-                  size={30}
-                  color={colors.azul}
-                />
-              </TouchableOpacity>
-            </View>
+                <Text style={styles.title}>
+                  Total: {formatCurrency(calculatePreco())} + taxas
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setVisibleDetalhe(!visibleDetalhe)}
+                >
+                  <Feather
+                    style={{ paddingLeft: 20 }}
+                    name={
+                      visibleDetalhe ? "arrow-down-circle" : "arrow-up-circle"
+                    }
+                    size={30}
+                    color={colors.azul}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+            {step === 2 && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  // width: "100%",
+                  paddingHorizontal: 30,
+                }}
+              >
+                <Text style={styles.title}>
+                  Total: {formatCurrency(calculateValor())}
+                </Text>
+              </View>
+            )}
             {visibleDetalhe && (
               <View style={{ flexDirection: "row" }}>
                 <FlatList
@@ -230,7 +255,7 @@ export default function ModalResumoIngresso({
               </View>
             )}
           </View>
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingTop: 10 }]}>
             <TouchableOpacity
               style={[styles.button, styles.buttonClose]}
               onPress={() =>
@@ -279,14 +304,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFF",
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    // borderTopLeftRadius: 10,
+    // borderTopRightRadius: 10,
+    borderRadius: 20,
     paddingBottom: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 10,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 3,
   },
   area: {
     flex: 1,
@@ -299,17 +332,17 @@ const styles = StyleSheet.create({
   },
   modal: {
     position: "absolute",
-    left: Platform.OS === "web" ? "35%" : "10%", // Centraliza horizontalmente
-    bottom: 0,
+    left: Platform.OS === "web" ? (width <= 1000 ? "5%" : "35%") : "5%", // Centraliza horizontalmente
+    right: Platform.OS === "web" ? (width <= 1000 ? "5%" : "35%") : "5%", // Centraliza horizontalmente
+    bottom: 15,
     justifyContent: "flex-end",
     alignItems: "center",
     backgroundColor: "transparent",
-    width: Platform.OS === "web" ? 500 : "80%",
+    // width: Platform.OS === "web" ? 500 : "80%",
   },
   footer: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    paddingTop: 10,
     borderRadius: 8,
     paddingHorizontal: 10,
     // marginTop: 10,

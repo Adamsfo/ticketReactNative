@@ -6,12 +6,15 @@ import {
   StyleSheet,
   Image,
   Platform,
+  Dimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Evento } from "@/src/types/geral";
 import { format, parseISO } from "date-fns";
 import formatCurrency from "../FormatCurrency";
 import { api } from "@/src/lib/api";
+
+const { width } = Dimensions.get("window");
 
 interface CardEventoProps {
   data: Evento;
@@ -29,7 +32,14 @@ export default function CardEvento({
       <TouchableOpacity
         style={[
           styles.item,
-          { width: Platform.OS === "web" ? widthCardItem : "100%" },
+          {
+            width:
+              Platform.OS === "web"
+                ? width <= 1000
+                  ? "100%"
+                  : widthCardItem
+                : "100%",
+          },
         ]}
         activeOpacity={0.5}
         onPress={onPress}

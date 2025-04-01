@@ -375,9 +375,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 200 : 20,
-    marginLeft: Platform.OS === "web" ? 200 : 20,
-    marginBottom: 20,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    // marginBottom: 20,
   },
   titulo: {
     fontSize: 24,
@@ -389,8 +389,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   imagem: {
-    width: Platform.OS === "web" ? "60%" : "100%",
-    height: Platform.OS === "web" ? 600 : 200,
+    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%",
+    height: Platform.OS === "web" ? (width <= 1000 ? 300 : 500) : 300,
     resizeMode: "cover",
   },
   dadosBasicos: {
@@ -398,16 +398,21 @@ const styles = StyleSheet.create({
     marginTop: 7,
     paddingRight: 25,
     paddingLeft: 25,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     paddingBottom: 25,
     borderRadius: 20,
   },
   floatingButton: {
     position: "absolute",
-    bottom: 30,
+    bottom: 15,
     left: "50%",
-    transform: [{ translateX: Platform.OS === "web" ? -135 : -175 }], // Centraliza o botão
+    transform: [
+      {
+        translateX:
+          Platform.OS === "web" ? (width <= 1000 ? -175 : -135) : -175,
+      },
+    ], // Centraliza o botão
     backgroundColor: "rgb(0, 146, 250)",
     borderRadius: 20,
     padding: 15,

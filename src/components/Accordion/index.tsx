@@ -1,18 +1,25 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 type AccordionProps = {
+  index: number;
   title: string;
   children: React.ReactNode;
 };
 
-const Accordion: React.FC<AccordionProps> = ({ title, children }) => {
+const Accordion: React.FC<AccordionProps> = ({ index, title, children }) => {
   const [expanded, setExpanded] = useState<boolean>(false);
 
   const toggleAccordion = () => {
     setExpanded(!expanded);
   };
+
+  useEffect(() => {
+    if (index === 0) {
+      setExpanded(true);
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -35,13 +42,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#ddd",
-    borderRadius: 5,
+    borderRadius: 20,
   },
   header: {
     backgroundColor: "#f1f1f1",
     padding: 15,
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -56,6 +63,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 15,
     backgroundColor: "#fff",
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 20,
   },
 });
 

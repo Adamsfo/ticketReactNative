@@ -157,6 +157,7 @@ export default function Index() {
           <View style={styles.area}>
             {tipoIngressoDescricoes.map((descricao, index) => (
               <Accordion
+                index={index}
                 key={index}
                 title={descricao || "Descrição indisponível"}
               >
@@ -185,8 +186,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 200 : 5,
-    marginLeft: Platform.OS === "web" ? 200 : 5,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
     marginBottom: 20,
     height: 500,
   },
@@ -203,8 +204,8 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     paddingLeft: 5,
     paddingTop: 15,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     paddingBottom: 25,
     borderRadius: 20,
     flex: 1,
@@ -266,8 +267,8 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     paddingLeft: 5,
     paddingTop: 10,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     paddingBottom: 10,
     borderRadius: 20,
     flexDirection: "row",
