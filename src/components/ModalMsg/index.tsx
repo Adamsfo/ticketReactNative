@@ -5,6 +5,7 @@ import {
   View,
   TouchableWithoutFeedback,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
@@ -15,41 +16,52 @@ interface ModalMsgProps {
 
 export default function ModalMsg({ onClose, msg }: ModalMsgProps) {
   return (
-    <View style={styles.modalContainer}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={{ flex: 1 }}></View>
-      </TouchableWithoutFeedback>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity>
-            {/* <Feather name="share" size={30} color="#212743" /> */}
-          </TouchableOpacity>
-          <Text style={styles.title}>Informação</Text>
-          <TouchableOpacity onPress={onClose}>
-            <Feather name="x" size={30} color="#212743" />
-          </TouchableOpacity>
-        </View>
+    <TouchableWithoutFeedback onPress={onClose}>
+      <View style={styles.modalContainer}>
+        <TouchableWithoutFeedback>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <TouchableOpacity>
+                {/* <Feather name="share" size={30} color="#212743" /> */}
+              </TouchableOpacity>
+              <Text style={styles.title}>Informação</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Feather name="x" size={30} color="#212743" />
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.area}>
-          <Text style={styles.mensagem}>
-            <Text>{msg}</Text>
-          </Text>
-        </View>
+            <View style={styles.area}>
+              <Text style={styles.mensagem}>
+                <Text>{msg}</Text>
+              </Text>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Fundo semi-transparente
   },
   container: {
-    flex: 1,
+    width: Platform.OS === "web" ? "50%" : "90%", // Largura do modal
     backgroundColor: "#FFF",
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    borderRadius: 10,
     padding: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   header: {
     flexDirection: "row",
@@ -58,16 +70,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   area: {
-    flex: 1,
     alignItems: "center",
   },
   title: {
-    fontSize: 33,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#212743",
   },
   mensagem: {
-    fontSize: 17,
+    fontSize: 16,
     color: "#1a7a7a7",
     marginBottom: 30,
     marginTop: 10,

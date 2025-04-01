@@ -9,6 +9,7 @@ import {
   FlatList,
   Dimensions,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
@@ -35,19 +36,23 @@ const { width } = Dimensions.get("window");
 
 interface ModalResumoIngressoProps {
   step: number;
+  IngressoTransacao?: IngressoTransacao[];
 }
 
 export default function ModalResumoIngresso({
   step,
+  IngressoTransacao,
 }: ModalResumoIngressoProps) {
   const route = useRoute();
   const { state, dispatch } = useCart();
   const [visibleDetalhe, setVisibleDetalhe] = React.useState(false);
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };
+  const [visibleLogin, setVisibleLogin] = React.useState(false);
   const [visibleMsg, setVisibleMsg] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const { user } = useAuth();
+  const [loading, setLoading] = React.useState(false);
 
   const removeItemFromCart = (id: number) => {
     dispatch({ type: "REMOVE_ITEM", id });
@@ -80,12 +85,11 @@ export default function ModalResumoIngresso({
   const handleCriarTransacao = async () => {
     try {
       if (!user?.id) {
-        setMsg("Necessário cadastrar e entrar com sua conta.");
-        setVisibleMsg(true);
+        setVisibleLogin(true);
         return;
       }
 
-      console.log("Criando transação...");
+      setLoading(true);
 
       const response = await apiGeral.createResource<Transacao>("/transacao", {
         idUsuario: user.id,
@@ -99,9 +103,10 @@ export default function ModalResumoIngresso({
         transacao: response.data,
       });
 
-      console.log("Transação criada com sucesso:", response.data);
       await gerarIngressos(response.data.id);
-    } catch (error) {}
+    } catch (error) {
+      setLoading(false);
+    }
   };
 
   const gerarIngressos = async (idTransacao: number) => {
@@ -127,11 +132,44 @@ export default function ModalResumoIngresso({
       idTransacao: idTransacao,
       idEvento: id,
     });
+    setLoading(false);
   };
 
-  const handelClose = () => {
-    setVisibleMsg(false);
+  const handelCloseLogin = () => {
+    setVisibleLogin(false);
     navigation.navigate("ingressos", { id: id });
+  };
+
+  const handelCloseMsg = () => {
+    setVisibleMsg(false);
+  };
+
+  const handlePagamento = async () => {
+    try {
+      if (!user?.id) {
+        setVisibleLogin(true);
+        return;
+      }
+
+      if (!(IngressoTransacao ?? [])[0]) {
+        setMsg("Não existe ingresso para este evento.");
+        setVisibleMsg(true);
+        return;
+      }
+
+      if (
+        IngressoTransacao &&
+        IngressoTransacao.some((ingresso) => !ingresso.Ingresso_nomeImpresso)
+      ) {
+        setMsg("Necessário cadastrar o nome do ingresso.");
+        setVisibleMsg(true);
+        return;
+      }
+
+      setLoading(true);
+
+      navigation.navigate("pagamento", { id: id });
+    } catch (error) {}
   };
 
   return (
@@ -184,7 +222,6 @@ export default function ModalResumoIngresso({
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
-                  // width: "100%",
                   paddingHorizontal: 30,
                 }}
               >
@@ -275,24 +312,33 @@ export default function ModalResumoIngresso({
                   handleCriarTransacao();
                 }
                 if (step === 2) {
-                  navigation.navigate("pagamento", {
-                    id: id,
-                  });
+                  handlePagamento();
                 }
               }}
             >
-              <Text style={styles.buttonText}>Proximo</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color={colors.laranjado} />
+              ) : (
+                <Text style={styles.buttonText}>Proximo</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
-        {/* <Modal visible={visibleMsg} transparent animationType="slide">
-          <ModalMsg onClose={() => setVisibleMsg(false)} msg={msg} />
-        </Modal> */}
-        {/* {visibleMsg && ( */}
-        <Modal visible={visibleMsg} transparent animationType="slide">
-          <ModalLogin onClose={() => handelClose()} />
+        <Modal visible={visibleLogin} transparent animationType="slide">
+          <ModalLogin onClose={() => handelCloseLogin()} />
         </Modal>
-        {/* )} */}
+        <Modal
+          visible={visibleMsg}
+          transparent
+          animationType="fade"
+          onRequestClose={handelCloseMsg}
+        >
+          <TouchableWithoutFeedback onPress={handelCloseMsg}>
+            <View style={{ flex: 1 }}>
+              <ModalMsg onClose={handelCloseMsg} msg={msg} />
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </View>
     </View>
   );

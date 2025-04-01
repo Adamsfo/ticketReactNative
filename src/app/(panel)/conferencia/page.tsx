@@ -38,6 +38,8 @@ import { useCart } from "@/src/contexts_/CartContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format, parseISO } from "date-fns";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
+import { Switch } from "react-native-gesture-handler";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -46,6 +48,7 @@ export default function Index() {
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
   const { state, dispatch } = useCart();
+  const { user } = useAuth();
   const navigation = useNavigation() as any;
   const { idTransacao, idEvento } = route.params as {
     idTransacao: number;
@@ -103,7 +106,40 @@ export default function Index() {
     return (
       <View style={styles.inputCard}>
         <View>
-          <Text style={styles.label}>Nome Completo:</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.label}>Nome Completo:</Text>
+            {!isCriança && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={styles.label}>Preencher meus dados </Text>
+                <Switch
+                  trackColor={{ false: colors.cinza, true: colors.azul }}
+                  thumbColor={colors.azul}
+                  // ios_backgroundColor={colors.cinza}
+                  onValueChange={(value) => {
+                    handleChangeIngressoTransacao(
+                      item.id,
+                      "Ingresso_atribuirOutroUsuario",
+                      value
+                    );
+                  }}
+                  value={item.Ingresso_atribuirOutroUsuario}
+                ></Switch>
+              </View>
+            )}
+          </View>
+
           <TextInput
             style={styles.input}
             multiline={Platform.OS === "web" ? false : true}
@@ -129,17 +165,20 @@ export default function Index() {
             }}
           >
             <Text style={styles.inputLabel}>Data Nascimento:</Text>
-            <DatePickerComponente
-              value={new Date(item.Ingresso_dataNascimento) || new Date()}
-              onChange={(value) =>
-                handleChangeIngressoTransacao(
-                  item.id,
-                  "Ingresso_dataNascimento",
-                  value
-                )
-              }
-            />
+            <View>
+              <DatePickerComponente
+                value={new Date(item.Ingresso_dataNascimento) || new Date()}
+                onChange={(value) =>
+                  handleChangeIngressoTransacao(
+                    item.id,
+                    "Ingresso_dataNascimento",
+                    value
+                  )
+                }
+              />
+            </View>
             <Text style={styles.inputLabel}>
+              {" "}
               Idade: {calcularIdade(item.Ingresso_dataNascimento)} anos
             </Text>
           </View>
@@ -151,13 +190,25 @@ export default function Index() {
   const handleChangeIngressoTransacao = (
     id: number,
     field: any,
-    value: string | number | Date
+    value: string | number | Date | boolean
   ) => {
     setRegistrosIngressoTransacao((prevState) =>
       prevState.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
       )
     );
+    if (field === "Ingresso_atribuirOutroUsuario") {
+      setRegistrosIngressoTransacao((prevState) =>
+        prevState.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                Ingresso_nomeImpresso: value === true ? user?.nomeCompleto : "",
+              }
+            : item
+        )
+      );
+    }
   };
 
   function calcularIdade(dataNascimento: string | Date) {
@@ -187,8 +238,6 @@ export default function Index() {
     setRegistrosTransacao(registrosData[0]);
 
     if (registrosData[0]?.id > 0) {
-      console.log("registrosData[0]?.valorTotal", registrosData[0]?.valorTotal);
-      console.log("calculateTotal()", calculateTotal());
       if (calculateTotal() !== String(registrosData[0]?.valorTotal)) {
         navigation.navigate("ingressos", { id: idEvento });
       }
@@ -372,13 +421,13 @@ export default function Index() {
           )}
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
-        <TouchableOpacity
-          onPress={() => console.log(registrosIngressoTransacao)}
-        >
-          <Text>teste</Text>
-        </TouchableOpacity>
       </View>
-      {modalVisible && <ModalResumoIngresso step={2} />}
+      {modalVisible && (
+        <ModalResumoIngresso
+          step={2}
+          IngressoTransacao={registrosIngressoTransacao}
+        />
+      )}
     </LinearGradient>
   );
 }
