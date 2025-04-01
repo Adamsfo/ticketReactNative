@@ -99,10 +99,29 @@ export default function Index() {
 
   const renderTicketInputs = (item: any) => {
     const isCriança = item?.Ingresso_EventoIngresso?.nome.includes("Criança");
+
     return (
       <View style={styles.inputCard}>
-        <Text style={styles.inputLabel}>Nome Completo:</Text>
-        <TextInput style={styles.input} placeholder="Nome Completo" />
+        <View>
+          <Text style={styles.label}>Nome Completo:</Text>
+          <TextInput
+            style={styles.input}
+            multiline={Platform.OS === "web" ? false : true}
+            placeholder="Nome..."
+            keyboardType="default"
+            value={item.Ingresso_nomeImpresso || ""}
+            onChangeText={(text) =>
+              handleChangeIngressoTransacao(
+                item.id,
+                "Ingresso_nomeImpresso",
+                text
+              )
+            }
+          ></TextInput>
+          {/* {errors.nome && (
+                        <Text style={styles.labelError}>{errors.nome}</Text>
+                      )} */}
+        </View>
         {isCriança && (
           <View
             style={{
@@ -113,7 +132,7 @@ export default function Index() {
             <DatePickerComponente
               value={new Date(item.Ingresso_dataNascimento) || new Date()}
               onChange={(value) =>
-                handleDataNascimentoChange(
+                handleChangeIngressoTransacao(
                   item.id,
                   "Ingresso_dataNascimento",
                   value
@@ -129,7 +148,7 @@ export default function Index() {
     );
   };
 
-  const handleDataNascimentoChange = (
+  const handleChangeIngressoTransacao = (
     id: number,
     field: any,
     value: string | number | Date
@@ -353,6 +372,11 @@ export default function Index() {
           )}
           ListFooterComponent={<View style={{ height: 100 }} />}
         />
+        <TouchableOpacity
+          onPress={() => console.log(registrosIngressoTransacao)}
+        >
+          <Text>teste</Text>
+        </TouchableOpacity>
       </View>
       {modalVisible && <ModalResumoIngresso step={2} />}
     </LinearGradient>

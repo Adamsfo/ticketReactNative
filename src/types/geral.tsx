@@ -344,4 +344,5 @@ export interface IngressoTransacao {
   Ingresso_Evento?: Evento;
   Ingresso_EventoIngresso?: EventoIngresso;
   Ingresso_dataValidade: Date;
+  Ingresso_nomeImpresso?: string;
 }
