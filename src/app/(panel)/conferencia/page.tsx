@@ -38,7 +38,6 @@ import { useCart } from "@/src/contexts_/CartContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format, parseISO } from "date-fns";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
-import TimePickerComponente from "@/src/components/TimePickerComponente";
 
 const { width } = Dimensions.get("window");
 
@@ -47,6 +46,7 @@ export default function Index() {
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
   const { state, dispatch } = useCart();
+  const navigation = useNavigation() as any;
   const { idTransacao, idEvento } = route.params as {
     idTransacao: number;
     idEvento: number;
@@ -64,7 +64,7 @@ export default function Index() {
     idProdutor: 0,
   });
   const [modalVisible, setModalVisible] = useState(true);
-  const [registroTransacao, setRegistrosTransacao] = useState<Transacao[]>([]);
+  const [registroTransacao, setRegistrosTransacao] = useState<Transacao>();
   const [registrosIngressoTransacao, setRegistrosIngressoTransacao] = useState<
     IngressoTransacao[]
   >([]);
@@ -80,35 +80,6 @@ export default function Index() {
     }
   };
 
-  const getTransacao = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<Transacao>("/transacao", {
-      ...params,
-      pageSize: 200,
-    });
-    const registrosData = response.data ?? [];
-    console.log("registrosData", registrosData);
-
-    setRegistrosTransacao(registrosData);
-
-    getIngressoTransacao({
-      filters: { idTransacao: state.transacao?.id },
-    });
-  };
-
-  const getIngressoTransacao = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<IngressoTransacao>(
-      "/ingressotransacao",
-      {
-        ...params,
-        pageSize: 200,
-      }
-    );
-    const registrosData = response.data ?? [];
-    console.log("witsh", width);
-
-    setRegistrosIngressoTransacao(registrosData);
-  };
-
   useFocusEffect(
     useCallback(() => {
       if (idTransacao > 0) {
@@ -117,22 +88,6 @@ export default function Index() {
       }
     }, [idEvento, idTransacao])
   );
-
-  const calculateTotalPreco = () => {
-    return state.items
-      .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.preco;
-      }, 0)
-      .toFixed(2);
-  };
-
-  const calculateTotalTaxa = () => {
-    return state.items
-      .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.taxaServico;
-      }, 0)
-      .toFixed(2);
-  };
 
   const calculateTotal = () => {
     return state.items
@@ -143,12 +98,17 @@ export default function Index() {
   };
 
   const renderTicketInputs = (item: any) => {
+    const isCriança = item?.Ingresso_EventoIngresso?.nome.includes("Criança");
     return (
       <View style={styles.inputCard}>
         <Text style={styles.inputLabel}>Nome Completo:</Text>
         <TextInput style={styles.input} placeholder="Nome Completo" />
-        {item?.Ingresso_EventoIngresso?.nome.includes("Criança") && (
-          <View>
+        {isCriança && (
+          <View
+            style={{
+              flexDirection: "row",
+            }}
+          >
             <Text style={styles.inputLabel}>Data Nascimento:</Text>
             <DatePickerComponente
               value={new Date(item.Ingresso_dataNascimento) || new Date()}
@@ -196,6 +156,43 @@ export default function Index() {
     }
     return idade;
   }
+
+  const getTransacao = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<Transacao>("/transacao", {
+      ...params,
+      pageSize: 200,
+    });
+    const registrosData = response.data ?? [];
+    console.log("registrosData", registrosData);
+
+    setRegistrosTransacao(registrosData[0]);
+
+    if (registrosData[0]?.id > 0) {
+      console.log("registrosData[0]?.valorTotal", registrosData[0]?.valorTotal);
+      console.log("calculateTotal()", calculateTotal());
+      if (calculateTotal() !== String(registrosData[0]?.valorTotal)) {
+        navigation.navigate("ingressos", { id: idEvento });
+      }
+    }
+
+    getIngressoTransacao({
+      filters: { idTransacao: state.transacao?.id },
+    });
+  };
+
+  const getIngressoTransacao = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<IngressoTransacao>(
+      "/ingressotransacao",
+      {
+        ...params,
+        pageSize: 200,
+      }
+    );
+    const registrosData = response.data ?? [];
+    console.log("witsh", width);
+
+    setRegistrosIngressoTransacao(registrosData);
+  };
 
   return (
     <LinearGradient
@@ -316,19 +313,19 @@ export default function Index() {
                   <Text style={{ fontSize: 16, paddingBottom: 3 }}>
                     Total Ingressos:{" "}
                     <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(calculateTotalPreco())}
+                      {formatCurrency(registroTransacao?.preco ?? 0)}
                     </Text>
                   </Text>
                   <Text style={{ fontSize: 16, paddingBottom: 3 }}>
                     Total Taxa:{" "}
                     <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(calculateTotalTaxa())}
+                      {formatCurrency(registroTransacao?.taxaServico ?? 0)}
                     </Text>
                   </Text>
                   <Text style={{ fontSize: 16 }}>
                     Total incluindo taxas:{" "}
                     <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(calculateTotal())}
+                      {formatCurrency(registroTransacao?.valorTotal ?? 0)}
                     </Text>
                   </Text>
                 </View>

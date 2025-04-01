@@ -17,7 +17,13 @@ import { useCart } from "@/src/contexts_/CartContext";
 import { useNavigation } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ingresso, Transacao, Usuario } from "@/src/types/geral";
+import {
+  Ingresso,
+  IngressoTransacao,
+  QueryParams,
+  Transacao,
+  Usuario,
+} from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import ModalMsg from "../ModalMsg";
 import Login from "@/src/app/(auth)/singin/page";
@@ -80,7 +86,6 @@ export default function ModalResumoIngresso({
       }
 
       console.log("Criando transação...");
-      console.log("user", user);
 
       const response = await apiGeral.createResource<Transacao>("/transacao", {
         idUsuario: user.id,
@@ -100,9 +105,6 @@ export default function ModalResumoIngresso({
   };
 
   const gerarIngressos = async (idTransacao: number) => {
-    const usuarioString = await AsyncStorage.getItem("usuario");
-    const usuario: Usuario = usuarioString ? JSON.parse(usuarioString) : null;
-
     if (state.items.length > 0) {
       for (let i = 0; i < state.items.length; i++) {
         const item = state.items[i];
@@ -111,7 +113,7 @@ export default function ModalResumoIngresso({
             idEvento: item.eventoIngresso.idEvento,
             idEventoIngresso: item.eventoIngresso.id,
             idTipoIngresso: item.eventoIngresso.idTipoIngresso,
-            idUsuario: usuario.id,
+            idUsuario: user?.id,
             idTransacao: idTransacao,
           });
           let ingresso = json.data as unknown as Ingresso;
