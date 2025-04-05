@@ -5,15 +5,19 @@ import {
   Platform,
   Dimensions,
   View,
-  ScrollView,
-  Image,
   FlatList,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import { Evento, EventoIngresso, QueryParams } from "@/src/types/geral";
+import {
+  Evento,
+  EventoIngresso,
+  QueryParams,
+  Transacao,
+} from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
@@ -32,7 +36,10 @@ export default function Index() {
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
   const { state } = useCart();
-  const { id } = route.params as { id: number };
+  const { idEvento, registroTransacao } = route.params as {
+    idEvento: number;
+    registroTransacao: Transacao;
+  };
   initMercadoPago("TEST-98f4cccd-2514-4062-a671-68df4b579410", {
     locale: "pt-BR",
   });
@@ -54,34 +61,37 @@ export default function Index() {
 
   const data = [{ label: "Nome", content: "Nome" }];
 
-  const getRegistros = async (id: number) => {
-    if (id > 0) {
-      const response = await apiGeral.getResourceById<Evento>(endpointApi, id);
+  const getRegistros = async (idEvento: number) => {
+    if (idEvento > 0) {
+      const response = await apiGeral.getResourceById<Evento>(
+        endpointApi,
+        idEvento
+      );
 
       let data = response as unknown as Evento;
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      getRegistrosIngressos({ filters: { idEvento: id } });
       setFormData(data as Evento);
     }
   };
-  const getRegistrosIngressos = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<EventoIngresso>(
-      endpointApiIngressos,
-      { ...params, pageSize: 200 }
-    );
-    const registrosData = response.data ?? [];
 
-    setRegistrosEventoIngressos(registrosData);
-  };
+  // const getRegistrosIngressos = async (params: QueryParams) => {
+  //   const response = await apiGeral.getResource<EventoIngresso>(
+  //     endpointApiIngressos,
+  //     { ...params, pageSize: 200 }
+  //   );
+  //   const registrosData = response.data ?? [];
+
+  //   setRegistrosEventoIngressos(registrosData);
+  // };
 
   useFocusEffect(
     useCallback(() => {
-      if (id > 0) {
-        getRegistros(id);
-        getRegistrosIngressos({ filters: { idEvento: id } });
+      console.log("useFocusEffect", idEvento);
+      if (idEvento > 0) {
+        getRegistros(idEvento);
       }
-    }, [id])
+    }, [idEvento])
   );
 
   const zerarItem = (id: number) => {
@@ -135,135 +145,148 @@ export default function Index() {
         </View>
         <Text style={styles.titulo}>Pagamento</Text>
 
-        <ScrollView
+        <FlatList
+          data={registroTransacao ? [registroTransacao] : []}
+          keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          style={{
-            borderRadius: 8,
-            flexGrow: 1,
-            height: "100%",
-          }}
-        >
-          <View style={styles.areaEvento}>
-            <Image
-              source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
-              style={styles.imagem}
-            />
+          ListHeaderComponent={() => (
             <View>
-              <Text
-                style={[
-                  styles.titulo,
-                  { marginLeft: 10, textAlign: "left", fontSize: 22 },
-                ]}
-              >
-                {formData.nome}
-              </Text>
-              <Text style={{ marginLeft: 10, fontSize: 16 }}>
-                {formData.endereco}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.areaResumo}>
-            <Text style={styles.titulo}>Resumo</Text>
-            <View style={{ flexDirection: "row", flex: 1 }}>
-              <FlatList
-                data={state.items}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingVertical: 3,
-                      marginHorizontal: 5,
-                      // flex: 1,
-                    }}
+              <View style={styles.areaEvento}>
+                <Image
+                  source={{
+                    uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                  }}
+                  style={styles.imagem}
+                />
+                <View>
+                  <Text
+                    style={[
+                      styles.titulo,
+                      { marginLeft: 10, textAlign: "left", fontSize: 22 },
+                    ]}
                   >
-                    <View
-                      style={{
-                        flex: 1,
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                      }}
-                    >
+                    {formData.nome}
+                  </Text>
+                  <Text style={{ marginLeft: 10, fontSize: 16 }}>
+                    {formData.endereco}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.areaResumo}>
+                <Text style={styles.titulo}>Resumo</Text>
+                <View>
+                  <FlatList
+                    data={state.items}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
                       <View
                         style={{
                           flexDirection: "row",
+                          alignItems: "center",
+                          paddingVertical: 3,
+                          marginHorizontal: 5,
+                          // flex: 1,
                         }}
                       >
-                        <Text
+                        <View
                           style={{
-                            paddingHorizontal: 3,
-                            fontWeight: "bold",
-                            fontSize: 14,
+                            flex: 1,
+                            flexDirection: "row",
+                            justifyContent: "space-between",
                           }}
                         >
-                          {item.qtde} x
-                        </Text>
-                        <Text style={{ paddingHorizontal: 3, fontSize: 14 }}>
-                          {item.eventoIngresso.TipoIngresso_descricao}
-                        </Text>
-                        <Text style={{ paddingHorizontal: 3, fontSize: 14 }}>
-                          {item.eventoIngresso.nome}
-                        </Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                paddingHorizontal: 3,
+                                fontWeight: "bold",
+                                fontSize: 14,
+                              }}
+                            >
+                              {item.qtde} x
+                            </Text>
+                            <Text
+                              style={{ paddingHorizontal: 3, fontSize: 14 }}
+                            >
+                              {item.eventoIngresso.TipoIngresso_descricao}
+                            </Text>
+                            <Text
+                              style={{ paddingHorizontal: 3, fontSize: 14 }}
+                            >
+                              {item.eventoIngresso.nome}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text
+                              style={{
+                                paddingHorizontal: 3,
+                                fontSize: 14,
+                              }}
+                            >
+                              {formatCurrency(
+                                (item.qtde * item.eventoIngresso.preco).toFixed(
+                                  2
+                                )
+                              )}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                      <View>
-                        <Text
-                          style={{
-                            paddingHorizontal: 3,
-                            fontSize: 14,
-                          }}
-                        >
-                          {formatCurrency(
-                            (item.qtde * item.eventoIngresso.preco).toFixed(2)
-                          )}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              />
+                    )}
+                  />
+                </View>
+                <View
+                  style={{
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    paddingRight: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+                    Total Ingressos:{" "}
+                    <Text style={{ fontWeight: "bold" }}>
+                      {formatCurrency(registroTransacao?.preco ?? 0)}
+                    </Text>
+                  </Text>
+                  <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+                    Total Taxa:{" "}
+                    <Text style={{ fontWeight: "bold" }}>
+                      {formatCurrency(registroTransacao?.taxaServico ?? 0)}
+                    </Text>
+                  </Text>
+                  <Text style={{ fontSize: 16 }}>
+                    Total incluindo taxas:{" "}
+                    <Text style={{ fontWeight: "bold" }}>
+                      {formatCurrency(registroTransacao?.valorTotal ?? 0)}
+                    </Text>
+                  </Text>
+                </View>
+              </View>
             </View>
+          )}
+          renderItem={() => (
             <View
-              style={{
-                flexDirection: "column",
-                alignItems: "flex-end",
-                paddingRight: 8,
-              }}
+              style={[
+                styles.eventDetailItem,
+                {
+                  paddingBottom: 100,
+                  height: "100%",
+                  width: "100%",
+                  borderRadius: 20,
+                },
+              ]}
             >
-              <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-                Total Ingressos:{" "}
-                <Text style={{ fontWeight: "bold" }}>
-                  {formatCurrency(calculateTotalPreco())}
-                </Text>
-              </Text>
-              <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-                Taxa:{" "}
-                <Text style={{ fontWeight: "bold" }}>
-                  {formatCurrency(calculateTotalTaxa())}
-                </Text>
-              </Text>
-              <Text style={{ fontSize: 16, paddingBottom: 5 }}>
-                Total incluindo taxa:{" "}
-                <Text style={{ fontWeight: "bold" }}>
-                  {formatCurrency(calculateTotal())}
-                </Text>
-              </Text>
+              <CheckoutMercadoPago />
             </View>
-          </View>
-
-          <View
-            style={[
-              styles.eventDetailItem,
-              { paddingBottom: 100, height: 1500 },
-            ]}
-          >
-            <CheckoutMercadoPago />
-          </View>
-        </ScrollView>
+          )}
+        />
       </View>
-      {modalVisible && <ModalResumoIngresso step={2} />}
+      {/* {modalVisible && <ModalResumoIngresso step={2} />} */}
     </LinearGradient>
   );
 }
@@ -272,10 +295,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 200 : 5,
-    marginLeft: Platform.OS === "web" ? 200 : 5,
-    marginBottom: 20,
-    height: 500,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
+    // marginBottom: 20,
+    // height: 500,
   },
   titulo: {
     fontSize: 24,
@@ -290,8 +313,8 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     paddingLeft: 5,
     paddingTop: 15,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     paddingBottom: 25,
     borderRadius: 20,
     flex: 1,
@@ -331,8 +354,8 @@ const styles = StyleSheet.create({
   },
   eventDetailItem: {
     flexDirection: "column",
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    paddingRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
+    paddingLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
   },
   imagem: {
     width: "100%",
@@ -346,11 +369,10 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     paddingLeft: 5,
     paddingTop: 10,
-    marginRight: Platform.OS === "web" ? "30%" : 0,
-    marginLeft: Platform.OS === "web" ? "30%" : 0,
     paddingBottom: 10,
     borderRadius: 20,
     flexDirection: "row",
+    justifyContent: "center",
   },
   areaStep: {
     justifyContent: "center",
@@ -362,9 +384,8 @@ const styles = StyleSheet.create({
     paddingRight: 5,
     paddingLeft: 5,
     paddingTop: 15,
-    marginRight: Platform.OS === "web" ? "30%" : 0,
-    marginLeft: Platform.OS === "web" ? "30%" : 0,
-    // paddingBottom: 25,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
     borderRadius: 20,
     flex: 1,
   },
@@ -378,6 +399,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 5,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 5,
   },
   ticketTitle: {
     fontSize: 18,

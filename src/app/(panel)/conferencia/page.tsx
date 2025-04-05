@@ -425,6 +425,7 @@ export default function Index() {
       {modalVisible && (
         <ModalResumoIngresso
           step={2}
+          RegistroTransacao={registroTransacao}
           IngressoTransacao={registrosIngressoTransacao}
         />
       )}

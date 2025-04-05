@@ -346,3 +346,51 @@ export interface IngressoTransacao {
   Ingresso_dataValidade: Date;
   Ingresso_nomeImpresso?: string;
 }
+
+export interface UsuarioMetodoPagamento {
+  id: number;
+  idUsuario: number;
+  dados: string;
+}
+
+// export interface DadosdePagamento {
+//   payment_method_id: number;
+//   issuer_id: number;
+//   email: string;
+// }
+
+export interface Cardholder {
+  name: string;
+  identification: {
+    number: string;
+    type: string;
+  };
+}
+
+export interface Card {
+  id: string | null;
+  first_six_digits: string;
+  last_four_digits: string;
+  expiration_month: number;
+  expiration_year: number;
+  date_created: string;
+  date_last_updated: string;
+  country: string | null;
+  tags: string[];
+  cardholder: Cardholder;
+}
+
+export interface Payer {
+  email: string;
+  identification: {
+    type: string;
+    number: string;
+  };
+}
+
+export interface DadosdePagamento {
+  payment_method_id: string;
+  issuer_id: string;
+  card: Card;
+  payer: Payer;
+}

@@ -36,11 +36,13 @@ const { width } = Dimensions.get("window");
 
 interface ModalResumoIngressoProps {
   step: number;
+  RegistroTransacao?: Transacao;
   IngressoTransacao?: IngressoTransacao[];
 }
 
 export default function ModalResumoIngresso({
   step,
+  RegistroTransacao,
   IngressoTransacao,
 }: ModalResumoIngressoProps) {
   const route = useRoute();
@@ -89,6 +91,12 @@ export default function ModalResumoIngresso({
         return;
       }
 
+      if (state.items.length === 0) {
+        setMsg("Não existe ingresso no carrinho.");
+        setVisibleMsg(true);
+        return;
+      }
+
       setLoading(true);
 
       const response = await apiGeral.createResource<Transacao>("/transacao", {
@@ -122,17 +130,16 @@ export default function ModalResumoIngresso({
             idTransacao: idTransacao,
           });
           let ingresso = json.data as unknown as Ingresso;
-
-          console.log("Ingresso gerado:", ingresso); // Verifique o ingresso gerado
         }
       }
     }
+
+    setLoading(false);
 
     navigation.navigate("conferencia", {
       idTransacao: idTransacao,
       idEvento: id,
     });
-    setLoading(false);
   };
 
   const handelCloseLogin = () => {
@@ -161,14 +168,21 @@ export default function ModalResumoIngresso({
         IngressoTransacao &&
         IngressoTransacao.some((ingresso) => !ingresso.Ingresso_nomeImpresso)
       ) {
-        setMsg("Necessário cadastrar o nome do ingresso.");
+        setMsg("Necessário informar nome para todos os ingresso.");
         setVisibleMsg(true);
         return;
       }
 
       setLoading(true);
 
-      navigation.navigate("pagamento", { id: id });
+      //atualizar os ingressos
+
+      navigation.navigate("pagamento", {
+        idEvento: IngressoTransacao?.[0]?.Ingresso_Evento?.id ?? 0,
+        registroTransacao: RegistroTransacao,
+      });
+
+      setLoading(false);
     } catch (error) {}
   };
 
