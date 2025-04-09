@@ -391,6 +391,7 @@ export interface Payer {
 export interface DadosdePagamento {
   payment_method_id: string;
   issuer_id: string;
+  token: string;
   card: Card;
   payer: Payer;
 }

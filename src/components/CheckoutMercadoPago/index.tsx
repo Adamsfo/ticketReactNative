@@ -2,14 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useRoute } from "@react-navigation/native";
 import { api } from "@/src/lib/api";
 import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
-import { Platform, Text, View } from "react-native";
+import { Platform, Text, View, Button } from "react-native";
 import WebView from "react-native-webview";
 import {
-  DadosdePagamento,
   Produtor,
   QueryParams,
   Transacao,
-  UsuarioMetodoPagamento,
+  DadosdePagamento,
 } from "@/src/types/geral";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { apiGeral } from "@/src/lib/geral";
@@ -30,6 +29,7 @@ export default function CheckoutMercadoPago() {
   const [visiblePagamento, setVisiblePagamento] = useState(true); // Estado para armazenar o ID do pagamento
   const [savedPaymentData, setSavedPaymentData] =
     useState<DadosdePagamento | null>(null); // Estado para armazenar os dados de pagamento salvos
+  const [cardToken, setCardToken] = useState<string | null>(null); // Estado para armazenar o token do cartão
 
   useEffect(() => {
     async function fetchPaymentData(params: QueryParams) {
@@ -59,23 +59,6 @@ export default function CheckoutMercadoPago() {
 
     fetchPaymentData({ filters: { idUsuario: user?.id } });
   }, []);
-
-  // useEffect(() => {
-  //   async function fetchPaymentData(params: QueryParams) {
-  //     const response = await apiGeral.getResource("/dadospagamento", {
-  //       ...params,
-  //       pageSize: 200,
-  //     });
-
-  //     const dadosPagamento = (response?.data?.[0] ??
-  //       null) as unknown as DadosdePagamento; // Obtenha os dados de pagamento do usuário
-
-  //     setSavedPaymentData(dadosPagamento); // Armazena os dados de pagamento salvos
-  //     console.log("Dados de pagamento salvos:", dadosPagamento); // Exibe os dados de pagamento salvos no console
-  //   }
-
-  //   fetchPaymentData({ filters: { idUsuario: user?.id } });
-  // }, []);
 
   const customization = {
     paymentMethods: {
@@ -139,22 +122,101 @@ export default function CheckoutMercadoPago() {
  */
   };
 
+  const createCardToken = async () => {
+    if (!savedPaymentData) return;
+
+    const cardData = {
+      card_number:
+        savedPaymentData.card.first_six_digits +
+        "******" +
+        savedPaymentData.card.last_four_digits,
+      expiration_month: savedPaymentData.card.expiration_month,
+      expiration_year: savedPaymentData.card.expiration_year,
+      security_code: "", // O código de segurança não pode ser salvo por motivos de segurança e deve ser fornecido pelo usuário
+      cardholder: {
+        name: savedPaymentData.card.cardholder.name,
+        identification: {
+          type: savedPaymentData.card.cardholder.identification.type,
+          number: savedPaymentData.card.cardholder.identification.number,
+        },
+      },
+    };
+
+    try {
+      const response = await fetch(api.getBaseApi() + "/createCardToken", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(cardData),
+      });
+
+      const data = await response.json();
+      if (data.token) {
+        setCardToken(data.token);
+        console.log("Novo token gerado:", data.token);
+      } else {
+        console.error("Erro ao gerar token de cartão:", data);
+      }
+    } catch (error) {
+      console.error("Erro ao gerar token de cartão:", error);
+    }
+  };
+
+  const startNewPayment = async () => {
+    if (!savedPaymentData) return;
+
+    if (!cardToken) {
+      await createCardToken(); // Gere um novo token se não houver um token existente
+    }
+
+    // const paymentData = {
+    //   transaction_amount: Number(registroTransacao.valorTotal), // Certifique-se de que seja numérico
+    //   token: cardToken, // Utilize o token salvo ou recém-gerado
+    //   description: "description",
+    //   installments: 1,
+    //   payment_method_id: savedPaymentData.payment_method_id,
+    //   issuer_id: savedPaymentData.issuer_id,
+    //   payer: savedPaymentData.payer,
+    // };
+
+    // try {
+    //   const response = await fetch(api.getBaseApi() + "/pagamento", {
+    //     method: "POST",
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //     },
+    //     body: JSON.stringify(paymentData),
+    //   });
+
+    //   const result = await response.json();
+    //   console.log("Novo pagamento:", result);
+    //   setPaymentStatus(result.id); // Definir o estado com o ID do pagamento
+    //   if (result.status === "approved") {
+    //     // pagamento aprovado
+    //     setVisiblePagamento(false); // Ocultar o componente de pagamento
+    //   }
+    // } catch (error) {
+    //   console.error("Erro ao iniciar novo pagamento:", error);
+    // }
+  };
+
   return (
     <>
       {Platform.OS === "web" ? (
         <>
-          {visiblePagamento && (
-            <Payment
-              initialization={{ amount: registroTransacao.valorTotal }}
-              customization={customization}
-              onSubmit={onSubmit}
+          {paymentStatus && (
+            <StatusScreen
+              initialization={{ paymentId: paymentStatus }} // Passar o ID do pagamento para o StatusScreen
               onReady={onReady}
               onError={onError}
             />
           )}
-          {paymentStatus && (
-            <StatusScreen
-              initialization={{ paymentId: paymentStatus }} // Passar o ID do pagamento para o StatusScreen
+          {visiblePagamento && (
+            <Payment
+              initialization={{ amount: Number(registroTransacao.valorTotal) }} // Certifique-se de que seja numérico
+              customization={customization}
+              onSubmit={onSubmit}
               onReady={onReady}
               onError={onError}
             />
@@ -166,6 +228,19 @@ export default function CheckoutMercadoPago() {
                 Método de Pagamento: {savedPaymentData.payment_method_id}
               </Text>
               <Text>Emissor: {savedPaymentData.issuer_id}</Text>
+              <Text>
+                Nome do Titular: {savedPaymentData.card?.cardholder?.name}
+              </Text>
+              <Text>
+                CPF do Titular:{" "}
+                {savedPaymentData.card?.cardholder?.identification?.number}
+              </Text>
+              <Text>Email do Pagador: {savedPaymentData.payer?.email}</Text>
+              {/* Adicione outros dados conforme necessário */}
+              <Button
+                title="Iniciar Novo Pagamento"
+                onPress={startNewPayment}
+              />
             </View>
           )}
         </>
