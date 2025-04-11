@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRoute } from "@react-navigation/native";
 import { api } from "@/src/lib/api";
 import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
-import { Platform, Text, View, Button } from "react-native";
+import { Platform, Text, View, Button, StyleSheet } from "react-native";
 import WebView from "react-native-webview";
 import {
   Produtor,
@@ -12,6 +12,35 @@ import {
 } from "@/src/types/geral";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { apiGeral } from "@/src/lib/geral";
+import CartaoCreditoSelector from "../CartaoCreditoSelector";
+
+type SavedCard = {
+  id: string;
+  first_six_digits: string;
+  last_four_digits: string;
+  payment_method: {
+    id: string;
+    name: string;
+  };
+};
+
+type SavedPaymentData = {
+  cards: SavedCard[];
+};
+
+type InstallmentOption = {
+  installments: number;
+  installment_amount: number;
+  total_amount: number;
+  installment_rate: number;
+};
+
+type InstallmentResponse = {
+  payer_costs: InstallmentOption[];
+};
+
+const MP_PUBLIC_KEY = "APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23"; // Chave pública do Mercado Pago
+// const MP_PUBLIC_KEY = "TEST-98f4cccd-2514-4062-a671-68df4b579410"; // Chave pública do Mercado Pago
 
 export default function CheckoutMercadoPago() {
   const route = useRoute();
@@ -21,44 +50,56 @@ export default function CheckoutMercadoPago() {
     registroTransacao: Transacao;
   };
 
-  initMercadoPago("TEST-98f4cccd-2514-4062-a671-68df4b579410", {
+  // const { idTransacao, idEvento } = route.params as {
+  //   idTransacao: number;
+  //   idEvento: number;
+  // };
+
+  initMercadoPago(MP_PUBLIC_KEY, {
     locale: "pt-BR",
   });
 
+  // const [registroTransacao, setRegistroTransacao] = useState<Transacao>();
   const [paymentStatus, setPaymentStatus] = useState(""); // Estado para armazenar o ID do pagamento
-  const [visiblePagamento, setVisiblePagamento] = useState(true); // Estado para armazenar o ID do pagamento
-  const [savedPaymentData, setSavedPaymentData] =
-    useState<DadosdePagamento | null>(null); // Estado para armazenar os dados de pagamento salvos
+  const [visiblePagamento, setVisiblePagamento] = useState(false); // Estado para armazenar o ID do pagamento
+  const [savedPaymentData, setSavedPaymentData] = useState<any | null>(null); // Estado para armazenar os dados de pagamento salvos
   const [cardToken, setCardToken] = useState<string | null>(null); // Estado para armazenar o token do cartão
+  const [installments, setInstallments] = useState<number>(1); // Estado para armazenar o número de parcelas
+  const [installmentOptions, setInstallmentOptions] = useState<any | null>(
+    null
+  );
 
   useEffect(() => {
     async function fetchPaymentData(params: QueryParams) {
-      const response = await apiGeral.getResource("/dadospagamento", {
+      const response = await apiGeral.getResource("/cardscustomer", {
         ...params,
-        pageSize: 200,
+        pageSize: 200000,
       });
 
-      const dadosPagamento = response?.data?.[0] ?? null; // Obtenha os dados de pagamento do usuário
+      const dadosCards = response?.data ?? null; // Obtenha os dados de pagamento do usuário
 
-      // Converte de string para objeto, se necessário
-      let parsedDadosPagamento = dadosPagamento;
-      if (typeof dadosPagamento === "string") {
-        try {
-          parsedDadosPagamento = JSON.parse(dadosPagamento);
-        } catch (error) {
-          console.error(
-            "Erro ao converter dados de pagamento para objeto:",
-            error
-          );
-        }
-      }
-
-      setSavedPaymentData(parsedDadosPagamento as DadosdePagamento); // Armazena os dados de pagamento salvos
-      console.log("Dados de pagamento salvos:", parsedDadosPagamento); // Exibe os dados de pagamento salvos no console
+      setSavedPaymentData(dadosCards); // Armazena os dados de pagamento salvos
     }
 
-    fetchPaymentData({ filters: { idUsuario: user?.id } });
+    fetchPaymentData({ filters: { email: user?.email } });
   }, []);
+
+  // const getTransacao = async (params: QueryParams) => {
+  //   const response = await apiGeral.getResource<Transacao>("/transacao", {
+  //     ...params,
+  //     pageSize: 200,
+  //   });
+  //   const registrosData = response.data ?? [];
+  //   console.log("registrosData", registrosData);
+
+  //   setRegistroTransacao(registrosData[0]);
+  // };
+
+  // useEffect(() => {
+  //   if (idTransacao) {
+  //     getTransacao({ filters: { id: idTransacao } });
+  //   }
+  // }, []);
 
   const customization = {
     paymentMethods: {
@@ -66,13 +107,30 @@ export default function CheckoutMercadoPago() {
       // bankTransfer: "all",
       creditCard: "all",
       prepaidCard: ["all"],
-      debitCard: "all",
+      // debitCard: "all",
       // mercadoPago: "all",
     },
   };
 
+  const buscarParcelas = async (bin: string, payment_method_id: string) => {
+    try {
+      const amount = Number(registroTransacao?.valorTotal ?? 0);
+
+      const response = await apiGeral.getResource("/buscarparcelas", {
+        filters: { bin, payment_method_id, amount },
+        pageSize: 200000,
+      });
+
+      const parcelas =
+        (response.data as InstallmentResponse[])?.[0]?.payer_costs || [];
+
+      setInstallmentOptions(parcelas || []);
+    } catch (err) {
+      console.error("Erro ao buscar parcelas:", err);
+    }
+  };
+
   const onSubmit = async ({
-    selectedPaymentMethod,
     formData,
   }: {
     selectedPaymentMethod: string;
@@ -95,7 +153,6 @@ export default function CheckoutMercadoPago() {
         .then((response) => response.json())
         .then((response) => {
           // receber o resultado do pagamento
-          console.log(response);
           setPaymentStatus(response.id); // Definir o estado com o ID do pagamento
           if (response.status === "approved") {
             // pagamento aprovado
@@ -122,89 +179,20 @@ export default function CheckoutMercadoPago() {
  */
   };
 
-  const createCardToken = async () => {
-    if (!savedPaymentData) return;
-
-    const cardData = {
-      card_number:
-        savedPaymentData.card.first_six_digits +
-        "******" +
-        savedPaymentData.card.last_four_digits,
-      expiration_month: savedPaymentData.card.expiration_month,
-      expiration_year: savedPaymentData.card.expiration_year,
-      security_code: "", // O código de segurança não pode ser salvo por motivos de segurança e deve ser fornecido pelo usuário
-      cardholder: {
-        name: savedPaymentData.card.cardholder.name,
-        identification: {
-          type: savedPaymentData.card.cardholder.identification.type,
-          number: savedPaymentData.card.cardholder.identification.number,
-        },
-      },
-    };
-
-    try {
-      const response = await fetch(api.getBaseApi() + "/createCardToken", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(cardData),
-      });
-
-      const data = await response.json();
-      if (data.token) {
-        setCardToken(data.token);
-        console.log("Novo token gerado:", data.token);
-      } else {
-        console.error("Erro ao gerar token de cartão:", data);
-      }
-    } catch (error) {
-      console.error("Erro ao gerar token de cartão:", error);
-    }
-  };
-
-  const startNewPayment = async () => {
-    if (!savedPaymentData) return;
-
-    if (!cardToken) {
-      await createCardToken(); // Gere um novo token se não houver um token existente
-    }
-
-    // const paymentData = {
-    //   transaction_amount: Number(registroTransacao.valorTotal), // Certifique-se de que seja numérico
-    //   token: cardToken, // Utilize o token salvo ou recém-gerado
-    //   description: "description",
-    //   installments: 1,
-    //   payment_method_id: savedPaymentData.payment_method_id,
-    //   issuer_id: savedPaymentData.issuer_id,
-    //   payer: savedPaymentData.payer,
-    // };
-
-    // try {
-    //   const response = await fetch(api.getBaseApi() + "/pagamento", {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //     },
-    //     body: JSON.stringify(paymentData),
-    //   });
-
-    //   const result = await response.json();
-    //   console.log("Novo pagamento:", result);
-    //   setPaymentStatus(result.id); // Definir o estado com o ID do pagamento
-    //   if (result.status === "approved") {
-    //     // pagamento aprovado
-    //     setVisiblePagamento(false); // Ocultar o componente de pagamento
-    //   }
-    // } catch (error) {
-    //   console.error("Erro ao iniciar novo pagamento:", error);
-    // }
-  };
-
   return (
     <>
       {Platform.OS === "web" ? (
         <>
+          <CartaoCreditoSelector
+            savedPaymentData={savedPaymentData}
+            installmentOptions={installmentOptions}
+            setCardToken={setCardToken}
+            setInstallments={setInstallments}
+            buscarParcelas={buscarParcelas}
+            setVisiblePagamento={setVisiblePagamento}
+            visiblePagamento={visiblePagamento}
+          />
+
           {paymentStatus && (
             <StatusScreen
               initialization={{ paymentId: paymentStatus }} // Passar o ID do pagamento para o StatusScreen
@@ -214,39 +202,26 @@ export default function CheckoutMercadoPago() {
           )}
           {visiblePagamento && (
             <Payment
-              initialization={{ amount: Number(registroTransacao.valorTotal) }} // Certifique-se de que seja numérico
+              initialization={{
+                amount: Number(registroTransacao?.valorTotal ?? 0),
+                payer: {
+                  email: user?.email, // Email enviado manualmente, campo no checkout será omitido
+                },
+              }} // Certifique-se de que seja numérico
               customization={customization}
               onSubmit={onSubmit}
               onReady={onReady}
               onError={onError}
             />
           )}
-          {savedPaymentData && (
-            <View>
-              <Text>Informações de Pagamento Salvas:</Text>
-              <Text>
-                Método de Pagamento: {savedPaymentData.payment_method_id}
-              </Text>
-              <Text>Emissor: {savedPaymentData.issuer_id}</Text>
-              <Text>
-                Nome do Titular: {savedPaymentData.card?.cardholder?.name}
-              </Text>
-              <Text>
-                CPF do Titular:{" "}
-                {savedPaymentData.card?.cardholder?.identification?.number}
-              </Text>
-              <Text>Email do Pagador: {savedPaymentData.payer?.email}</Text>
-              {/* Adicione outros dados conforme necessário */}
-              <Button
-                title="Iniciar Novo Pagamento"
-                onPress={startNewPayment}
-              />
-            </View>
-          )}
         </>
       ) : (
         <WebView
-          source={{ uri: "http://192.168.18.95:8081/checkoutmp?id=23" }} // URL da rota do seu app
+          source={{
+            uri: `http://192.168.18.95:8081/checkoutmp?idEvento=${idEvento}&registroTransacao=${JSON.stringify(
+              registroTransacao
+            )}`,
+          }} // URL da rota do seu app
           style={{ flex: 1, height: 500, width: "100%" }}
           originWhitelist={["*"]}
           startInLoadingState={true}
@@ -260,3 +235,12 @@ export default function CheckoutMercadoPago() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#333",
+  },
+});
