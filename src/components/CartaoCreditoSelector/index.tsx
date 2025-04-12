@@ -65,44 +65,44 @@ export default function CartaoCreditoSelector({
 
   return (
     <View style={styles.container}>
+      <View style={{ flexDirection: "row" }}>
+        <TouchableOpacity
+          style={[styles.card, !visiblePagamento && styles.cardSelected]}
+          onPress={() => {
+            setVisiblePagamento(false);
+          }}
+        >
+          <View style={styles.cardHeader}>
+            <Text
+              style={[
+                styles.cardBrand,
+                !visiblePagamento && styles.cardBrandSelected,
+              ]}
+            >
+              Cartão Salvo
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.card, visiblePagamento && styles.cardSelected]}
+          onPress={() => {
+            setVisiblePagamento(true);
+          }}
+        >
+          <View style={styles.cardHeader}>
+            <Text
+              style={[
+                styles.cardBrand,
+                visiblePagamento && styles.cardBrandSelected,
+              ]}
+            >
+              Novo Cartão
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
       {savedPaymentData?.cards?.length > 0 && (
         <>
-          <View style={{ flexDirection: "row" }}>
-            <TouchableOpacity
-              style={[styles.card, !visiblePagamento && styles.cardSelected]}
-              onPress={() => {
-                setVisiblePagamento(false);
-              }}
-            >
-              <View style={styles.cardHeader}>
-                <Text
-                  style={[
-                    styles.cardBrand,
-                    !visiblePagamento && styles.cardBrandSelected,
-                  ]}
-                >
-                  Cartão Salvo
-                </Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.card, visiblePagamento && styles.cardSelected]}
-              onPress={() => {
-                setVisiblePagamento(true);
-              }}
-            >
-              <View style={styles.cardHeader}>
-                <Text
-                  style={[
-                    styles.cardBrand,
-                    visiblePagamento && styles.cardBrandSelected,
-                  ]}
-                >
-                  Novo Cartão
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
           {!visiblePagamento && (
             <>
               <Text style={styles.sectionTitle}>Selecione um Cartão Salvo</Text>

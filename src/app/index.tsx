@@ -28,7 +28,27 @@ export default function Index({ route }: any) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (param.includes("checkoutmp")) {
-        navigation.navigate("checkoutmp");
+        const urlParams = new URLSearchParams(param);
+
+        const idEvento = urlParams.get("idEvento");
+        const email = urlParams.get("email");
+        const registroTransacaoRaw = urlParams.get("registroTransacao");
+
+        navigation.navigate("checkoutmp", {
+          idEvento: idEvento,
+          email: email,
+          registroTransacao: JSON.parse(
+            decodeURIComponent(registroTransacaoRaw as string)
+          ),
+
+          // funcionando
+          // navigation.navigate("checkoutmp", {
+          //   idEvento: param.split("idEvento=")[1].split("&")[0],
+          //   // email: param.split("email=")[1].split("&")[0],
+          //   registroTransacao: JSON.parse(
+          //     decodeURIComponent(param.split("registroTransacao=")[1] as string)
+          //   ),
+        });
       } else {
         navigation.navigate("home");
       }

@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { apiGeral } from "@/src/lib/geral";
 import CartaoCreditoSelector from "../CartaoCreditoSelector";
+import { TextInput } from "react-native-gesture-handler";
 
 type SavedCard = {
   id: string;
@@ -45,8 +46,9 @@ const MP_PUBLIC_KEY = "APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23"; // Chave p
 export default function CheckoutMercadoPago() {
   const route = useRoute();
   const { user } = useAuth();
-  const { idEvento, registroTransacao } = route.params as {
+  const { idEvento, email, registroTransacao } = route.params as {
     idEvento: number;
+    email?: string;
     registroTransacao: Transacao;
   };
 
@@ -78,10 +80,21 @@ export default function CheckoutMercadoPago() {
 
       const dadosCards = response?.data ?? null; // Obtenha os dados de pagamento do usuário
 
+      if (!dadosCards) {
+        setVisiblePagamento(true);
+      }
+
       setSavedPaymentData(dadosCards); // Armazena os dados de pagamento salvos
     }
 
-    fetchPaymentData({ filters: { email: user?.email } });
+    if (user) {
+      fetchPaymentData({ filters: { email: user?.email } });
+    } else {
+      // ajsutar qdo nao ticar cartao retornar novo cartao
+      fetchPaymentData({ filters: { email: email } });
+    }
+
+    // fetchPaymentData({ filters: { email: "adamsfo20@gmail.com" } });
   }, []);
 
   // const getTransacao = async (params: QueryParams) => {
@@ -102,6 +115,10 @@ export default function CheckoutMercadoPago() {
   // }, []);
 
   const customization = {
+    visual: {
+      hideFormTitle: true,
+      // hidePaymentButton: true,
+    },
     paymentMethods: {
       // ticket: "all",
       // bankTransfer: "all",
@@ -109,6 +126,7 @@ export default function CheckoutMercadoPago() {
       prepaidCard: ["all"],
       // debitCard: "all",
       // mercadoPago: "all",
+      maxInstallments: 3,
     },
   };
 
@@ -180,9 +198,9 @@ export default function CheckoutMercadoPago() {
   };
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       {Platform.OS === "web" ? (
-        <>
+        <View style={{ flex: 1, height: 500, width: "100%" }}>
           <CartaoCreditoSelector
             savedPaymentData={savedPaymentData}
             installmentOptions={installmentOptions}
@@ -205,7 +223,7 @@ export default function CheckoutMercadoPago() {
               initialization={{
                 amount: Number(registroTransacao?.valorTotal ?? 0),
                 payer: {
-                  email: user?.email, // Email enviado manualmente, campo no checkout será omitido
+                  email: user ? user.email : email, // Email enviado manualmente, campo no checkout será omitido
                 },
               }} // Certifique-se de que seja numérico
               customization={customization}
@@ -214,25 +232,37 @@ export default function CheckoutMercadoPago() {
               onError={onError}
             />
           )}
-        </>
+        </View>
       ) : (
-        <WebView
-          source={{
-            uri: `http://192.168.18.95:8081/checkoutmp?idEvento=${idEvento}&registroTransacao=${JSON.stringify(
-              registroTransacao
-            )}`,
-          }} // URL da rota do seu app
-          style={{ flex: 1, height: 500, width: "100%" }}
-          originWhitelist={["*"]}
-          startInLoadingState={true}
-          renderLoading={() => (
-            <View>
-              <Text>Carregando...</Text>
-            </View>
-          )}
-        />
+        <View
+          style={{
+            flex: 1,
+            height: 800,
+            width: "100%",
+            borderRadius: 20,
+            overflow: "hidden",
+          }}
+        >
+          <WebView
+            source={{
+              uri: `http://192.168.18.95:8081/checkoutmp?idEvento=${idEvento}&email=${
+                user?.email
+              }&registroTransacao=${encodeURIComponent(
+                JSON.stringify(registroTransacao)
+              )}`,
+            }}
+            style={{ flex: 1 }}
+            originWhitelist={["*"]}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View>
+                <Text>Carregando...</Text>
+              </View>
+            )}
+          />
+        </View>
       )}
-    </>
+    </View>
   );
 }
 
