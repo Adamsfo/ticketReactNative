@@ -2,7 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useRoute } from "@react-navigation/native";
 import { api } from "@/src/lib/api";
 import { initMercadoPago, Payment, StatusScreen } from "@mercadopago/sdk-react";
-import { Platform, Text, View, Button, StyleSheet } from "react-native";
+import {
+  Platform,
+  Text,
+  View,
+  Button,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import WebView from "react-native-webview";
 import {
   Produtor,
@@ -14,20 +22,7 @@ import { useAuth } from "@/src/contexts_/AuthContext";
 import { apiGeral } from "@/src/lib/geral";
 import CartaoCreditoSelector from "../CartaoCreditoSelector";
 import { TextInput } from "react-native-gesture-handler";
-
-type SavedCard = {
-  id: string;
-  first_six_digits: string;
-  last_four_digits: string;
-  payment_method: {
-    id: string;
-    name: string;
-  };
-};
-
-type SavedPaymentData = {
-  cards: SavedCard[];
-};
+import colors from "@/src/constants/colors";
 
 type InstallmentOption = {
   installments: number;
@@ -40,8 +35,8 @@ type InstallmentResponse = {
   payer_costs: InstallmentOption[];
 };
 
-const MP_PUBLIC_KEY = "APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23"; // Chave pública do Mercado Pago
-// const MP_PUBLIC_KEY = "TEST-98f4cccd-2514-4062-a671-68df4b579410"; // Chave pública do Mercado Pago
+// const MP_PUBLIC_KEY = "APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23"; // Chave pública do Mercado Pago
+const MP_PUBLIC_KEY = "TEST-98f4cccd-2514-4062-a671-68df4b579410"; // Chave pública do Mercado Pago
 
 export default function CheckoutMercadoPago() {
   const route = useRoute();
@@ -52,17 +47,13 @@ export default function CheckoutMercadoPago() {
     registroTransacao: Transacao;
   };
 
-  // const { idTransacao, idEvento } = route.params as {
-  //   idTransacao: number;
-  //   idEvento: number;
-  // };
-
   initMercadoPago(MP_PUBLIC_KEY, {
     locale: "pt-BR",
   });
 
-  // const [registroTransacao, setRegistroTransacao] = useState<Transacao>();
-  const [paymentStatus, setPaymentStatus] = useState(""); // Estado para armazenar o ID do pagamento
+  const [paymentStatusId, setPaymentStatusId] = useState(""); // Estado para armazenar o ID do pagamento
+  // const [paymentStatusId, setPaymentStatusId] = useState("107841609777"); // Estado para armazenar o ID do pagamento
+  const [cpfCardSalvo, setCpfCardSalvo] = useState(""); // Estado para armazenar o CPF do cartão salvo
   const [visiblePagamento, setVisiblePagamento] = useState(false); // Estado para armazenar o ID do pagamento
   const [savedPaymentData, setSavedPaymentData] = useState<any | null>(null); // Estado para armazenar os dados de pagamento salvos
   const [cardToken, setCardToken] = useState<string | null>(null); // Estado para armazenar o token do cartão
@@ -70,6 +61,7 @@ export default function CheckoutMercadoPago() {
   const [installmentOptions, setInstallmentOptions] = useState<any | null>(
     null
   );
+  const [loading, setloading] = useState(false);
 
   useEffect(() => {
     async function fetchPaymentData(params: QueryParams) {
@@ -84,6 +76,8 @@ export default function CheckoutMercadoPago() {
         setVisiblePagamento(true);
       }
 
+      console.log("dadosCards", dadosCards);
+
       setSavedPaymentData(dadosCards); // Armazena os dados de pagamento salvos
     }
 
@@ -93,26 +87,7 @@ export default function CheckoutMercadoPago() {
       // ajsutar qdo nao ticar cartao retornar novo cartao
       fetchPaymentData({ filters: { email: email } });
     }
-
-    // fetchPaymentData({ filters: { email: "adamsfo20@gmail.com" } });
   }, []);
-
-  // const getTransacao = async (params: QueryParams) => {
-  //   const response = await apiGeral.getResource<Transacao>("/transacao", {
-  //     ...params,
-  //     pageSize: 200,
-  //   });
-  //   const registrosData = response.data ?? [];
-  //   console.log("registrosData", registrosData);
-
-  //   setRegistroTransacao(registrosData[0]);
-  // };
-
-  // useEffect(() => {
-  //   if (idTransacao) {
-  //     getTransacao({ filters: { id: idTransacao } });
-  //   }
-  // }, []);
 
   const customization = {
     visual: {
@@ -126,7 +101,7 @@ export default function CheckoutMercadoPago() {
       prepaidCard: ["all"],
       // debitCard: "all",
       // mercadoPago: "all",
-      maxInstallments: 3,
+      // maxInstallments: 3,
     },
   };
 
@@ -171,7 +146,7 @@ export default function CheckoutMercadoPago() {
         .then((response) => response.json())
         .then((response) => {
           // receber o resultado do pagamento
-          setPaymentStatus(response.id); // Definir o estado com o ID do pagamento
+          setPaymentStatusId(response.id); // Definir o estado com o ID do pagamento
           if (response.status === "approved") {
             // pagamento aprovado
             setVisiblePagamento(false); // Ocultar o componente de pagamento
@@ -197,27 +172,76 @@ export default function CheckoutMercadoPago() {
  */
   };
 
+  const enviarPagamentoCartaoSalvo = async () => {
+    // callback chamado ao clicar no botão de submissão dos dados
+    setloading(true); // Iniciar o carregamento
+    return new Promise<void>((resolve, reject) => {
+      fetch(api.getBaseApi() + "/pagamentocardsalvo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idTransacao: registroTransacao.id,
+          transaction_amount: registroTransacao.valorTotal,
+          token: cardToken,
+          installments,
+          payment_method_id: "credit_card",
+          payer: {
+            email: user?.email || email || "", // Garantir que o email seja uma string
+            identification: { type: "CPF", number: cpfCardSalvo },
+          },
+        }), // Adicione o ID do usuário aqui
+      })
+        .then((response) => response.json())
+        .then((response) => {
+          // receber o resultado do pagamento
+          setPaymentStatusId(response.id); // Definir o estado com o ID do pagamento
+          if (response.status === "approved") {
+            // pagamento aprovado
+            setVisiblePagamento(false); // Ocultar o componente de pagamento
+          }
+          setloading(false); // Parar o carregamento
+          resolve();
+        })
+        .catch((error) => {
+          setloading(false); // Parar o carregamento
+          // lidar com a resposta de erro ao tentar criar o pagamento
+          reject();
+        });
+    });
+  };
+
   return (
     <View style={{ flex: 1 }}>
       {Platform.OS === "web" ? (
         <View style={{ flex: 1, height: 500, width: "100%" }}>
-          <CartaoCreditoSelector
-            savedPaymentData={savedPaymentData}
-            installmentOptions={installmentOptions}
-            setCardToken={setCardToken}
-            setInstallments={setInstallments}
-            buscarParcelas={buscarParcelas}
-            setVisiblePagamento={setVisiblePagamento}
-            visiblePagamento={visiblePagamento}
-          />
-
-          {paymentStatus && (
+          {paymentStatusId && (
             <StatusScreen
-              initialization={{ paymentId: paymentStatus }} // Passar o ID do pagamento para o StatusScreen
+              initialization={{ paymentId: paymentStatusId }} // Passar o ID do pagamento para o StatusScreen
               onReady={onReady}
               onError={onError}
             />
           )}
+
+          {registroTransacao && (
+            <CartaoCreditoSelector
+              savedPaymentData={savedPaymentData}
+              installmentOptions={installmentOptions}
+              setCardToken={setCardToken}
+              setInstallments={setInstallments}
+              buscarParcelas={buscarParcelas}
+              setVisiblePagamento={setVisiblePagamento}
+              visiblePagamento={visiblePagamento}
+              registroTransacao={registroTransacao}
+              email={user?.email || email || ""} // Garantir que o email seja uma string
+              setPaymentStatusId={setPaymentStatusId} // Passar a função para definir o ID do pagamento
+              setCpfCardSalvo={setCpfCardSalvo} // Passar a função para definir o CPF do cartão salvo
+              enviarPagamentoCartaoSalvo={enviarPagamentoCartaoSalvo} // Passar a função para enviar o pagamento do cartão salvo
+              loading={loading} // Passar o estado de carregamento
+            />
+          )}
+
           {visiblePagamento && (
             <Payment
               initialization={{
@@ -265,12 +289,3 @@ export default function CheckoutMercadoPago() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#333",
-  },
-});

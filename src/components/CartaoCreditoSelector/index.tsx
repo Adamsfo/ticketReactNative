@@ -6,8 +6,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList, // ou @react-native-picker/picker se for novo projeto
+  FlatList,
+  ActivityIndicator, // ou @react-native-picker/picker se for novo projeto
 } from "react-native";
+import PaymentPix from "../PaymentPix";
+import { Transacao } from "@/src/types/geral";
+import { api } from "@/src/lib/api";
 
 type Props = {
   savedPaymentData: any;
@@ -17,6 +21,12 @@ type Props = {
   buscarParcelas: (bin: string, paymentMethodId: string) => void;
   setVisiblePagamento: (visible: boolean) => void;
   visiblePagamento: boolean;
+  registroTransacao: Transacao;
+  email: string;
+  setPaymentStatusId: (id: string) => void;
+  setCpfCardSalvo: (cpf: string) => void;
+  enviarPagamentoCartaoSalvo: () => void;
+  loading: boolean;
 };
 
 export default function CartaoCreditoSelector({
@@ -27,8 +37,15 @@ export default function CartaoCreditoSelector({
   buscarParcelas,
   setVisiblePagamento,
   visiblePagamento,
+  registroTransacao,
+  email,
+  setPaymentStatusId,
+  setCpfCardSalvo,
+  enviarPagamentoCartaoSalvo,
+  loading,
 }: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [pagamentoPix, setPagamentoPix] = useState(false); // Estado para armazenar o ID do pagamento
 
   const renderCard = ({ item }: any) => {
     const isSelected = item.id === selectedCardId;
@@ -38,6 +55,7 @@ export default function CartaoCreditoSelector({
         onPress={() => {
           setCardToken(item.id);
           setSelectedCardId(item.id);
+          setCpfCardSalvo(item.cardholder.identification.number);
           buscarParcelas(item.first_six_digits, item.payment_method.id);
         }}
       >
@@ -67,16 +85,20 @@ export default function CartaoCreditoSelector({
     <View style={styles.container}>
       <View style={{ flexDirection: "row" }}>
         <TouchableOpacity
-          style={[styles.card, !visiblePagamento && styles.cardSelected]}
+          style={[
+            styles.card,
+            !visiblePagamento && !pagamentoPix && styles.cardSelected,
+          ]}
           onPress={() => {
             setVisiblePagamento(false);
+            setPagamentoPix(false);
           }}
         >
           <View style={styles.cardHeader}>
             <Text
               style={[
                 styles.cardBrand,
-                !visiblePagamento && styles.cardBrandSelected,
+                !visiblePagamento && !pagamentoPix && styles.cardBrandSelected,
               ]}
             >
               Cartão Salvo
@@ -84,24 +106,46 @@ export default function CartaoCreditoSelector({
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.card, visiblePagamento && styles.cardSelected]}
+          style={[
+            styles.card,
+            visiblePagamento && !pagamentoPix && styles.cardSelected,
+          ]}
           onPress={() => {
             setVisiblePagamento(true);
+            setPagamentoPix(false);
           }}
         >
           <View style={styles.cardHeader}>
             <Text
               style={[
                 styles.cardBrand,
-                visiblePagamento && styles.cardBrandSelected,
+                visiblePagamento && !pagamentoPix && styles.cardBrandSelected,
               ]}
             >
               Novo Cartão
             </Text>
           </View>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.card, pagamentoPix && styles.cardSelected]}
+          onPress={() => {
+            setPagamentoPix(true);
+            setVisiblePagamento(false);
+          }}
+        >
+          <View style={styles.cardHeader}>
+            <Text
+              style={[
+                styles.cardBrand,
+                pagamentoPix && styles.cardBrandSelected,
+              ]}
+            >
+              {"   Pix   "}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
-      {savedPaymentData?.cards?.length > 0 && (
+      {!pagamentoPix && savedPaymentData?.cards?.length > 0 && (
         <>
           {!visiblePagamento && (
             <>
@@ -119,7 +163,8 @@ export default function CartaoCreditoSelector({
         </>
       )}
 
-      {installmentOptions &&
+      {!pagamentoPix &&
+        installmentOptions &&
         installmentOptions.length > 0 &&
         !visiblePagamento && (
           <>
@@ -149,8 +194,31 @@ export default function CartaoCreditoSelector({
                 ))}
               </Picker>
             </View>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSave, { marginTop: 20 }]}
+              onPress={() => enviarPagamentoCartaoSalvo()}
+            >
+              <View style={styles.buttonContent}>
+                {loading && (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.laranjado}
+                    style={{ marginRight: 10 }}
+                  />
+                )}
+                <Text style={styles.buttonText}>Pagar</Text>
+              </View>
+            </TouchableOpacity>
           </>
         )}
+      {!visiblePagamento && pagamentoPix && registroTransacao && (
+        <PaymentPix
+          valor={registroTransacao.valorTotal}
+          email={email}
+          idTransacao={registroTransacao.id} // Replace 0 with an appropriate fallback value
+          setPaymentStatusId={setPaymentStatusId} // Passar a função para definir o ID do pagamento
+        ></PaymentPix>
+      )}
     </View>
   );
 }
@@ -218,5 +286,25 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 8,
     overflow: "hidden",
+  },
+  button: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginLeft: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonSave: {
+    backgroundColor: colors.azul,
+  },
+  buttonText: {
+    color: "#FFF",
+    fontWeight: "bold",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
