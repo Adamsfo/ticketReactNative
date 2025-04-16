@@ -27,7 +27,6 @@ type Props = {
   setCpfCardSalvo: (cpf: string) => void;
   enviarPagamentoCartaoSalvo: () => void;
   loading: boolean;
-  // deviceId: string; // Adicione o deviceId como prop opcional
 };
 
 export default function CartaoCreditoSelector({
@@ -44,8 +43,7 @@ export default function CartaoCreditoSelector({
   setCpfCardSalvo,
   enviarPagamentoCartaoSalvo,
   loading,
-}: // deviceId,
-Props) {
+}: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pagamentoPix, setPagamentoPix] = useState(false); // Estado para armazenar o ID do pagamento
 
@@ -219,7 +217,6 @@ Props) {
           email={email}
           idTransacao={registroTransacao.id} // Replace 0 with an appropriate fallback value
           setPaymentStatusId={setPaymentStatusId} // Passar a função para definir o ID do pagamento
-          // deviceId={deviceId} // Adicione o ID do dispositivo aqui
         ></PaymentPix>
       )}
     </View>

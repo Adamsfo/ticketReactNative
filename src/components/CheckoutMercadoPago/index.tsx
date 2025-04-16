@@ -146,7 +146,7 @@ export default function CheckoutMercadoPago() {
           salvarCartao,
           idTransacao: registroTransacao.id,
           idUsuario: user?.id,
-          // deviceId,
+          deviceId,
         }), // Adicione o ID do usuário aqui
       })
         .then((response) => response.json())
@@ -223,21 +223,31 @@ export default function CheckoutMercadoPago() {
     <View style={{ flex: 1 }}>
       {Platform.OS === "web" ? (
         <View style={{ flex: 1, height: 500, width: "100%" }}>
-          {paymentStatusId && (
-            <StatusScreen
-              initialization={{ paymentId: paymentStatusId }} // Passar o ID do pagamento para o StatusScreen
-              onReady={onReady}
-              onError={onError}
-            />
-          )}
-
           {/* <TouchableOpacity onPress={() => getDeviceId()}>
             <Text>get{deviceId}</Text>
           </TouchableOpacity> */}
-          <DeviceIdWeb setDeviceId={setDeviceId} />
-          <Text>deviceid:{deviceId}</Text>
+          {!deviceId && (
+            <View
+              style={{
+                // flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <ActivityIndicator
+                size="large"
+                color={colors.azul}
+              ></ActivityIndicator>
+              <Text style={{ justifyContent: "center" }}>
+                Carregando formas de pagamento
+              </Text>
+            </View>
+          )}
 
-          {registroTransacao && (
+          <DeviceIdWeb setDeviceId={setDeviceId} />
+          {/* <Text>deviceid:{deviceId}</Text> */}
+
+          {registroTransacao && deviceId && (
             <CartaoCreditoSelector
               savedPaymentData={savedPaymentData}
               installmentOptions={installmentOptions}
@@ -252,6 +262,13 @@ export default function CheckoutMercadoPago() {
               setCpfCardSalvo={setCpfCardSalvo} // Passar a função para definir o CPF do cartão salvo
               enviarPagamentoCartaoSalvo={enviarPagamentoCartaoSalvo} // Passar a função para enviar o pagamento do cartão salvo
               loading={loading} // Passar o estado de carregamento
+            />
+          )}
+          {paymentStatusId && (
+            <StatusScreen
+              initialization={{ paymentId: paymentStatusId }} // Passar o ID do pagamento para o StatusScreen
+              onReady={onReady}
+              onError={onError}
             />
           )}
 
