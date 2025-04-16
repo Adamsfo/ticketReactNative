@@ -19,6 +19,7 @@ type Props = {
   email: string;
   idTransacao?: number;
   setPaymentStatusId: (id: string) => void;
+  // deviceId: string;
 };
 
 export default function PaymentPix({
@@ -26,7 +27,8 @@ export default function PaymentPix({
   email,
   idTransacao,
   setPaymentStatusId,
-}: Props) {
+}: // deviceId,
+Props) {
   const [qrCodeBase64, setQrCodeBase64] = useState<string>("");
   const [copyPasteCode, setCopyPasteCode] = useState<string>("");
   const [loading, setloading] = useState(false);
@@ -41,7 +43,7 @@ export default function PaymentPix({
     try {
       const response = await apiGeral.getResource("/consultapagamento", {
         // filters: { id: "107841609777" },
-        filters: { id: idPagamento },
+        filters: { id: idPagamento, email },
         pageSize: 10,
       });
 
@@ -84,6 +86,7 @@ export default function PaymentPix({
           email: email,
           descricao: "Ingressos",
           idTransacao: idTransacao,
+          // deviceId: deviceId,
         }), // Adicione o ID do usuário aqui
       });
 

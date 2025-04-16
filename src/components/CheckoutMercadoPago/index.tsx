@@ -23,6 +23,10 @@ import { apiGeral } from "@/src/lib/geral";
 import CartaoCreditoSelector from "../CartaoCreditoSelector";
 import { TextInput } from "react-native-gesture-handler";
 import colors from "@/src/constants/colors";
+import { Switch } from "react-native-gesture-handler";
+import * as Device from "expo-device";
+import * as Application from "expo-application";
+import DeviceIdWeb from "../DeviceIdWeb";
 
 type InstallmentOption = {
   installments: number;
@@ -62,12 +66,14 @@ export default function CheckoutMercadoPago() {
     null
   );
   const [loading, setloading] = useState(false);
+  const [salvarCartao, setSalvarCartao] = useState(true); // Estado para armazenar se o cartão deve ser salvo ou não
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPaymentData(params: QueryParams) {
       const response = await apiGeral.getResource("/cardscustomer", {
         ...params,
-        pageSize: 200000,
+        pageSize: 20000,
       });
 
       const dadosCards = response?.data ?? null; // Obtenha os dados de pagamento do usuário
@@ -75,8 +81,6 @@ export default function CheckoutMercadoPago() {
       if (!dadosCards) {
         setVisiblePagamento(true);
       }
-
-      console.log("dadosCards", dadosCards);
 
       setSavedPaymentData(dadosCards); // Armazena os dados de pagamento salvos
     }
@@ -111,7 +115,7 @@ export default function CheckoutMercadoPago() {
 
       const response = await apiGeral.getResource("/buscarparcelas", {
         filters: { bin, payment_method_id, amount },
-        pageSize: 200000,
+        pageSize: 20000,
       });
 
       const parcelas =
@@ -139,8 +143,10 @@ export default function CheckoutMercadoPago() {
         body: JSON.stringify({
           ...formData,
           idEvento,
-          registroTransacao,
+          salvarCartao,
+          idTransacao: registroTransacao.id,
           idUsuario: user?.id,
+          // deviceId,
         }), // Adicione o ID do usuário aqui
       })
         .then((response) => response.json())
@@ -187,6 +193,7 @@ export default function CheckoutMercadoPago() {
           token: cardToken,
           installments,
           payment_method_id: "credit_card",
+          deviceId,
           payer: {
             email: user?.email || email || "", // Garantir que o email seja uma string
             identification: { type: "CPF", number: cpfCardSalvo },
@@ -224,6 +231,12 @@ export default function CheckoutMercadoPago() {
             />
           )}
 
+          {/* <TouchableOpacity onPress={() => getDeviceId()}>
+            <Text>get{deviceId}</Text>
+          </TouchableOpacity> */}
+          <DeviceIdWeb setDeviceId={setDeviceId} />
+          <Text>deviceid:{deviceId}</Text>
+
           {registroTransacao && (
             <CartaoCreditoSelector
               savedPaymentData={savedPaymentData}
@@ -243,18 +256,31 @@ export default function CheckoutMercadoPago() {
           )}
 
           {visiblePagamento && (
-            <Payment
-              initialization={{
-                amount: Number(registroTransacao?.valorTotal ?? 0),
-                payer: {
-                  email: user ? user.email : email, // Email enviado manualmente, campo no checkout será omitido
-                },
-              }} // Certifique-se de que seja numérico
-              customization={customization}
-              onSubmit={onSubmit}
-              onReady={onReady}
-              onError={onError}
-            />
+            <View style={styles.container}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text>Salvar cartão para compras futuras </Text>
+                <Switch
+                  trackColor={{ false: colors.cinza, true: colors.azul }}
+                  thumbColor={colors.azul}
+                  onValueChange={() => {
+                    setSalvarCartao(!salvarCartao);
+                  }}
+                  value={salvarCartao}
+                ></Switch>
+              </View>
+              <Payment
+                initialization={{
+                  amount: Number(registroTransacao?.valorTotal ?? 0),
+                  payer: {
+                    email: user ? user.email : email, // Email enviado manualmente, campo no checkout será omitido
+                  },
+                }} // Certifique-se de que seja numérico
+                customization={customization}
+                onSubmit={onSubmit}
+                onReady={onReady}
+                onError={onError}
+              />
+            </View>
           )}
         </View>
       ) : (
@@ -289,3 +315,11 @@ export default function CheckoutMercadoPago() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    backgroundColor: colors.branco,
+    borderRadius: 12,
+  },
+});
