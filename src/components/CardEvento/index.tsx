@@ -27,7 +27,7 @@ export default function CardEvento({
   return (
     <TouchableOpacity
       // style={[styles.card, { width: widthCardItem }]}
-      style={[styles.card]}
+      style={[styles.card, { maxWidth: widthCardItem }]}
       activeOpacity={0.85}
       onPress={onPress}
     >
@@ -69,13 +69,15 @@ export default function CardEvento({
           </Text>
         </View>
 
-        <Text style={styles.text}>
-          Valores a partir de{" "}
-          {data.MenorValor !== undefined
-            ? formatCurrency(data.MenorValor.toFixed(2))
-            : "N/A"}
-          .
-        </Text>
+        <View style={styles.row}>
+          <Text style={styles.text}>
+            Valores a partir de{" "}
+            {data.MenorValor !== undefined
+              ? formatCurrency(data.MenorValor.toFixed(2))
+              : "N/A"}
+            .
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -88,16 +90,15 @@ const styles = StyleSheet.create({
     margin: 8,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.5,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 8,
     flex: 1,
-    maxWidth: 500,
   },
   imageContainer: {
     position: "relative",
     width: "100%",
-    height: 200,
+    height: 220,
   },
   image: {
     width: "100%",
@@ -116,18 +117,20 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   content: {
-    padding: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    height: 140,
   },
   title: {
     fontSize: 20,
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 6,
     color: "#111",
   },
   row: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 4,
+    marginTop: 8,
     flexWrap: "wrap",
   },
   label: {

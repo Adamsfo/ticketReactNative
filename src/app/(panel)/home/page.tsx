@@ -28,13 +28,7 @@ export default function Index() {
   const [visibleMsg, setVisibleMsg] = useState(false);
   const navigation = useNavigation() as any;
   const [registros, setRegistros] = useState<Evento[]>([]);
-
-  const widthCardItem = 460;
-
-  const numColumns =
-    Platform.OS === "web"
-      ? Math.floor((Dimensions.get("window").width - 140) / widthCardItem)
-      : 1;
+  const [flatListWidth, setFlatListWidth] = useState<number>(width - 10);
 
   const getRegistros = async (params: QueryParams) => {
     const response = await apiGeral.getResource<Evento>(endpointApi, {
@@ -114,11 +108,15 @@ export default function Index() {
               onPress={() => {
                 navigation.navigate("evento", { id: item.id });
               }}
-              widthCardItem={width - 200 > 600 ? width / 3 : width - 10}
+              widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15} // Ajuste a largura do card com base na largura da FlatList
             />
           )}
           contentContainerStyle={{ padding: 1 }}
           showsVerticalScrollIndicator={false}
+          onLayout={(event) => {
+            const { width } = event.nativeEvent.layout;
+            setFlatListWidth(width);
+          }}
         />
       </View>
 
