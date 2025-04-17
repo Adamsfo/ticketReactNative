@@ -81,29 +81,43 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
-        <View style={styles.containerImagem}>
+        {/* <View style={styles.containerImagem}>
           <Image
             source={require("../../../assets/apresentacao.png")}
             style={styles.imagem}
           />
         </View>
-        <Text style={styles.titulo}>Eventos</Text>
+        
+        <Text style={styles.titulo}>Eventos</Text> */}
 
         <FlatList
+          key={`grid-${width > 600 ? "3" : "1"}`}
           data={registros}
           style={styles.listaEventos}
           keyExtractor={(item) => item.id.toString()}
-          numColumns={numColumns}
+          // numColumns={numColumns}
+          numColumns={width > 600 ? 3 : 1}
+          ListHeaderComponent={
+            <>
+              <View style={styles.containerImagem}>
+                <Image
+                  source={require("../../../assets/apresentacao.png")}
+                  style={styles.imagem}
+                />
+              </View>
+              <Text style={styles.titulo}>Eventos</Text>
+            </>
+          }
           renderItem={({ item }: { item: Evento }) => (
             <CardEvento
               data={item}
               onPress={() => {
                 navigation.navigate("evento", { id: item.id });
               }}
-              widthCardItem={widthCardItem}
+              widthCardItem={width - 200 > 600 ? width / 3 : width - 10}
             />
           )}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ padding: 1 }}
           showsVerticalScrollIndicator={false}
         />
       </View>
@@ -119,8 +133,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     // marginBottom: 20,
   },
   titulo: {

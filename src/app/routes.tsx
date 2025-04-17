@@ -18,6 +18,7 @@ import Ingressos from "./(panel)/ingressos/page";
 import Conferencia from "./(panel)/conferencia/page";
 import Pagamento from "./(panel)/pagamento/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
+import MeusIngressos from "./(panel)/meusingressos/page";
 import {
   ActivityIndicator,
   Image,
@@ -240,6 +241,16 @@ function Routes() {
         options={{
           headerShown: false,
           title: "Tipo Ingresso",
+        }}
+      />
+      <Drawer.Screen
+        name="meusingressos"
+        component={MeusIngressos}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
         }}
       />
     </Drawer.Navigator>

@@ -52,7 +52,7 @@ export default function Index({ route }: any) {
       } else {
         navigation.navigate("home");
       }
-    }, 300);
+    }, 100);
 
     return () => clearTimeout(timer); // Limpa o temporizador na desmontagem do componente
   }, []);

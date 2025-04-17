@@ -219,6 +219,31 @@ export default function CheckoutMercadoPago() {
     });
   };
 
+  if (deviceId === null) {
+    if (Platform.OS === "web") {
+      return (
+        <View style={{ flex: 1 }}>
+          <DeviceIdWeb setDeviceId={setDeviceId} />
+          <View
+            style={{
+              // flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <ActivityIndicator
+              size="large"
+              color={colors.azul}
+            ></ActivityIndicator>
+            <Text style={{ justifyContent: "center" }}>
+              Carregando formas de pagamento
+            </Text>
+          </View>
+        </View>
+      );
+    }
+  }
+
   return (
     <View style={{ flex: 1 }}>
       {Platform.OS === "web" ? (
@@ -226,7 +251,7 @@ export default function CheckoutMercadoPago() {
           {/* <TouchableOpacity onPress={() => getDeviceId()}>
             <Text>get{deviceId}</Text>
           </TouchableOpacity> */}
-          {!deviceId && (
+          {/* {!deviceId && (
             <View
               style={{
                 // flex: 1,
@@ -242,9 +267,9 @@ export default function CheckoutMercadoPago() {
                 Carregando formas de pagamento
               </Text>
             </View>
-          )}
+          )} */}
 
-          <DeviceIdWeb setDeviceId={setDeviceId} />
+          {/* <DeviceIdWeb setDeviceId={setDeviceId} /> */}
           {/* <Text>deviceid:{deviceId}</Text> */}
 
           {registroTransacao && deviceId && (

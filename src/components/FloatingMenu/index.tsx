@@ -120,6 +120,18 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             style={styles.fabItem}
           />
           <FAB
+            icon="account-plus"
+            label="Minhas Compras"
+            onPress={() => navigation.navigate("loginAdd")}
+            style={styles.fabItem}
+          />
+          <FAB
+            icon="account-plus"
+            label="Meus Ingressos"
+            onPress={() => navigation.navigate("meusingressos")}
+            style={styles.fabItem}
+          />
+          <FAB
             icon="logout"
             label="Sair"
             onPress={handleLogout}
@@ -171,8 +183,16 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fabItem: {
-    marginVertical: 8,
+    marginVertical: 2,
     backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    elevation: 10,
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
   },
 });
 

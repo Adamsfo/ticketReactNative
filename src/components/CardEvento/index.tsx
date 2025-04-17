@@ -6,15 +6,12 @@ import {
   StyleSheet,
   Image,
   Platform,
-  Dimensions,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { Evento } from "@/src/types/geral";
 import { format, parseISO } from "date-fns";
 import formatCurrency from "../FormatCurrency";
 import { api } from "@/src/lib/api";
-
-const { width } = Dimensions.get("window");
+import { CalendarIcon, MapPinIcon } from "lucide-react-native";
 
 interface CardEventoProps {
   data: Evento;
@@ -28,110 +25,127 @@ export default function CardEvento({
   widthCardItem,
 }: CardEventoProps) {
   return (
-    <View>
-      <TouchableOpacity
-        style={[
-          styles.item,
-          {
-            width:
-              Platform.OS === "web"
-                ? width <= 1000
-                  ? "100%"
-                  : widthCardItem
-                : "100%",
-          },
-        ]}
-        activeOpacity={0.5}
-        onPress={onPress}
-      >
-        <View style={styles.cabecalho}>
-          <Image
-            source={require("../../assets/logoJango.png")}
-            style={styles.imagemCabecalho}
-          />
+    <TouchableOpacity
+      // style={[styles.card, { width: widthCardItem }]}
+      style={[styles.card]}
+      activeOpacity={0.85}
+      onPress={onPress}
+    >
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: api.getBaseApi() + "/uploads/" + data.imagem }}
+          style={styles.image}
+        />
+      </View>
+
+      <View style={styles.content}>
+        <Text style={styles.title} numberOfLines={2}>
+          {data.nome}
+        </Text>
+        <Image
+          source={require("../../assets/logoJango.png")}
+          style={styles.logo}
+        />
+
+        <View style={styles.row}>
+          {/* <Text style={styles.label}>Local:</Text> */}
+          <MapPinIcon size={16} color="#6b7280" />
+          <Text style={styles.text}>{data.endereco}</Text>
         </View>
 
-        <View style={styles.viewImagem}>
-          <Image
-            source={{ uri: api.getBaseApi() + "/uploads/" + data.imagem }}
-            style={styles.imagem}
-          />
-        </View>
-
-        <View style={styles.corpo}>
-          <Text style={styles.titulo} key={data.id}>
-            {data.nome}
-          </Text>
-          <View style={{ flexDirection: "row" }}>
-            <Text style={{ fontWeight: "bold" }}>Local:</Text>
-            <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
-              {data.endereco}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: "row" }}>
-            <Text style={{ fontWeight: "bold" }}>Data:</Text>
-            <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
-              {format(
-                parseISO(data.data_hora_inicio.toString()),
-                "dd/MM/yyyy HH:mm"
-              )}{" "}
-              a{" "}
-              {format(
-                parseISO(data.data_hora_fim.toString()),
-                "dd/MM/yyyy HH:mm"
-              )}
-            </Text>
-          </View>
-
-          <Text style={{ fontWeight: "normal" }}>
-            Valores a partir de{" "}
-            {data.MenorValor !== undefined
-              ? formatCurrency(data.MenorValor.toFixed(2))
-              : "N/A"}
-            .
+        <View style={styles.row}>
+          {/* <Text style={styles.label}>Data:</Text> */}
+          <CalendarIcon size={16} color="#6b7280" />
+          <Text style={styles.text}>
+            {format(
+              parseISO(data.data_hora_inicio.toString()),
+              "dd/MM/yyyy HH:mm"
+            )}{" "}
+            a{" "}
+            {format(
+              parseISO(data.data_hora_fim.toString()),
+              "dd/MM/yyyy HH:mm"
+            )}
           </Text>
         </View>
-      </TouchableOpacity>
-    </View>
+
+        <Text style={styles.text}>
+          Valores a partir de{" "}
+          {data.MenorValor !== undefined
+            ? formatCurrency(data.MenorValor.toFixed(2))
+            : "N/A"}
+          .
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  item: {
-    flexDirection: "column",
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginRight: 15,
-    marginTop: 7,
-    padding: 12,
-    borderRadius: 20,
-    height: 400,
-  },
-  titulo: {
-    paddingRight: 20,
-    fontSize: 26,
-    marginBottom: 10,
-  },
-  imagemCabecalho: {
-    width: Platform.OS === "web" ? 70 : 50, // 100% para web, largura da tela para mobile
-    height: Platform.OS === "web" ? 40 : 40,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
-  },
-  cabecalho: {
-    flexDirection: "row",
-  },
-  imagem: {
-    width: "100%", // 100% para web, largura da tela para mobile
-    borderRadius: 20,
-    height: Platform.OS === "web" ? 240 : 240,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
-  },
-  viewImagem: {
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    margin: 8,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
     flex: 1,
-    alignItems: "center",
+    maxWidth: 500,
   },
-  corpo: {
-    flexDirection: "column",
-    height: "auto",
+  imageContainer: {
+    position: "relative",
+    width: "100%",
+    height: 200,
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  logo: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: Platform.OS === "web" ? 70 : 50,
+    height: 40,
+    resizeMode: "contain",
+    backgroundColor: "#ffffffcc",
+    borderRadius: 8,
+    padding: 4,
+  },
+  content: {
+    padding: 12,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#111",
+  },
+  row: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+    flexWrap: "wrap",
+  },
+  label: {
+    fontWeight: "bold",
+    color: "#333",
+  },
+  value: {
+    paddingLeft: 5,
+    color: "#444",
+    flexShrink: 1,
+  },
+  price: {
+    marginTop: 6,
+    color: "#444",
+  },
+  text: {
+    color: "#6b7280",
+    fontSize: 16,
+    paddingLeft: 5,
   },
 });
