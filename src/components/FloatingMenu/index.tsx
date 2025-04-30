@@ -119,7 +119,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             onPress={() => navigation.navigate("loginAdd")}
             style={styles.fabItem}
           />
-          <FAB
+          {/* <FAB
             icon="account-plus"
             label="Minhas Compras"
             onPress={() => navigation.navigate("loginAdd")}
@@ -130,7 +130,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             label="Meus Ingressos"
             onPress={() => navigation.navigate("meusingressos")}
             style={styles.fabItem}
-          />
+          /> */}
           <FAB
             icon="logout"
             label="Sair"

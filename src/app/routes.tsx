@@ -242,15 +242,23 @@ function Routes() {
           headerShown: false,
           title: "Tipo Ingresso",
         }}
-      />
+      />      
       <Drawer.Screen
         name="meusingressos"
         component={MeusIngressos}
         options={{
           headerShown: false,
-          drawerLabel: () => null,
-          drawerIcon: () => null,
-          drawerItemStyle: { display: "none" },
+          title: "Meus Ingressos",
+          // drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="meinhascompras"
+        component={MeusIngressos}
+        options={{
+          headerShown: false,
+          title: "Minhas Compras",
+          // drawerItemStyle: { display: "none" },
         }}
       />
     </Drawer.Navigator>

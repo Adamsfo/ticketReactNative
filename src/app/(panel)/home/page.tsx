@@ -19,6 +19,8 @@ import { useNavigation } from "@react-navigation/native";
 import { apiGeral } from "@/src/lib/geral";
 import { Evento, EventoIngresso, QueryParams } from "@/src/types/geral";
 import { useFocusEffect } from "expo-router";
+import ImageCarousel from "@/src/components/ImagemCarousel";
+import { api } from "@/src/lib/api";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +30,7 @@ export default function Index() {
   const [visibleMsg, setVisibleMsg] = useState(false);
   const navigation = useNavigation() as any;
   const [registros, setRegistros] = useState<Evento[]>([]);
+  const [imagensEvento, setImagensEvento] = useState<string[]>([]);
   const [flatListWidth, setFlatListWidth] = useState<number>(width - 10);
 
   const getRegistros = async (params: QueryParams) => {
@@ -44,6 +47,11 @@ export default function Index() {
       registrosData[i].MenorValor = precoMin;
     }
 
+    setImagensEvento(
+      registrosData
+        .filter((item) => !!item.imagem)
+        .map((item) => api.getBaseApi() + "/uploads/" + item.imagem)
+    );
     setRegistros(registrosData);
   };
 
@@ -85,6 +93,41 @@ export default function Index() {
         <Text style={styles.titulo}>Eventos</Text> */}
 
         <FlatList
+          data={[{}]} // dummy item para garantir render
+          keyExtractor={() => "outer-list"}
+          renderItem={() => (
+            <FlatList
+              data={registros}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={width > 600 ? 3 : 1}
+              style={styles.listaEventos}
+              renderItem={({ item }) => (
+                <CardEvento
+                  data={item}
+                  onPress={() => {
+                    navigation.navigate("evento", { id: item.id });
+                  }}
+                  widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15}
+                />
+              )}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+          ListHeaderComponent={
+            <>
+              {/* <View style={styles.containerImagem}>
+                <Image
+                  source={require("../../../assets/apresentacao.png")}
+                  style={styles.imagem}
+                />
+              </View> */}
+              <ImageCarousel images={imagensEvento} />
+              <Text style={styles.titulo}>Eventos</Text>
+            </>
+          }
+        />
+
+        {/* <FlatList
           key={`grid-${width > 600 ? "3" : "1"}`}
           data={registros}
           style={styles.listaEventos}
@@ -117,7 +160,7 @@ export default function Index() {
             const { width } = event.nativeEvent.layout;
             setFlatListWidth(width);
           }}
-        />
+        /> */}
       </View>
 
       <Modal visible={visibleMsg} transparent animationType="slide">
@@ -131,8 +174,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    // marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    // marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     // marginBottom: 20,
   },
   titulo: {
@@ -142,7 +185,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 3,
   },
-  listaEventos: {},
+  listaEventos: {
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+  },
   columnWrapper: {
     justifyContent: "flex-start",
   },
@@ -150,8 +196,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   imagem: {
-    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%", // 100% para web, largura da tela para mobile
+    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "100%") : "100%", // 100% para web, largura da tela para mobile
     height: Platform.OS === "web" ? (width <= 1000 ? 200 : 400) : 200,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
+    resizeMode: "stretch", // Ajuste o modo de redimensionamento conforme necessário
   },
 });

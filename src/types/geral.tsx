@@ -317,6 +317,10 @@ export interface Ingresso {
     | "Reembolsado"
     | "Utilizado";
   nome: string;
+  Evento_nome?: string;
+  Evento_imagem?: string;
+  Evento_data_hora_inicio?: Date;
+  Evento_endereco?: string;
 }
 
 export interface Transacao {

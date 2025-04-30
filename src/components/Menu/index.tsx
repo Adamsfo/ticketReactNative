@@ -17,7 +17,7 @@ export default function Menu({ color }: { color?: string }) {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => navigation.openDrawer()}>
-        <Feather name="menu" size={36} color={color ? color : colors.roxo} />
+        <Feather name="menu" size={33} color={color ? color : colors.roxo} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate("home")}>
         <Image
@@ -32,14 +32,15 @@ export default function Menu({ color }: { color?: string }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    marginTop: 5,
-    marginLeft: 20,
+    marginTop: 7,
+    marginLeft: 10,
     position: "absolute",
     justifyContent: "space-around",
   },
   imagem: {
-    width: Platform.OS === "web" ? 170 : 160, // 100% para web, largura da tela para mobile
-    height: Platform.OS === "web" ? 45 : 40,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
+    width: Platform.OS === "web" ? 100 : 100, 
+    height: Platform.OS === "web" ? 38 : 38,
+    resizeMode: "cover", 
+    
   },
 });

@@ -65,7 +65,8 @@
     "react-native-webview": "^13.12.5",
     "react-quill": "^2.0.0",
     "react-text-mask": "^5.5.0",
-    "styled-components": "^6.1.14"
+    "styled-components": "^6.1.14",
+    "expo-print": "~14.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
