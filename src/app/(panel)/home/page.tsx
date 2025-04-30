@@ -114,7 +114,7 @@ export default function Index() {
             />
           )}
           ListHeaderComponent={
-            <>
+            <View style={{ height: Platform.OS === "web" ? 500 : 300 }}>
               {/* <View style={styles.containerImagem}>
                 <Image
                   source={require("../../../assets/apresentacao.png")}
@@ -123,7 +123,7 @@ export default function Index() {
               </View> */}
               <ImageCarousel images={imagensEvento} />
               <Text style={styles.titulo}>Eventos</Text>
-            </>
+            </View>
           }
         />
 
