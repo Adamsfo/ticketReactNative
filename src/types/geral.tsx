@@ -321,6 +321,11 @@ export interface Ingresso {
   Evento_imagem?: string;
   Evento_data_hora_inicio?: Date;
   Evento_endereco?: string;
+  qrcode?: string;
+  qrCodeBase64?: string;
+  EventoIngresso_nome?: string;
+  TipoIngresso_descricao?: string;
+  nomeImpresso?: string;
 }
 
 export interface Transacao {

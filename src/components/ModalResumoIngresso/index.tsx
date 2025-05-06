@@ -176,6 +176,14 @@ export default function ModalResumoIngresso({
       setLoading(true);
 
       //atualizar os ingressos
+      for (let i = 0; i < (IngressoTransacao ?? []).length; i++) {
+        const item = (IngressoTransacao ?? [])[i];
+        console.log("item", item);
+        await apiGeral.updateResorce<Ingresso>("/ingressonome", {
+          id: item.idIngresso,
+          nomeImpresso: item.Ingresso_nomeImpresso,
+        });
+      }
 
       navigation.navigate("pagamento", {
         idEvento: IngressoTransacao?.[0]?.Ingresso_Evento?.id ?? 0,

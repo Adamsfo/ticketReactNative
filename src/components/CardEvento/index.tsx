@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Evento } from "@/src/types/geral";
 import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import formatCurrency from "../FormatCurrency";
 import { api } from "@/src/lib/api";
 import { CalendarIcon, MapPinIcon } from "lucide-react-native";
@@ -57,13 +58,15 @@ export default function CardEvento({
           {/* <Text style={styles.label}>Data:</Text> */}
           <CalendarIcon size={16} color="#6b7280" />
           <Text style={styles.text}>
-            {format(
+            {formatInTimeZone(
               parseISO(data.data_hora_inicio.toString()),
+              "America/Cuiaba",
               "dd/MM/yyyy HH:mm"
             )}{" "}
             a{" "}
-            {format(
+            {formatInTimeZone(
               parseISO(data.data_hora_fim.toString()),
+              "America/Cuiaba",
               "dd/MM/yyyy HH:mm"
             )}
           </Text>

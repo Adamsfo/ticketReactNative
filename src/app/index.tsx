@@ -49,6 +49,15 @@ export default function Index({ route }: any) {
           //     decodeURIComponent(param.split("registroTransacao=")[1] as string)
           //   ),
         });
+      } else if (param.includes("ingresso")) {
+        const url = new URL(param);
+        const urlParams = new URLSearchParams(url.search);
+
+        const qrcode = urlParams.get("qrcode");
+
+        navigation.navigate("ingresso", {
+          qrcode: qrcode,
+        });
       } else {
         navigation.navigate("home");
       }

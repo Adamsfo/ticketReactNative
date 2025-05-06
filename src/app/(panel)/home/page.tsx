@@ -21,6 +21,7 @@ import { Evento, EventoIngresso, QueryParams } from "@/src/types/geral";
 import { useFocusEffect } from "expo-router";
 import ImageCarousel from "@/src/components/ImagemCarousel";
 import { api } from "@/src/lib/api";
+import KeenSliderNavigation from "@/src/components/CarouselWeb";
 
 const { width } = Dimensions.get("window");
 
@@ -95,12 +96,16 @@ export default function Index() {
         <FlatList
           data={[{}]} // dummy item para garantir render
           keyExtractor={() => "outer-list"}
+          showsVerticalScrollIndicator={false}
+          // contentContainerStyle={{ padding: 1 }}
           renderItem={() => (
             <FlatList
               data={registros}
               keyExtractor={(item) => item.id.toString()}
               numColumns={width > 600 ? 3 : 1}
               style={styles.listaEventos}
+              showsVerticalScrollIndicator={false}
+              // contentContainerStyle={{ padding:  }}
               renderItem={({ item }) => (
                 <CardEvento
                   data={item}
@@ -110,18 +115,17 @@ export default function Index() {
                   widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15}
                 />
               )}
-              showsVerticalScrollIndicator={false}
             />
           )}
           ListHeaderComponent={
             <View style={{ height: Platform.OS === "web" ? 500 : 300 }}>
-              {/* <View style={styles.containerImagem}>
+              <View style={styles.containerImagem}>
                 <Image
                   source={require("../../../assets/apresentacao.png")}
                   style={styles.imagem}
                 />
-              </View> */}
-              <ImageCarousel images={imagensEvento} />
+              </View>
+              {/* <ImageCarousel images={imagensEvento} /> */}
               <Text style={styles.titulo}>Eventos</Text>
             </View>
           }

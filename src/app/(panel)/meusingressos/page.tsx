@@ -30,7 +30,10 @@ import {
 import { Badge } from "@/src/components/Badge";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { api } from "@/src/lib/api";
-import * as Print from "expo-print";
+import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import CardIngresso from "@/src/components/CardIngresso";
+// import QRCode from "react-native-qrcode-svg";
 
 const { width } = Dimensions.get("window");
 
@@ -48,9 +51,10 @@ export default function Index() {
       ...params,
       pageSize: 200,
     });
-    const registrosData = response.data ?? [];
+    let registrosData = response.data ?? [];
 
-    console.log("Registros:", registrosData);
+    console.log("Registros com QRCode:", registrosData);
+
     setRegistros(registrosData);
   };
 
@@ -59,45 +63,6 @@ export default function Index() {
       getRegistros({ filters: { idUsuario: user?.id, status: "Confirmado" } });
     }, [visibleModal])
   );
-
-  const handlePrint = async (item: Ingresso) => {
-    const html = `
-    <html>
-      <head>
-        <style>
-          body { font-family: Arial; padding: 24px; }
-          h1 { color: #333; }
-          .section { margin-bottom: 16px; }
-          .bold { font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <h1>${item.Evento_nome}</h1>
-        <div class="section"><span class="bold">Data:</span> ${new Date(
-          item.Evento_data_hora_inicio ?? new Date().toISOString()
-        ).toLocaleString()}</div>
-        <div class="section"><span class="bold">Endereço:</span> ${
-          item.Evento_endereco
-        }</div>
-        <div class="section"><span class="bold">Código do ingresso:</span> ${
-          item.id
-        }</div>
-      </body>
-    </html>
-  `;
-
-    if (Platform.OS === "web") {
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-      }
-    } else {
-      await Print.printAsync({ html });
-    }
-  };
 
   return (
     <LinearGradient
@@ -151,67 +116,7 @@ export default function Index() {
           showsHorizontalScrollIndicator={false}
           numColumns={width > 600 ? 3 : 1}
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              {/* <Image source={{ uri: api.getBaseApi() + "/uploads/" + item.imagem }} style={styles.image} /> */}
-              <Image
-                source={{
-                  uri: api.getBaseApi() + "/uploads/" + item.Evento_imagem,
-                }}
-                style={styles.image}
-              />
-              <View style={styles.cardContent}>
-                <View style={styles.header}>
-                  <Text style={styles.eventTitle}>{item.Evento_nome}</Text>
-                  <Badge
-                    variant={
-                      item.status === "Confirmado" ? "default" : "secondary"
-                    }
-                  >
-                    {item.status}
-                  </Badge>
-                </View>
-
-                <View style={styles.row}>
-                  <CalendarIcon size={16} color="#6b7280" />
-                  <Text style={styles.text}>
-                    {item.Evento_data_hora_inicio
-                      ? new Date(
-                          item.Evento_data_hora_inicio
-                        ).toLocaleString() +
-                        " às " +
-                        new Date(item.Evento_data_hora_inicio).toLocaleString()
-                      : "Data não disponível"}
-                  </Text>
-                </View>
-
-                <View style={styles.row}>
-                  <MapPinIcon size={16} color="#6b7280" />
-                  <Text style={styles.text}>{item.Evento_endereco}</Text>
-                </View>
-
-                <View style={[styles.row, { marginTop: 8 }]}>
-                  <QrCodeIcon size={16} color="#374151" />
-                  <Text style={styles.code}>
-                    <Text style={styles.bold}>Código:</Text> {item.id}
-                  </Text>
-                </View>
-                <View style={[styles.row, { marginTop: 8 }]}>
-                  <TouchableOpacity
-                    style={styles.button}
-                    onPress={() => handlePrint(item)}
-                  >
-                    <Text style={styles.buttonText}>
-                      <PrinterIcon size={16} color="#fff" /> Imprimir
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.button}>
-                    <Text style={styles.buttonText}>
-                      <WalletIcon size={16} color="#fff" /> Wallet
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+            <CardIngresso item={item} getRegistros={getRegistros} />
           )}
         />
       </View>
@@ -299,4 +204,5 @@ const styles = StyleSheet.create({
     color: colors.branco,
     fontWeight: "600",
   },
+  qr: { width: 200, height: 200, marginBottom: 10 },
 });

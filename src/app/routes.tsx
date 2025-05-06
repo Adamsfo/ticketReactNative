@@ -19,6 +19,7 @@ import Conferencia from "./(panel)/conferencia/page";
 import Pagamento from "./(panel)/pagamento/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
 import MeusIngressos from "./(panel)/meusingressos/page";
+import Ingresso from "./(panel)/ingresso/page";
 import {
   ActivityIndicator,
   Image,
@@ -218,6 +219,16 @@ function Routes() {
         }}
       />
       <Drawer.Screen
+        name="ingresso"
+        component={Ingresso}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
         name="pagamento"
         component={Pagamento}
         options={{
@@ -242,7 +253,7 @@ function Routes() {
           headerShown: false,
           title: "Tipo Ingresso",
         }}
-      />      
+      />
       <Drawer.Screen
         name="meusingressos"
         component={MeusIngressos}
