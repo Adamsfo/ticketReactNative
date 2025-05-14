@@ -233,7 +233,6 @@ export default function Index() {
       pageSize: 200,
     });
     const registrosData = response.data ?? [];
-    console.log("registrosData", registrosData);
 
     setRegistrosTransacao(registrosData[0]);
 

@@ -19,7 +19,10 @@ import Conferencia from "./(panel)/conferencia/page";
 import Pagamento from "./(panel)/pagamento/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
 import MeusIngressos from "./(panel)/meusingressos/page";
+import MinhasCompras from "./(panel)/minhascompras/page";
 import Ingresso from "./(panel)/ingresso/page";
+import Validador from "./(panel)/validador/page";
+import IngressoTransacao from "./(panel)/ingressosTransacao/page";
 import {
   ActivityIndicator,
   Image,
@@ -247,6 +250,14 @@ function Routes() {
         }}
       />
       <Drawer.Screen
+        name="validador"
+        component={Validador}
+        options={{
+          headerShown: false,
+          title: "Validador",
+        }}
+      />
+      <Drawer.Screen
         name="tipoingresso"
         component={TipoIngresso}
         options={{
@@ -264,12 +275,22 @@ function Routes() {
         }}
       />
       <Drawer.Screen
-        name="meinhascompras"
-        component={MeusIngressos}
+        name="minhascompras"
+        component={MinhasCompras}
         options={{
           headerShown: false,
           title: "Minhas Compras",
           // drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="ingressostransacao"
+        component={IngressoTransacao}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
         }}
       />
     </Drawer.Navigator>

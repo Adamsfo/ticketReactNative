@@ -18,7 +18,7 @@ interface DataItem {
 
 interface CustomGridProps {
   data: DataItem[];
-  onItemPress: (id: number) => void;
+  onItemPress?: (id: number) => void;
 }
 
 const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
@@ -32,7 +32,7 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
           <TouchableOpacity
             key={index}
             style={styles.box}
-            onPress={() => onItemPress(data[0].id)}
+            onPress={() => onItemPress && onItemPress(data[0].id)}
           >
             {Platform.OS !== "web" && (
               <Text style={styles.textLabel}>{item.label + ":"}</Text>
@@ -42,7 +42,7 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
         ))}
         <TouchableOpacity
           style={styles.boxIcone}
-          onPress={() => onItemPress(data[0].id)}
+          onPress={() => onItemPress && onItemPress(data[0].id)}
         >
           <Feather name="edit" size={18} color={colors.branco} />
         </TouchableOpacity>
