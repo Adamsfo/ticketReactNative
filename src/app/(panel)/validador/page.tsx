@@ -1,33 +1,29 @@
 import React, { useCallback, useState } from "react";
-import { Text, StyleSheet, Platform, View, ScrollView } from "react-native";
+import {
+  Text,
+  StyleSheet,
+  Platform,
+  View,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
 import { Ingresso, QueryParams } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
-import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
 export default function Index() {
   const endpointApi = "/ingresso";
-  const [registro, setRegistro] = useState<Ingresso>();
+  const [registro, setRegistro] = useState<Ingresso | null>(null);
   const route = useRoute();
 
-  // const getRegistros = async (params: QueryParams) => {
-  //   const response = await apiGeral.getResource<Ingresso>(endpointApi, {
-  //     ...params,
-  //     pageSize: 200,
-  //   });
-  //   const registrosData = response.data ?? [];
-  //   setRegistro(registrosData[0]);
-  // };
+  const [permission, requestPermission] = useCameraPermissions();
 
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     getRegistros({ filters: { qrcode } });
-  //   }, [qrcode])
-  // );
+  const isPermissionGranted = Boolean(permission?.granted);
 
   return (
     <LinearGradient
@@ -38,6 +34,43 @@ export default function Index() {
       <BarMenu />
       <View style={styles.container}>
         <Text style={styles.title}>Validador</Text>
+        <TouchableOpacity
+          style={[styles.button, styles.buttonSave, { width: 250 }]}
+          onPress={requestPermission}
+        >
+          <Text style={{ color: colors.branco }}>
+            {Platform.OS === "web"
+              ? "Validador Somente no App!"
+              : "Requer permissão"}{" "}
+          </Text>
+        </TouchableOpacity>
+
+        <CameraView
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              width: "90%",
+              height: "70%",
+              marginLeft: "5%",
+              borderRadius: 20,
+              marginTop: "30%",
+            },
+          ]}
+          facing="back"
+          onBarcodeScanned={({ data }) => {
+            Alert.alert("QR Code Scanned", `Data: ${data}`, [
+              {
+                text: "Scan Again",
+                onPress: () => setRegistro(null),
+              },
+            ]);
+            // Aqui você pode fazer a chamada para a API com o código escaneado
+            // Exemplo:
+            // getRegistros({ filters: { qrcode: data } });
+          }}
+        />
+
+        {/* )} */}
       </View>
     </LinearGradient>
   );
@@ -64,7 +97,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 15,
     borderRadius: 20,
-    // maxWidth: 465,
-    // width: "90%",
+  },
+  button: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  buttonClose: {
+    backgroundColor: "rgb(211, 211, 211)",
+  },
+  buttonSave: {
+    backgroundColor: colors.azul,
   },
 });
