@@ -107,18 +107,23 @@ const FloatingMenu = ({ color }: { color?: string }) => {
       <Modal visible={open} transparent animationType="fade">
         <TouchableOpacity style={styles.overlay} onPress={toggleMenu} />
         <View style={styles.menu}>
-          <FAB
-            icon="account"
-            label="Entrar"
-            onPress={() => navigation.navigate("login")}
-            style={styles.fabItem}
-          />
-          <FAB
-            icon="account-plus"
-            label="Cadastre-se"
-            onPress={() => navigation.navigate("loginAdd")}
-            style={styles.fabItem}
-          />
+          {!user?.nomeCompleto && (
+            <FAB
+              icon="account"
+              label="Entrar"
+              onPress={() => navigation.navigate("login")}
+              style={styles.fabItem}
+            />
+          )}
+          {!user?.nomeCompleto && (
+            <FAB
+              icon="account-plus"
+              label="Cadastre-se"
+              onPress={() => navigation.navigate("loginAdd")}
+              style={styles.fabItem}
+            />
+          )}
+
           {/* <FAB
             icon="account-plus"
             label="Minhas Compras"
@@ -131,12 +136,14 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             onPress={() => navigation.navigate("meusingressos")}
             style={styles.fabItem}
           /> */}
-          <FAB
-            icon="logout"
-            label="Sair"
-            onPress={handleLogout}
-            style={styles.fabItem}
-          />
+          {user?.nomeCompleto && (
+            <FAB
+              icon="logout"
+              label="Sair"
+              onPress={handleLogout}
+              style={styles.fabItem}
+            />
+          )}
         </View>
       </Modal>
     </>

@@ -29,6 +29,10 @@ export interface Usuario {
   idFuncaoUsuario?: number;
   token?: string;
   success?: boolean;
+  cpf?: string;
+  telefone?: string;
+  id_cliente?: number;
+  sobreNome?: string;
 }
 
 export interface Cidade {

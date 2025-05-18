@@ -12,12 +12,13 @@ import {
 import colors from "@/src/constants/colors";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Usuario } from "@/src/types/geral";
 import { apiAuth } from "@/src/lib/auth";
 import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import { useNavigation } from "@react-navigation/native";
+import apiJango from "@/src/lib/apiJango";
 
 export default function Signup() {
   const navigation = useNavigation() as any;
@@ -29,18 +30,36 @@ export default function Signup() {
     senha: "",
     nomeCompleto: "",
     confirmaSenha: "",
+    cpf: "",
+    telefone: "",
+    id_cliente: 0,
   });
 
   const handleChange = (field: keyof Usuario, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
 
+  useEffect(() => {
+    setFormData({
+      login: "",
+      email: "",
+      senha: "",
+      nomeCompleto: "",
+      confirmaSenha: "",
+      cpf: "",
+      telefone: "",
+      id_cliente: 0,
+    });
+  }, []);
+
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+    if (!formData.cpf) newErrors.cpf = "O cpf é obrigatório.";
     if (!formData.email) newErrors.email = "O email é obrigatório.";
     if (!formData.senha) newErrors.senha = "A senha é obrigatória.";
+    if (!formData.sobreNome) newErrors.sobreNome = "A sobrenome é obrigatória.";
     if (!formData.nomeCompleto)
       newErrors.nomeCompleto = "Nome Completo é obrigatório.";
     if (formData.senha !== formData.confirmaSenha) {
@@ -64,10 +83,43 @@ export default function Signup() {
     }
 
     setLoading(true);
+
+    let dados = formData;
+
+    if (dados.id_cliente === 0) {
+      try {
+        await apiJango().atualizarCliente({
+          CPF_CNPJ: (dados.cpf ?? "").replace(/\D/g, ""),
+          NOME: dados.nomeCompleto + " " + dados.sobreNome,
+          TELEFONE_CELULAR: (dados.telefone ?? "").replace(/\D/g, ""),
+          EMAIL: dados.email,
+        });
+
+        const cliente = await apiJango().getCliente(dados.cpf ?? "");
+
+        if (cliente[0]) {
+          dados = {
+            ...dados,
+            id_cliente: cliente[0].id_cliente,
+          };
+          setFormData({
+            ...formData,
+            id_cliente: cliente[0].id_cliente,
+          });
+        }
+      } catch (error) {
+        console.error("Network request failed:", error);
+        setErrors({
+          api: "Erro ao registrar usuário no Jango. Tente novamente mais tarde.",
+        });
+        setLoading(false);
+      }
+    }
+
     try {
       const response = await apiAuth.addlogin({
-        ...formData,
-        login: formData.email,
+        ...dados,
+        login: dados.email,
       });
 
       if (!response.success) {
@@ -88,6 +140,55 @@ export default function Signup() {
       setLoading(false);
     }
   }
+
+  const formatCPF = (value: string) => {
+    // Remove tudo que não for número
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    // Aplica a máscara do CPF
+    return onlyNumbers
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+      .slice(0, 14); // Garante que não passe de 14 caracteres (formato final)
+  };
+
+  const formatPhone = (value: string) => {
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    if (onlyNumbers.length <= 10) {
+      // Formato: (99) 9999-9999
+      return onlyNumbers
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2")
+        .slice(0, 14);
+    } else {
+      // Formato: (99) 99999-9999
+      return onlyNumbers
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{5})(\d)/, "$1-$2")
+        .slice(0, 15);
+    }
+  };
+
+  const handleGetClienteJango = async (cpf: string) => {
+    const cliente = await apiJango().getCliente(cpf);
+
+    if (cliente[0]) {
+      const nomePartes = cliente[0].nome.trim().split(" ");
+      const primeiroNome = nomePartes[0];
+      const sobrenome = nomePartes.slice(1).join(" "); // junta o restante como sobrenome
+
+      setFormData({
+        ...formData,
+        nomeCompleto: primeiroNome,
+        sobreNome: sobrenome,
+        telefone: formatPhone(cliente[0].telefone_celular),
+        email: cliente[0].email,
+        id_cliente: cliente[0].id_cliente,
+      });
+    }
+  };
 
   return (
     <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
@@ -115,16 +216,52 @@ export default function Signup() {
           >
             <View style={style.form}>
               <View>
-                <Text style={style.label}>Nome Completo</Text>
+                <Text style={style.label}>CPF</Text>
                 <TextInput
                   style={style.input}
-                  placeholder="Nome Completo..."
+                  placeholder="CPF..."
+                  keyboardType="default"
+                  value={formData.cpf}
+                  onChangeText={(text) => {
+                    const formatted = formatCPF(text);
+                    handleChange("cpf", formatted);
+                  }}
+                  onBlur={() => {
+                    if ((formData.cpf?.length ?? 0) === 14) {
+                      handleGetClienteJango(formData.cpf ?? "");
+                    }
+                  }}
+                ></TextInput>
+                {errors.cpf && (
+                  <Text style={style.labelError}>{errors.cpf}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={style.label}>Nome</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Nome..."
                   keyboardType="default"
                   value={formData.nomeCompleto}
                   onChangeText={(text) => handleChange("nomeCompleto", text)}
                 ></TextInput>
                 {errors.nomeCompleto && (
                   <Text style={style.labelError}>{errors.nomeCompleto}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={style.label}>Sobrenome</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Sobrenome..."
+                  keyboardType="default"
+                  value={formData.sobreNome}
+                  onChangeText={(text) => handleChange("sobreNome", text)}
+                ></TextInput>
+                {errors.sobreNome && (
+                  <Text style={style.labelError}>{errors.sobreNome}</Text>
                 )}
               </View>
 
@@ -140,6 +277,23 @@ export default function Signup() {
                 />
                 {errors.email && (
                   <Text style={style.labelError}>{errors.email}</Text>
+                )}
+              </View>
+
+              <View>
+                <Text style={style.label}>Telefone</Text>
+                <TextInput
+                  style={style.input}
+                  placeholder="Telefone..."
+                  keyboardType="numeric"
+                  value={formData.telefone}
+                  onChangeText={(text) => {
+                    const formatted = formatPhone(text);
+                    handleChange("telefone", formatted);
+                  }}
+                />
+                {errors.telefone && (
+                  <Text style={style.labelError}>{errors.telefone}</Text>
                 )}
               </View>
 
