@@ -108,7 +108,8 @@ const PdvApiJango = {
     // cliente = JSON.parse(dados);
     delete cliente.ROWID;
     delete cliente.DATA_CRIACAO;
-    apiFetchPut("/cliente", cliente);
+    const json = await apiFetchPut("/cliente", cliente);
+    return json;
   },
 };
 

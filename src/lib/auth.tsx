@@ -53,6 +53,28 @@ class ApiAuth {
 
     return registro;
   }
+
+  public async emailrecuperarsenha(
+    email: string,
+    endpoint: string
+  ): Promise<ApiResponse> {
+    return api.request("/emailrecuperarsenha", "POST", { email, endpoint });
+  }
+
+  public async enviaCodigoAtivacao(
+    info: string,
+    tipo: string
+  ): Promise<ApiResponse> {
+    return api.request("/enviacodigoativacao", "POST", { info, tipo });
+  }
+
+  public async varificaAtivarConta(
+    info: string,
+    codigo: string,
+    id: number
+  ): Promise<ApiResponse> {
+    return api.request("/verificaativaconta", "POST", { info, codigo, id });
+  }
 }
 
 export const apiAuth = new ApiAuth(); // Use o ambiente correto conforme necessário

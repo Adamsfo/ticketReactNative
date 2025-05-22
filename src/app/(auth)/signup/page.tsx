@@ -8,17 +8,22 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
+  Modal,
 } from "react-native";
 import colors from "@/src/constants/colors";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Usuario } from "@/src/types/geral";
 import { apiAuth } from "@/src/lib/auth";
 import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import { useNavigation } from "@react-navigation/native";
 import apiJango from "@/src/lib/apiJango";
+import ModalMsg from "@/src/components/ModalMsg";
+import { api } from "@/src/lib/api";
+import ModalVerificacao from "@/src/components/ModalVerificacao";
 
 export default function Signup() {
   const navigation = useNavigation() as any;
@@ -34,29 +39,63 @@ export default function Signup() {
     telefone: "",
     id_cliente: 0,
   });
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msg, setMsg] = useState("");
 
   const handleChange = (field: keyof Usuario, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  useEffect(() => {
-    setFormData({
-      login: "",
-      email: "",
-      senha: "",
-      nomeCompleto: "",
-      confirmaSenha: "",
-      cpf: "",
-      telefone: "",
-      id_cliente: 0,
-    });
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setFormData({
+        login: "",
+        email: "",
+        senha: "",
+        nomeCompleto: "",
+        confirmaSenha: "",
+        cpf: "",
+        telefone: "",
+        id_cliente: 0,
+      });
+      setErrors({});
+      setMsg("");
+    }, [])
+  );
+
+  const isValidCPF = (cpf: string): boolean => {
+    cpf = cpf.replace(/\D/g, "");
+
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += Number(cpf[i]) * (10 - i);
+    }
+    let firstDigit = (sum * 10) % 11;
+    if (firstDigit === 10 || firstDigit === 11) firstDigit = 0;
+    if (firstDigit !== Number(cpf[9])) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += Number(cpf[i]) * (11 - i);
+    }
+    let secondDigit = (sum * 10) % 11;
+    if (secondDigit === 10 || secondDigit === 11) secondDigit = 0;
+    if (secondDigit !== Number(cpf[10])) return false;
+
+    return true;
+  };
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!formData.cpf) newErrors.cpf = "O cpf é obrigatório.";
+    if (!formData.cpf) {
+      newErrors.cpf = "O cpf é obrigatório.";
+    } else if (!isValidCPF(formData.cpf)) {
+      newErrors.cpf = "CPF inválido.";
+    }
     if (!formData.email) newErrors.email = "O email é obrigatório.";
     if (!formData.senha) newErrors.senha = "A senha é obrigatória.";
     if (!formData.sobreNome) newErrors.sobreNome = "A sobrenome é obrigatória.";
@@ -117,9 +156,11 @@ export default function Signup() {
     }
 
     try {
+      const endpoint = api.getBaseUrlSite();
       const response = await apiAuth.addlogin({
         ...dados,
         login: dados.email,
+        endpoint: endpoint,
       });
 
       if (!response.success) {
@@ -127,7 +168,11 @@ export default function Signup() {
           api: response.message || "Erro desconhecido ao registrar usuário.",
         });
       } else {
-        navigation.navigate("login");
+        setFormData({
+          ...response.data,
+        });
+        setMsg("Usuário cadastrado com sucesso!\n\n");
+        setModalMsg(true);
       }
     } catch (error) {
       console.error("Network request failed:", error);
@@ -325,13 +370,42 @@ export default function Signup() {
                 )}
               </View>
 
-              {errors.api && <Text style={style.labelError}>{errors.api}</Text>}
+              {errors.api && (
+                <Text style={style.labelError}>
+                  {errors.api}{" "}
+                  {errors.api.includes("recuperar") && (
+                    <TouchableOpacity
+                      style={{
+                        width: 150,
+                        height: 20,
+                        backgroundColor: colors.laranjado,
+                        alignItems: "center",
+                        borderRadius: 8,
+                      }}
+                      onPress={() => navigation.navigate("recuperarsenha")}
+                    >
+                      <Text style={style.buttonText}>Recuperar senha</Text>
+                    </TouchableOpacity>
+                  )}
+                </Text>
+              )}
 
               <Pressable style={style.button} onPress={handleSingUp}>
                 <Text style={style.buttonText}>
                   {loading ? "Cadastrando..." : "Cadastrar"}
                 </Text>
               </Pressable>
+
+              <Modal visible={modalMsg} transparent animationType="fade">
+                <ModalVerificacao
+                  onClose={() => {
+                    setModalMsg(false);
+                    navigation.navigate("login");
+                  }}
+                  msg={msg}
+                  user={formData}
+                />
+              </Modal>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

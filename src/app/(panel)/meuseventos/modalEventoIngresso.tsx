@@ -200,7 +200,7 @@ export default function ModalEventoIngresso({
             </View>
 
             <View style={{ marginBottom: 16 }}>
-              <Text style={styles.label}>Tipo</Text>
+              <Text style={styles.label}>Setor</Text>
               <Select
                 items={itemsTipoIngresso}
                 currentValue={formData.idTipoIngresso}
@@ -212,7 +212,7 @@ export default function ModalEventoIngresso({
             </View>
 
             <View>
-              <Text style={styles.label}>Nome</Text>
+              <Text style={styles.label}>Título</Text>
               <TextInput
                 style={styles.input}
                 multiline={Platform.OS === "web" ? false : true}

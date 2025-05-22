@@ -9,39 +9,6 @@ import { api } from "../lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 class ApiGeral {
-  //Empresa
-  // public async getEmpresa(params?: QueryParams): Promise<ApiResponse> {
-  //     return api.request<Empresa[]>('/empresa', 'GET', null, params);
-  // }
-
-  //Cidade
-  // public async getCidades(params?: QueryParams): Promise<ApiResponse> {
-  //     return api.request<Cidade[]>('/cidade', 'GET', null, params);
-  // }
-
-  // public async getCidadeById(id: number): Promise<Cidade> {
-  //     const request = await api.request<Cidade[]>(`/cidade?filters={"id":"${id}"}`, 'GET');
-  //     const registro = request.data && request.data[0] as Cidade;
-
-  //     if (!registro) {
-  //         throw new Error('Cidade não encontrada');
-  //     }
-
-  //     return registro ;
-  // }
-
-  // public async createCidade(data: Cidade) {
-  //     return await api.request<Cidade>('/cidade', 'POST', data);
-  // }
-
-  // public async updateCidade(data: Cidade) {
-  //     return await api.request<Cidade>(`/cidade/${data.id}`, 'PUT', data);
-  // }
-
-  // public async deleteCidade(id: string) {
-  //     return await api.request<Cidade>(`/cidade/${id}`, 'DELETE');
-  // }
-
   // Método genérico para buscar recursos
   public async getResourceById<T>(
     endpoint: string,

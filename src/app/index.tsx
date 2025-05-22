@@ -58,6 +58,15 @@ export default function Index({ route }: any) {
         navigation.navigate("ingresso", {
           qrcode: qrcode,
         });
+      } else if (param.includes("redefinirsenha")) {
+        const url = new URL(param);
+        const urlParams = new URLSearchParams(url.search);
+
+        const token = urlParams.get("token");
+
+        navigation.navigate("redefinirsenha", {
+          token,
+        });
       } else {
         navigation.navigate("home");
       }

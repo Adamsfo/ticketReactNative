@@ -31,6 +31,8 @@ import {
   Text,
   View,
 } from "react-native";
+import RecuperarSenha from "./(auth)/recuperarSenha/page";
+import RedefinirSenha from "./(auth)/redefinirSenha/page";
 
 const Drawer = createDrawerNavigator();
 
@@ -146,6 +148,26 @@ function Routes() {
       <Drawer.Screen
         name="loginAdd"
         component={Signup}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="recuperarsenha"
+        component={RecuperarSenha}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="redefinirsenha"
+        component={RedefinirSenha}
         options={{
           headerShown: false,
           drawerLabel: () => null,

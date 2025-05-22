@@ -6,6 +6,7 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
   Platform,
+  Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
@@ -16,6 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { Usuario } from "@/src/types/geral";
+import ModalVerificacao from "@/src/components/ModalVerificacao";
 
 interface ModalMsgProps {
   onClose: () => void;
@@ -27,17 +29,30 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const { setAuth } = useAuth();
+  const { setAuth, user } = useAuth();
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msg, setMsg] = useState("");
 
   async function handleLogin() {
+    setError("");
     setLoading(true);
 
     const result = await apiAuth.login({ login: email, senha: password });
-    console.log("Login result:", result); // Adicione este log para depuração
-    fetchToken(); // Chame a função fetchToken após o login
+    const vUser = await fetchToken();
     if (result.success) {
-      setLoading(false);
-      onClose();
+      if (!vUser?.ativo) {
+        setMsg("Conta não ativada.\n\n");
+        setModalMsg(true);
+        setLoading(false);
+        return;
+      }
+
+      if (onClose) {
+        onClose();
+      } else {
+        setLoading(false);
+        navigation.navigate("home");
+      }
     } else {
       setError(result.message || "Erro desconhecido");
       setLoading(false);
@@ -57,6 +72,7 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
         setAuth(response as unknown as Usuario);
         // setUsuario(response as unknown as Usuario);
         await AsyncStorage.setItem("usuario", JSON.stringify(response));
+        return response as unknown as Usuario;
       } else {
         // setUsuario({} as Usuario);
         setAuth({} as Usuario);
@@ -114,7 +130,25 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
             />
           </View>
 
-          {error && <Text style={style.labelError}>{error}</Text>}
+          {error && (
+            <Text style={style.labelError}>
+              {error}
+              {error.includes("Credenciais inválidas") && (
+                <TouchableOpacity
+                  style={{
+                    width: 150,
+                    height: 20,
+                    backgroundColor: colors.laranjado,
+                    alignItems: "center",
+                    borderRadius: 8,
+                  }}
+                  onPress={() => navigation.navigate("recuperarsenha")}
+                >
+                  <Text style={style.buttonText}>Recuperar senha</Text>
+                </TouchableOpacity>
+              )}
+            </Text>
+          )}
 
           <TouchableOpacity style={style.button} onPress={handleLogin}>
             <Text style={style.buttonText}>
@@ -124,57 +158,34 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
 
           <Link
             href="/(auth)/signup/page"
-            onPress={() => navigation.navigate("loginAdd")}
+            onPress={() => {
+              onClose();
+              navigation.navigate("loginAdd");
+            }}
             style={{ marginTop: 16, textAlign: "center" }}
           >
             <Text style={{ textAlign: "center", color: colors.laranjado }}>
               Não tem uma conta? Cadastre-se
             </Text>
           </Link>
+
+          {user && (
+            <Modal visible={modalMsg} transparent animationType="fade">
+              <ModalVerificacao
+                onClose={() => {
+                  setModalMsg(false);
+                  navigation.navigate("login");
+                }}
+                msg={msg}
+                user={user}
+              />
+            </Modal>
+          )}
         </View>
       </View>
     </View>
   );
 }
-
-// const styles = StyleSheet.create({
-//   modalContainer: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#FFF",
-//     borderTopLeftRadius: 10,
-//     borderTopRightRadius: 10,
-//     padding: 15,
-//     width: "100%",
-//     height: "100%",
-//   },
-//   header: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     marginTop: 1,
-//     paddingVertical: 8,
-//   },
-//   area: {
-//     flex: 1,
-//     alignItems: "center",
-//     justifyContent: "center",
-//   },
-//   title: {
-//     fontSize: 33,
-//     fontWeight: "bold",
-//     color: "#212743",
-//   },
-//   innerContainer: {
-//     flex: 1,
-//     backgroundColor: colors.zinc,
-//     width: "100%",
-//     height: "100%",
-//   },
-// });
 
 const style = StyleSheet.create({
   container: {

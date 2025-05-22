@@ -33,6 +33,7 @@ export interface Usuario {
   telefone?: string;
   id_cliente?: number;
   sobreNome?: string;
+  endpoint?: string;
 }
 
 export interface Cidade {

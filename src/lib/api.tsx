@@ -8,7 +8,7 @@ const BASEAPI = [
   // 'http://201.71.153.116:9000',
   "Homologação",
   "1.0.32",
-  "https://api.sistema-agroanalise.com.br:8002",
+  "http://localhost:8081/",
 ];
 
 export const isAuthenticated = async (): Promise<boolean> => {
@@ -45,6 +45,10 @@ class Api {
 
   public getBaseApi() {
     return BASEAPI[0];
+  }
+
+  public getBaseUrlSite() {
+    return BASEAPI[3];
   }
 
   public async request<T>(

@@ -71,8 +71,8 @@ export default function Index() {
   });
 
   const dataEventoIngressos = [
-    { label: "Tipo", content: "" },
-    { label: "Nome", content: "" },
+    { label: "Setor", content: "" },
+    { label: "Título", content: "" },
     { label: "Valor a Receber", content: "" },
     { label: "Taxa", content: "" },
     { label: "Valor Venda", content: "" },
