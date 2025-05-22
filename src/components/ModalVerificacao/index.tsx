@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import colors from "@/src/constants/colors";
 import { apiAuth } from "@/src/lib/auth";
 import { Usuario } from "@/src/types/geral";
 import { ActivityIndicator } from "react-native-paper";
+import { useFocusEffect } from "expo-router";
 
 interface Props {
   onClose: () => void;
@@ -23,7 +24,7 @@ interface Props {
 export default function ModalVerificacao({ onClose, msg, user }: Props) {
   const [selectedOption, setSelectedOption] = useState<
     "email" | "sms" | "whatsapp" | null
-  >("email");
+  >(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>("");
@@ -41,9 +42,13 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedOption("email");
+    }, [])
+  );
+
   const onVerify = async (code: string) => {
-    console.log("Verificando código:", code);
-    console.log("Usuário:", user);
     const result = await apiAuth.varificaAtivarConta(
       user?.email ?? "",
       code,

@@ -32,7 +32,8 @@ export default function Login({ onClose }: ModalMsgProps) {
   const [error, setError] = useState<string>("");
   const [modalMsg, setModalMsg] = useState(false);
   const [msg, setMsg] = useState("");
-  const { setAuth, user } = useAuth();
+  const { setAuth } = useAuth();
+  const [usuarioAtivar, setUsuarioAtivar] = useState<Usuario | null>(null);
 
   async function handleLogin() {
     setError("");
@@ -42,6 +43,7 @@ export default function Login({ onClose }: ModalMsgProps) {
     const vUser = await fetchToken();
     if (result.success) {
       if (!vUser?.ativo) {
+        setUsuarioAtivar(vUser ?? null);
         setMsg("Conta não ativada.\n\n");
         setModalMsg(true);
         setLoading(false);
@@ -67,15 +69,15 @@ export default function Login({ onClose }: ModalMsgProps) {
 
     if (_token) {
       const response = await apiAuth.getUsurioToken(_token);
-      console.log("API Response:", response); // Verifique a resposta da API
 
       if (response) {
-        setAuth(response as unknown as Usuario);
-        // setUsuario(response as unknown as Usuario);
-        await AsyncStorage.setItem("usuario", JSON.stringify(response));
+        const vuser = response as unknown as Usuario;
+        if (vuser.ativo) {
+          await AsyncStorage.setItem("usuario", JSON.stringify(response));
+          setAuth(response as unknown as Usuario);
+        }
         return response as unknown as Usuario;
       } else {
-        // setUsuario({} as Usuario);
         setAuth({} as Usuario);
       }
     } else {
@@ -168,7 +170,7 @@ export default function Login({ onClose }: ModalMsgProps) {
             </Text>
           </Link>
 
-          {user && (
+          {usuarioAtivar && (
             <Modal visible={modalMsg} transparent animationType="fade">
               <ModalVerificacao
                 onClose={() => {
@@ -176,7 +178,7 @@ export default function Login({ onClose }: ModalMsgProps) {
                   navigation.navigate("login");
                 }}
                 msg={msg}
-                user={user}
+                user={usuarioAtivar}
               />
             </Modal>
           )}
