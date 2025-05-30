@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -179,7 +179,8 @@ export default function Index() {
         setRegistrosEventoIngressos([]);
         await getRegistros(id);
       };
-      if (id) {
+
+      if (id > 0) {
         fetchData();
       }
     }, [id])
@@ -423,17 +424,19 @@ export default function Index() {
             />
           </View>
 
-          <View style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>Produtor</Text>
-            <Select
-              items={itemsProdutor}
-              currentValue={formData.idProdutor}
-              onValueChange={(text) => handleChange("idProdutor", text)}
-            ></Select>
-            {errors.idProdutor && (
-              <Text style={styles.labelError}>{errors.idProdutor}</Text>
-            )}
-          </View>
+          {itemsProdutor.length > 0 && (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={styles.label}>Produtor</Text>
+              <Select
+                items={itemsProdutor}
+                currentValue={formData.idProdutor}
+                onValueChange={(text) => handleChange("idProdutor", text)}
+              ></Select>
+              {errors.idProdutor && (
+                <Text style={styles.labelError}>{errors.idProdutor}</Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.footer}>
             <TouchableOpacity

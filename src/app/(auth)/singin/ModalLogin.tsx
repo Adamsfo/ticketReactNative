@@ -88,6 +88,23 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
     }
   };
 
+  const isEmail = (value: string): boolean => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(value);
+  };
+
+  const formatCPF = (value: string) => {
+    // Remove tudo que não for número
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    // Aplica a máscara do CPF
+    return onlyNumbers
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+      .slice(0, 14); // Garante que não passe de 14 caracteres (formato final)
+  };
+
   return (
     <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
       <View style={styles.header}>
@@ -104,9 +121,9 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
 
       <View style={style.container}>
         <View style={style.header}>
-          <Text style={style.logoText}>
+          {/* <Text style={style.logoText}>
             Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
-          </Text>
+          </Text> */}
           <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
         </View>
 
@@ -120,6 +137,11 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
               autoCapitalize="none"
               value={email}
               onChangeText={setEmail}
+              onBlur={() => {
+                if (!isEmail(email)) {
+                  setEmail(formatCPF(email));
+                }
+              }}
             />
           </View>
 
@@ -211,7 +233,7 @@ const style = StyleSheet.create({
     marginBottom: 8,
   },
   slogan: {
-    fontSize: 36,
+    fontSize: 24,
     color: colors.white,
     marginBottom: 24,
   },
@@ -252,7 +274,7 @@ const style = StyleSheet.create({
   },
   labelError: {
     color: colors.red,
-    marginTop: -18,
+    marginTop: -12,
     marginBottom: 18,
   },
 });

@@ -12,12 +12,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import { Produtor } from "@/src/types/geral";
+import { Produtor, ProdutorAcesso } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
 import ModalProdutor from "./modalProdutor";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -26,14 +27,34 @@ export default function Index() {
   const [visibleModal, setVisibleModal] = useState(false);
   const [registros, setRegistros] = useState<Produtor[]>([]);
   const [id, setid] = useState(0);
+  const { isProdutor, user } = useAuth();
 
   const data = [{ label: "Nome", content: "Nome" }];
 
   const getRegistros = async () => {
-    const response = await apiGeral.getResource<Produtor>(endpointApi);
-    const registrosData = response.data ?? [];
+    if (isProdutor) {
+      const responseProdutor = await apiGeral.getResource<ProdutorAcesso>(
+        "/produtoracesso",
+        {
+          filters: { idUsuario: user?.id },
+          pageSize: 1,
+        }
+      );
 
-    setRegistros(registrosData);
+      const produtor = responseProdutor.data?.[0];
+
+      const response = await apiGeral.getResource<Produtor>(endpointApi, {
+        filters: { id: produtor?.idProdutor },
+      });
+      const registrosData = response.data ?? [];
+
+      setRegistros(registrosData);
+    } else {
+      const response = await apiGeral.getResource<Produtor>(endpointApi);
+      const registrosData = response.data ?? [];
+
+      setRegistros(registrosData);
+    }
   };
 
   useFocusEffect(

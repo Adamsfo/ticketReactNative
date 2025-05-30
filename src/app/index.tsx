@@ -78,7 +78,10 @@ export default function Index({ route }: any) {
   return (
     <View style={style.container}>
       {!param.includes("checkoutmp") ? (
-        <Image source={require("../assets/logoJango.png")} />
+        <Image
+          style={style.imagem}
+          source={require("../assets/logoJangoIngressosSemFundo.png")}
+        />
       ) : null}
     </View>
   );
@@ -90,5 +93,11 @@ const style = StyleSheet.create({
     backgroundColor: colors.white,
     justifyContent: "center",
     alignItems: "center",
+  },
+  imagem: {
+    width: 220,
+    height: 180,
+    marginLeft: 20,
+    resizeMode: "stretch",
   },
 });

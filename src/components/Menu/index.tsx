@@ -10,18 +10,22 @@ import {
   Platform,
   View,
 } from "react-native";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 export default function Menu({ color }: { color?: string }) {
   const navigation = useNavigation() as any;
+  const { user } = useAuth();
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.openDrawer()}>
-        <Feather name="menu" size={33} color={color ? color : colors.roxo} />
-      </TouchableOpacity>
+      {user && user.nomeCompleto && (
+        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+          <Feather name="menu" size={33} color={color ? color : colors.roxo} />
+        </TouchableOpacity>
+      )}
       <TouchableOpacity onPress={() => navigation.navigate("home")}>
         <Image
-          source={require("../../assets/logoJangoProducoes.png")}
+          source={require("../../assets/logoJangoIngressosSemFundo.png")}
           style={styles.imagem}
         />
       </TouchableOpacity>
@@ -38,9 +42,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
   },
   imagem: {
-    width: Platform.OS === "web" ? 100 : 100, 
-    height: Platform.OS === "web" ? 38 : 38,
-    resizeMode: "cover", 
-    
+    width: Platform.OS === "web" ? 80 : 80,
+    height: Platform.OS === "web" ? 65 : 65,
+    marginTop: -14,
+    resizeMode: "stretch",
   },
 });

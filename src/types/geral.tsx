@@ -34,6 +34,7 @@ export interface Usuario {
   id_cliente?: number;
   sobreNome?: string;
   endpoint?: string;
+  admGeral?: boolean;
 }
 
 export interface Cidade {
@@ -76,6 +77,7 @@ export interface Evento {
   idProdutor: number;
   status?: Status;
   MenorValor?: number;
+  Produtor_logo?: string;
 }
 
 export enum StatusEventoIngresso {
@@ -408,4 +410,16 @@ export interface DadosdePagamento {
   token: string;
   card: Card;
   payer: Payer;
+}
+
+export enum TipoAcesso {
+  Administrador = "Administrador",
+  Validador = "Validador",
+}
+
+export interface ProdutorAcesso {
+  id: number;
+  idProdutor: number;
+  tipoAcesso: TipoAcesso;
+  idUsuario: number;
 }

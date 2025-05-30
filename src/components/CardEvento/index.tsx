@@ -44,7 +44,7 @@ export default function CardEvento({
           {data.nome}
         </Text>
         <Image
-          source={require("../../assets/logoJango.png")}
+          source={{ uri: api.getBaseApi() + "/uploads/" + data.Produtor_logo }}
           style={styles.logo}
         />
 
@@ -112,9 +112,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     right: 10,
-    width: Platform.OS === "web" ? 70 : 50,
-    height: 40,
-    resizeMode: "contain",
+    width: Platform.OS === "web" ? 70 : 60,
+    height: 45,
+    resizeMode: "stretch",
     backgroundColor: "#ffffffcc",
     borderRadius: 8,
     padding: 4,

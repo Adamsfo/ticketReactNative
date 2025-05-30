@@ -7,6 +7,7 @@ import Index from "./index";
 import Home from "./(panel)/home/page";
 import Login from "./(auth)/singin/page";
 import Signup from "./(auth)/signup/page";
+import MinhaConta from "./(auth)/minhaConta/page";
 import Profile from "./(panel)/profile/page";
 import Evento from "./(panel)/evento/page";
 import MeusEventos from "./(panel)/meuseventos/page";
@@ -33,12 +34,23 @@ import {
 } from "react-native";
 import RecuperarSenha from "./(auth)/recuperarSenha/page";
 import RedefinirSenha from "./(auth)/redefinirSenha/page";
+import { useAuth } from "../contexts_/AuthContext";
+
+// Simule ou obtenha de algum contexto/autenticação
+// Aqui você pode obter esses valores de um contexto, props, Redux ou qualquer outro gerenciador de estado
+
+// const isValidador = false;
+// const isCliente = false;
+// const isAdministrador = true;
+// const isProdutor = true;
+// Exemplo: const { isValidador, isCliente, isAdministrador } = useAuth();
 
 const Drawer = createDrawerNavigator();
 
 function Routes() {
   const [isLoading, setIsLoading] = useState(true);
   const [params, setParams] = useState<string>("");
+  const { isAdministrador, isValidador, isCliente, isProdutor } = useAuth();
 
   const getUrlAsync = async () => {
     const url = await Linking.getInitialURL();
@@ -51,7 +63,6 @@ function Routes() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Simula um carregamento inicial com duração de 3 segundos
       let url = "";
       url = (await getUrlAsync()) ?? "";
       if (url.includes("checkoutmp")) {
@@ -61,7 +72,7 @@ function Routes() {
           setIsLoading(false);
         }, 1000);
 
-        return () => clearTimeout(timer); // Limpa o temporizador na desmontagem do componente
+        return () => clearTimeout(timer);
       }
     };
 
@@ -72,29 +83,213 @@ function Routes() {
     return (
       <View style={styles.container}>
         <View style={styles.loaderContainer}>
-          <Image source={require("../assets/logoJango.png")} />
-          <ActivityIndicator size="large" color={colors.laranjado} />
+          <Image
+            style={styles.imagem}
+            source={require("../assets/logoJangoIngressosSemFundo.png")}
+          />
+          <ActivityIndicator
+            style={{ marginTop: -25 }}
+            size="large"
+            color={colors.laranjado}
+          />
         </View>
         <Text style={styles.text}>Carregando...</Text>
       </View>
     );
   }
 
+  // Função para definir quais menus aparecem
+  function renderDrawerScreens() {
+    // ADMIN vê tudo
+    if (isAdministrador) {
+      return (
+        <>
+          <Drawer.Screen
+            name="home"
+            component={Home}
+            options={{
+              title: "Home",
+              headerShown: false,
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "home" : "home-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="meusevento"
+            component={MeusEventos}
+            options={{ headerShown: false, title: "Meus Eventos" }}
+          />
+          <Drawer.Screen
+            name="produtor"
+            component={Produtor}
+            options={{ headerShown: false, title: "Produtor" }}
+          />
+          <Drawer.Screen
+            name="validador"
+            component={Validador}
+            options={{ headerShown: false, title: "Validador" }}
+          />
+          <Drawer.Screen
+            name="tipoingresso"
+            component={TipoIngresso}
+            options={{ headerShown: false, title: "Tipo Ingresso" }}
+          />
+        </>
+      );
+    }
+    // Produtor vê só o menu "Produtor"
+    if (isProdutor) {
+      return (
+        <>
+          <Drawer.Screen
+            name="home"
+            component={Home}
+            options={{
+              title: "Home",
+              headerShown: false,
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "home" : "home-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="meusevento"
+            component={MeusEventos}
+            options={{ headerShown: false, title: "Meus Eventos" }}
+          />
+          <Drawer.Screen
+            name="produtor"
+            component={Produtor}
+            options={{ headerShown: false, title: "Produtor" }}
+          />
+          <Drawer.Screen
+            name="validador"
+            component={Validador}
+            options={{ headerShown: false, title: "Validador" }}
+          />
+        </>
+      );
+    }
+    // VALIDADOR vê só o menu "Validador"
+    if (isValidador) {
+      return (
+        <>
+          <Drawer.Screen
+            name="home"
+            component={Home}
+            options={{
+              title: "Home",
+              headerShown: false,
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "home" : "home-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="validador"
+            component={Validador}
+            options={{
+              headerShown: false,
+              title: "Validador",
+            }}
+          />
+        </>
+      );
+    }
+    // CLIENTE vê só "Meus Ingressos" e "Minhas Compras"
+    if (isCliente) {
+      return (
+        <>
+          <Drawer.Screen
+            name="home"
+            component={Home}
+            options={{
+              title: "Home",
+              headerShown: false,
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "home" : "home-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="meusingressos"
+            component={MeusIngressos}
+            options={{
+              headerShown: false,
+              title: "Meus Ingressos",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "ticket" : "ticket-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="minhascompras"
+            component={MinhasCompras}
+            options={{
+              headerShown: false,
+              title: "Minhas Compras",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "briefcase" : "briefcase-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="minhaconta"
+            component={MinhaConta}
+            options={{
+              headerShown: false,
+              title: "Conta",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "person" : "person-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+        </>
+      );
+    }
+    // Default: nada ou outros menus
+    return null;
+  }
+
   return (
-    // <GestureHandlerRootView>
     <Drawer.Navigator
-      // initialRouteName={initialRoute}
       screenOptions={{
         drawerActiveBackgroundColor: colors.laranjado,
         drawerActiveTintColor: colors.white,
-        drawerContentStyle: {
-          marginTop: 26,
-        },
-        drawerLabelStyle: {
-          fontSize: 16,
-        },
+        drawerContentStyle: { marginTop: 26 },
+        drawerLabelStyle: { fontSize: 16 },
       }}
     >
+      {/* Sempre escondidos */}
       <Drawer.Screen
         name="index"
         component={Index}
@@ -106,27 +301,9 @@ function Routes() {
           drawerItemStyle: { display: "none" },
         }}
       />
-
-      <Drawer.Screen
-        name="home"
-        component={Home}
-        // initialParams={{ initialRoute: true }}
-        options={{
-          title: "Home",
-          headerShown: false,
-          drawerIcon: ({ focused, size, color }) => (
-            <Ionicons
-              name={focused ? "home" : "home-outline"}
-              size={size}
-              color={color}
-            />
-          ),
-        }}
-      />
       <Drawer.Screen
         name="checkoutmp"
         component={ChecoutMP}
-        // initialParams={{ initialRoute }}
         options={{
           headerShown: false,
           drawerLabel: () => null,
@@ -134,7 +311,6 @@ function Routes() {
           drawerItemStyle: { display: "none" },
         }}
       />
-
       <Drawer.Screen
         name="login"
         component={Login}
@@ -193,14 +369,6 @@ function Routes() {
           drawerLabel: () => null,
           drawerIcon: () => null,
           drawerItemStyle: { display: "none" },
-        }}
-      />
-      <Drawer.Screen
-        name="meusevento"
-        component={MeusEventos}
-        options={{
-          headerShown: false,
-          title: "Meus Eventos",
         }}
       />
       <Drawer.Screen
@@ -264,48 +432,6 @@ function Routes() {
         }}
       />
       <Drawer.Screen
-        name="produtor"
-        component={Produtor}
-        options={{
-          headerShown: false,
-          title: "Produtor",
-        }}
-      />
-      <Drawer.Screen
-        name="validador"
-        component={Validador}
-        options={{
-          headerShown: false,
-          title: "Validador",
-        }}
-      />
-      <Drawer.Screen
-        name="tipoingresso"
-        component={TipoIngresso}
-        options={{
-          headerShown: false,
-          title: "Tipo Ingresso",
-        }}
-      />
-      <Drawer.Screen
-        name="meusingressos"
-        component={MeusIngressos}
-        options={{
-          headerShown: false,
-          title: "Meus Ingressos",
-          // drawerItemStyle: { display: "none" },
-        }}
-      />
-      <Drawer.Screen
-        name="minhascompras"
-        component={MinhasCompras}
-        options={{
-          headerShown: false,
-          title: "Minhas Compras",
-          // drawerItemStyle: { display: "none" },
-        }}
-      />
-      <Drawer.Screen
         name="ingressostransacao"
         component={IngressoTransacao}
         options={{
@@ -315,8 +441,10 @@ function Routes() {
           drawerItemStyle: { display: "none" },
         }}
       />
+
+      {/* Renderiza os menus de acordo com o papel */}
+      {renderDrawerScreens()}
     </Drawer.Navigator>
-    // </GestureHandlerRootView>
   );
 }
 
@@ -325,16 +453,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.branco, // Cor de fundo da splash screen
+    backgroundColor: colors.branco,
   },
   loaderContainer: {
     justifyContent: "center",
     alignItems: "center",
+    marginTop: -25,
   },
   text: {
-    marginTop: 20,
     fontSize: 18,
     color: colors.laranjado,
+  },
+  imagem: {
+    width: 220,
+    height: 180,
+    marginLeft: 20,
+    resizeMode: "stretch",
   },
 });
 

@@ -94,6 +94,41 @@ export default function Login({ onClose }: ModalMsgProps) {
     }, [])
   );
 
+  const formatCPF = (value: string) => {
+    // Remove tudo que não for número
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    // Aplica a máscara do CPF
+    return onlyNumbers
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+      .slice(0, 14); // Garante que não passe de 14 caracteres (formato final)
+  };
+
+  const formatPhone = (value: string) => {
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    if (onlyNumbers.length <= 10) {
+      // Formato: (99) 9999-9999
+      return onlyNumbers
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2")
+        .slice(0, 14);
+    } else {
+      // Formato: (99) 99999-9999
+      return onlyNumbers
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{5})(\d)/, "$1-$2")
+        .slice(0, 15);
+    }
+  };
+
+  const isEmail = (value: string): boolean => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(value);
+  };
+
   return (
     <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
       <StatusBarPage style="dark" />
@@ -101,22 +136,27 @@ export default function Login({ onClose }: ModalMsgProps) {
 
       <View style={style.container}>
         <View style={style.header}>
-          <Text style={style.logoText}>
+          {/* <Text style={style.logoText}>
             Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
-          </Text>
+          </Text> */}
           <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
         </View>
 
         <View style={style.form}>
           <View>
-            <Text style={style.label}>Email</Text>
+            <Text style={style.label}>Email ou CPF</Text>
             <TextInput
               style={style.input}
-              placeholder="Digite seu email"
+              placeholder="Digite seu Email ou CPF"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
               onChangeText={setEmail}
+              onBlur={() => {
+                if (!isEmail(email)) {
+                  setEmail(formatCPF(email));
+                }
+              }}
             />
           </View>
 
@@ -208,7 +248,7 @@ const style = StyleSheet.create({
     marginBottom: 8,
   },
   slogan: {
-    fontSize: 36,
+    fontSize: 24,
     color: colors.white,
     marginBottom: 24,
   },

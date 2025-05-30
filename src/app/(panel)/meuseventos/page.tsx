@@ -12,13 +12,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import { Evento } from "@/src/types/geral";
+import { Evento, ProdutorAcesso } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
 import { format, parseISO } from "date-fns";
 import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +29,7 @@ export default function Index() {
   const [registros, setRegistros] = useState<Evento[]>([]);
   const [id, setid] = useState(0);
   const navigation = useNavigation() as any;
+  const { isProdutor, user } = useAuth();
 
   const data = [
     { label: "Nome" },
@@ -37,13 +39,34 @@ export default function Index() {
   ];
 
   const getRegistros = async () => {
-    const response = await apiGeral.getResource<Evento>(endpointApi, {
-      order: "desc",
-      pageSize: 100,
-    });
-    const registrosData = response.data ?? [];
+    if (isProdutor) {
+      const responseProdutor = await apiGeral.getResource<ProdutorAcesso>(
+        "/produtoracesso",
+        {
+          filters: { idUsuario: user?.id },
+          pageSize: 1,
+        }
+      );
 
-    setRegistros(registrosData);
+      const produtor = responseProdutor.data?.[0];
+
+      const response = await apiGeral.getResource<Evento>(endpointApi, {
+        filters: { idProdutor: produtor?.idProdutor },
+        order: "desc",
+        pageSize: 100,
+      });
+      const registrosData = response.data ?? [];
+
+      setRegistros(registrosData);
+    } else {
+      const response = await apiGeral.getResource<Evento>(endpointApi, {
+        order: "desc",
+        pageSize: 100,
+      });
+      const registrosData = response.data ?? [];
+
+      setRegistros(registrosData);
+    }
   };
 
   useFocusEffect(

@@ -35,6 +35,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import CardIngresso from "@/src/components/CardIngresso";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useNavigation } from "@react-navigation/native";
+import Footer from "@/src/components/Footer";
 
 const { width } = Dimensions.get("window");
 
@@ -147,6 +148,7 @@ export default function Index() {
             ))}
           </View>
         </ScrollView>
+        <Footer />
         {/* <FlatList
           key={`grid-${width > 600 ? "3" : "1"}`}
           data={registros}
@@ -172,8 +174,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    // marginRight: Platform.OS === "web" ? 200 : 0,
+    // marginLeft: Platform.OS === "web" ? 200 : 0,
   },
   title: {
     fontSize: 24,

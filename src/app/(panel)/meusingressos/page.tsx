@@ -33,6 +33,7 @@ import { api } from "@/src/lib/api";
 import { format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import CardIngresso from "@/src/components/CardIngresso";
+import Footer from "@/src/components/Footer";
 // import QRCode from "react-native-qrcode-svg";
 
 const { width } = Dimensions.get("window");
@@ -108,16 +109,26 @@ export default function Index() {
           </TouchableOpacity>
         </View>
         <FlatList
-          key={`grid-${width > 600 ? "3" : "1"}`}
-          data={registros}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.list}
+          data={[{}]} // dummy item para garantir render
+          keyExtractor={() => "outer-list"}
           showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          numColumns={width > 600 ? 3 : 1}
-          renderItem={({ item }) => (
-            <CardIngresso item={item} getRegistros={getRegistros} />
+          // contentContainerStyle={{ padding: 1 }}
+          renderItem={() => (
+            <FlatList
+              key={`grid-${width > 600 ? "3" : "1"}`}
+              data={registros}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              numColumns={width > 600 ? 3 : 1}
+              style={styles.listaEventos}
+              renderItem={({ item }) => (
+                <CardIngresso item={item} getRegistros={getRegistros} />
+              )}
+            />
           )}
+          ListFooterComponent={<Footer></Footer>}
         />
       </View>
     </LinearGradient>
@@ -130,8 +141,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
+    // marginRight: Platform.OS === "web" ? 200 : 0,
+    // marginLeft: Platform.OS === "web" ? 200 : 0,
   },
   title: {
     fontSize: 24,
@@ -205,4 +216,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   qr: { width: 200, height: 200, marginBottom: 10 },
+  listaEventos: {
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+  },
 });

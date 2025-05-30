@@ -24,11 +24,16 @@ import apiJango from "@/src/lib/apiJango";
 import ModalMsg from "@/src/components/ModalMsg";
 import { api } from "@/src/lib/api";
 import ModalVerificacao from "@/src/components/ModalVerificacao";
+import { useAuth } from "@/src/contexts_/AuthContext";
+import { Badge } from "@/src/components/Badge";
+import { apiGeral } from "@/src/lib/geral";
 
 export default function Signup() {
   const navigation = useNavigation() as any;
+  const { user } = useAuth();
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+  const [novaSenha, setNovaSenha] = useState("Não");
   const [formData, setFormData] = useState<Usuario>({
     login: "",
     email: "",
@@ -48,19 +53,24 @@ export default function Signup() {
 
   useFocusEffect(
     useCallback(() => {
-      setFormData({
-        login: "",
-        email: "",
-        senha: "",
-        nomeCompleto: "",
-        confirmaSenha: "",
-        cpf: "",
-        telefone: "",
-        id_cliente: 0,
-      });
+      setNovaSenha("Não");
+      if (user) {
+        setFormData(user);
+      } else {
+        setFormData({
+          login: "",
+          email: "",
+          senha: "",
+          nomeCompleto: "",
+          confirmaSenha: "",
+          cpf: "",
+          telefone: "",
+          id_cliente: 0,
+        });
+      }
       setErrors({});
       setMsg("");
-    }, [])
+    }, [user])
   );
 
   const isValidCPF = (cpf: string): boolean => {
@@ -101,7 +111,7 @@ export default function Signup() {
     if (!formData.sobreNome) newErrors.sobreNome = "A sobrenome é obrigatória.";
     if (!formData.nomeCompleto)
       newErrors.nomeCompleto = "Nome Completo é obrigatório.";
-    if (formData.senha !== formData.confirmaSenha) {
+    if (formData.senha !== formData.confirmaSenha && novaSenha === "Sim") {
       newErrors.confirmaSenha = "As senhas não coincidem.";
     }
     if (formData.email) {
@@ -125,43 +135,12 @@ export default function Signup() {
 
     let dados = formData;
 
-    if (dados.id_cliente === 0) {
-      try {
-        await apiJango().atualizarCliente({
-          CPF_CNPJ: (dados.cpf ?? "").replace(/\D/g, ""),
-          NOME: dados.nomeCompleto + " " + dados.sobreNome,
-          TELEFONE_CELULAR: (dados.telefone ?? "").replace(/\D/g, ""),
-          EMAIL: dados.email,
-        });
-
-        const cliente = await apiJango().getCliente(dados.cpf ?? "");
-
-        if (cliente[0]) {
-          dados = {
-            ...dados,
-            id_cliente: cliente[0].id_cliente,
-          };
-          setFormData({
-            ...formData,
-            id_cliente: cliente[0].id_cliente,
-          });
-        }
-      } catch (error) {
-        console.error("Network request failed:", error);
-        setErrors({
-          api: "Erro ao registrar usuário no Jango. Tente novamente mais tarde.",
-        });
-        setLoading(false);
-      }
-    }
-
     try {
       const endpoint = api.getBaseUrlSite();
-      const response = await apiAuth.addlogin({
-        ...dados,
-        login: dados.email,
-        endpoint: endpoint,
-      });
+      const response = await apiGeral.updateResorce<Usuario>(
+        "/usuario",
+        formData
+      );
 
       if (!response.success) {
         setErrors({
@@ -171,9 +150,11 @@ export default function Signup() {
         setFormData({
           ...response.data,
         });
-        setMsg("Usuário cadastrado com sucesso!\n\n");
+        setMsg("Dados do usuário salvo sucesso!\n\n");
         setModalMsg(true);
       }
+
+      navigation.navigate("home");
     } catch (error) {
       console.error("Network request failed:", error);
       console.log(error);
@@ -185,18 +166,6 @@ export default function Signup() {
       setLoading(false);
     }
   }
-
-  const formatCPF = (value: string) => {
-    // Remove tudo que não for número
-    const onlyNumbers = value.replace(/\D/g, "");
-
-    // Aplica a máscara do CPF
-    return onlyNumbers
-      .replace(/^(\d{3})(\d)/, "$1.$2")
-      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
-      .slice(0, 14); // Garante que não passe de 14 caracteres (formato final)
-  };
 
   const formatPhone = (value: string) => {
     const onlyNumbers = value.replace(/\D/g, "");
@@ -216,25 +185,6 @@ export default function Signup() {
     }
   };
 
-  const handleGetClienteJango = async (cpf: string) => {
-    const cliente = await apiJango().getCliente(cpf);
-
-    if (cliente[0]) {
-      const nomePartes = cliente[0].nome.trim().split(" ");
-      const primeiroNome = nomePartes[0];
-      const sobrenome = nomePartes.slice(1).join(" "); // junta o restante como sobrenome
-
-      setFormData({
-        ...formData,
-        nomeCompleto: primeiroNome,
-        sobreNome: sobrenome,
-        telefone: formatPhone(cliente[0].telefone_celular),
-        email: cliente[0].email,
-        id_cliente: cliente[0].id_cliente,
-      });
-    }
-  };
-
   return (
     <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
       <StatusBarPage style="dark" />
@@ -249,7 +199,7 @@ export default function Signup() {
             {/* <Text style={style.logoText}>
               Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
             </Text> */}
-            <Text style={style.slogan}>Criar uma conta</Text>
+            <Text style={style.slogan}>Minha conta</Text>
           </View>
 
           <ScrollView
@@ -267,15 +217,15 @@ export default function Signup() {
                   placeholder="CPF..."
                   keyboardType="default"
                   value={formData.cpf}
-                  onChangeText={(text) => {
-                    const formatted = formatCPF(text);
-                    handleChange("cpf", formatted);
-                  }}
-                  onBlur={() => {
-                    if ((formData.cpf?.length ?? 0) === 14) {
-                      handleGetClienteJango(formData.cpf ?? "");
-                    }
-                  }}
+                  // onChangeText={(text) => {
+                  //   const formatted = formatCPF(text);
+                  //   handleChange("cpf", formatted);
+                  // }}
+                  // onBlur={() => {
+                  //   if ((formData.cpf?.length ?? 0) === 14) {
+                  //     handleGetClienteJango(formData.cpf ?? "");
+                  //   }
+                  // }}
                 ></TextInput>
                 {errors.cpf && (
                   <Text style={style.labelError}>{errors.cpf}</Text>
@@ -342,34 +292,76 @@ export default function Signup() {
                 )}
               </View>
 
-              <View>
-                <Text style={style.label}>Senha</Text>
-                <TextInput
-                  style={style.input}
-                  placeholder="Digite sua senha"
-                  secureTextEntry
-                  value={formData.senha}
-                  onChangeText={(text) => handleChange("senha", text)}
-                />
-                {errors.senha && (
-                  <Text style={style.labelError}>{errors.senha}</Text>
-                )}
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 8,
+                  marginBottom: 16,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    setNovaSenha("Sim");
+                    handleChange("senha", "");
+                    handleChange("confirmaSenha", "");
+                  }}
+                >
+                  <Badge
+                    variant={novaSenha === "Sim" ? "default" : "secondary"}
+                  >
+                    Alterar Senha
+                  </Badge>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setNovaSenha("Não");
+                  }}
+                >
+                  <Badge
+                    variant={novaSenha === "Não" ? "default" : "secondary"}
+                  >
+                    Não Alterar Senha
+                  </Badge>
+                </TouchableOpacity>
               </View>
 
-              <View>
-                <Text style={style.label}>Repetir Senha</Text>
-                <TextInput
-                  style={style.input}
-                  placeholder="Repetir senha"
-                  secureTextEntry
-                  value={formData.confirmaSenha}
-                  onChangeText={(text) => handleChange("confirmaSenha", text)}
-                />
-                {errors.confirmaSenha && (
-                  <Text style={style.labelError}>{errors.confirmaSenha}</Text>
-                )}
-              </View>
+              {novaSenha === "Sim" && (
+                <>
+                  <View>
+                    <Text style={style.label}>Nova Senha</Text>
+                    <TextInput
+                      style={style.input}
+                      placeholder="Digite sua senha"
+                      secureTextEntry
+                      value={formData.senha}
+                      onChangeText={(text) => handleChange("senha", text)}
+                    />
+                    {errors.senha && (
+                      <Text style={style.labelError}>{errors.senha}</Text>
+                    )}
+                  </View>
 
+                  <View>
+                    <Text style={style.label}>Repetir Senha</Text>
+                    <TextInput
+                      style={style.input}
+                      placeholder="Repetir senha"
+                      secureTextEntry
+                      value={formData.confirmaSenha}
+                      onChangeText={(text) =>
+                        handleChange("confirmaSenha", text)
+                      }
+                    />
+                    {errors.confirmaSenha && (
+                      <Text style={style.labelError}>
+                        {errors.confirmaSenha}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              )}
               {errors.api && (
                 <Text style={style.labelError}>
                   {errors.api}{" "}
@@ -392,20 +384,9 @@ export default function Signup() {
 
               <Pressable style={style.button} onPress={handleSingUp}>
                 <Text style={style.buttonText}>
-                  {loading ? "Cadastrando..." : "Cadastrar"}
+                  {loading ? "Salvando..." : "Salvar"}
                 </Text>
               </Pressable>
-
-              <Modal visible={modalMsg} transparent animationType="fade">
-                <ModalVerificacao
-                  onClose={() => {
-                    setModalMsg(false);
-                    navigation.navigate("login");
-                  }}
-                  msg={msg}
-                  user={formData}
-                />
-              </Modal>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

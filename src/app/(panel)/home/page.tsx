@@ -22,6 +22,7 @@ import { useFocusEffect } from "expo-router";
 import ImageCarousel from "@/src/components/ImagemCarousel";
 import { api } from "@/src/lib/api";
 import KeenSliderNavigation from "@/src/components/CarouselWeb";
+import Footer from "@/src/components/Footer";
 
 const { width } = Dimensions.get("window");
 
@@ -31,7 +32,7 @@ export default function Index() {
   const [visibleMsg, setVisibleMsg] = useState(false);
   const navigation = useNavigation() as any;
   const [registros, setRegistros] = useState<Evento[]>([]);
-  const [imagensEvento, setImagensEvento] = useState<string[]>([]);
+  // const [imagensEvento, setImagensEvento] = useState<string[]>([]);
   const [flatListWidth, setFlatListWidth] = useState<number>(width - 10);
 
   const getRegistros = async (params: QueryParams) => {
@@ -48,11 +49,11 @@ export default function Index() {
       registrosData[i].MenorValor = precoMin;
     }
 
-    setImagensEvento(
-      registrosData
-        .filter((item) => !!item.imagem)
-        .map((item) => api.getBaseApi() + "/uploads/" + item.imagem)
-    );
+    // setImagensEvento(
+    //   registrosData
+    //     .filter((item) => !!item.imagem)
+    //     .map((item) => api.getBaseApi() + "/uploads/" + item.imagem)
+    // );
     setRegistros(registrosData);
   };
 
@@ -118,17 +119,25 @@ export default function Index() {
             />
           )}
           ListHeaderComponent={
-            <View style={{ height: Platform.OS === "web" ? 500 : 300 }}>
-              <View style={styles.containerImagem}>
+            <View style={{ height: Platform.OS === "web" ? 460 : 310 }}>
+              <View style={styles.bannerContainer}>
                 <Image
-                  source={require("../../../assets/apresentacao.png")}
-                  style={styles.imagem}
+                  source={require("../../../assets/banners/BannerEditado2.png")}
+                  style={styles.bannerBlur}
+                  // blurRadius={Platform.OS === "android" ? 2 : 10}
                 />
+                {/* <View style={styles.overlay}>
+                  <Image
+                    source={require("../../../assets/banners/BannerEditado2.png")}
+                    style={styles.bannerForeground}
+                  />
+                </View> */}
               </View>
               {/* <ImageCarousel images={imagensEvento} /> */}
               <Text style={styles.titulo}>Eventos</Text>
             </View>
           }
+          ListFooterComponent={<Footer></Footer>}
         />
 
         {/* <FlatList
@@ -202,6 +211,34 @@ const styles = StyleSheet.create({
   imagem: {
     width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "100%") : "100%", // 100% para web, largura da tela para mobile
     height: Platform.OS === "web" ? (width <= 1000 ? 200 : 400) : 200,
-    resizeMode: "stretch", // Ajuste o modo de redimensionamento conforme necessário
+    resizeMode: "repeat", // Ajuste o modo de redimensionamento conforme necessário
+  },
+  bannerContainer: {
+    position: "relative",
+    width: "100%",
+    height: Platform.OS === "web" ? 400 : 250,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+
+  bannerBlur: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+    // opacity: 0.8,
+  },
+
+  overlay: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  bannerForeground: {
+    width: 1000,
+    height: Platform.OS === "web" ? 500 : 400,
+    resizeMode: "contain",
   },
 });

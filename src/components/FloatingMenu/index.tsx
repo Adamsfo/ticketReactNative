@@ -124,12 +124,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             />
           )}
 
-          {/* <FAB
-            icon="account-plus"
-            label="Minhas Compras"
-            onPress={() => navigation.navigate("loginAdd")}
-            style={styles.fabItem}
-          />
+          {/*
           <FAB
             icon="account-plus"
             label="Meus Ingressos"
@@ -144,6 +139,14 @@ const FloatingMenu = ({ color }: { color?: string }) => {
               style={styles.fabItem}
             />
           )}
+          {/* {user?.nomeCompleto && (
+            <FAB
+              icon="account"
+              label="Minha Conta"
+              onPress={() => navigation.navigate("loginAdd")}
+              style={styles.fabItem}
+            />
+          )} */}
         </View>
       </Modal>
     </>

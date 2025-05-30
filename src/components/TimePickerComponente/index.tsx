@@ -49,25 +49,27 @@ const TimePickerComponente = ({
         </View>
       ) : (
         <View>
-          {/* <View>
-            <Button
-              onPress={showpicker}
-              title={value.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+          {Platform.OS === "android" && (
+            <View>
+              <Button
+                onPress={showpicker}
+                title={value.toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              />
+            </View>
+          )}
+          {(show || Platform.OS === "ios") && (
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={value}
+              mode="time"
+              is24Hour={true}
+              display="default"
+              onChange={handleDateChange}
             />
-          </View>
-          {show && ( */}
-          <DateTimePicker
-            testID="dateTimePicker"
-            value={value}
-            mode="time"
-            is24Hour={true}
-            display="default"
-            onChange={handleDateChange}
-          />
-          {/* )} */}
+          )}
         </View>
       )}
     </View>
