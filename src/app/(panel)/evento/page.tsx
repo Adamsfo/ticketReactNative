@@ -100,9 +100,8 @@ export default function Index() {
 
   const data = [
     { key: "header", type: "header" },
-    // { key: "ingressos", type: "ingressos" },
-    { key: "mapa", type: "mapa" },
     { key: "descricao", type: "descricao" },
+    { key: "mapa", type: "mapa" },
     { key: "produtor", type: "produtor" },
   ];
 
@@ -156,48 +155,6 @@ export default function Index() {
           </View>
         </>
       );
-    } else if (item.type === "ingressos") {
-      return (
-        <View style={styles.dadosBasicos}>
-          <Text style={styles.titulo}>Ingressos</Text>
-
-          <FlatList
-            data={[
-              { id: 1, nome: "Day Use Jango" },
-              { id: 2, nome: "Pousada" },
-            ]}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={1}
-            renderItem={({ item }) => (
-              <View key={item.id} style={{ flexDirection: "column" }}>
-                <CounterTicket data={item} />
-              </View>
-            )}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            showsVerticalScrollIndicator={false}
-          />
-
-          <View style={{ flexDirection: "row", marginTop: 10 }}>
-            <Text style={{ fontSize: 18 }}>Total: </Text>
-            <Text style={{ fontSize: 18, fontWeight: "bold" }}>R$ 120,00</Text>
-          </View>
-
-          <TouchableOpacity
-            style={{
-              backgroundColor: "rgb(0, 146, 250)",
-              borderRadius: 5,
-              padding: 10,
-              marginTop: 10,
-              alignItems: "center",
-            }}
-            onPress={() => navigation.navigate("ingressos", { id: id })}
-          >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              Comprar Ingressos
-            </Text>
-          </TouchableOpacity>
-        </View>
-      );
     } else if (item.type === "mapa") {
       return (
         <View style={styles.dadosBasicos}>
@@ -241,7 +198,9 @@ export default function Index() {
 
       return (
         <View style={styles.dadosBasicos}>
-          <View style={{ flexDirection: "row" }}>
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between" }}
+          >
             <Text style={styles.titulo}>Produtor</Text>
             <Image
               source={{ uri: api.getBaseApi() + "/uploads/" + produtor.logo }}
@@ -375,8 +334,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    // marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
+    // marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
     // marginBottom: 20,
   },
   titulo: {
@@ -392,14 +351,15 @@ const styles = StyleSheet.create({
     width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%",
     height: Platform.OS === "web" ? (width <= 1000 ? 300 : 500) : 300,
     resizeMode: "cover",
+    borderRadius: 20,
   },
   dadosBasicos: {
     backgroundColor: "rgba(255,255,255, 0.21)",
     marginTop: 7,
     paddingRight: 25,
     paddingLeft: 25,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
     paddingBottom: 25,
     borderRadius: 20,
   },
@@ -425,8 +385,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   imagemCabecalho: {
-    width: Platform.OS === "web" ? 150 : 150, // 100% para web, largura da tela para mobile
-    height: Platform.OS === "web" ? 40 : 40,
+    width: Platform.OS === "web" ? 70 : 60, // 100% para web, largura da tela para mobile
+    height: 45,
     resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
     marginTop: 10,
   },

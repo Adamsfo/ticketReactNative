@@ -23,7 +23,8 @@ type CartAction =
   | { type: "UPDATE_QUANTITY"; id: number; qtde: number }
   // | { type: "ADD_INGRESSO"; ingresso: Ingresso }
   // | { type: "UPDATE_INGRESSO"; ingressoId: number; ingresso: Ingresso }
-  | { type: "ADD_TRANSACAO"; transacao: Transacao };
+  | { type: "ADD_TRANSACAO"; transacao: Transacao }
+  | { type: "REMOVE_TRANSACAO" };
 
 const CartContext = createContext<
   { state: CartState; dispatch: React.Dispatch<CartAction> } | undefined
@@ -79,6 +80,11 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       return {
         ...state,
         transacao: action.transacao,
+      };
+    case "REMOVE_TRANSACAO":
+      return {
+        ...state,
+        transacao: null,
       };
     default:
       return state;

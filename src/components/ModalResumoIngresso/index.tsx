@@ -86,6 +86,8 @@ export default function ModalResumoIngresso({
 
   const handleCriarTransacao = async () => {
     try {
+      dispatch({ type: "REMOVE_TRANSACAO" });
+
       if (!user?.id) {
         setVisibleLogin(true);
         return;

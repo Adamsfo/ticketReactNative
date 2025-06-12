@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  ActivityIndicator, // ou @react-native-picker/picker se for novo projeto
+  ActivityIndicator,
+  TextInput, // ou @react-native-picker/picker se for novo projeto
 } from "react-native";
 import PaymentPix from "../PaymentPix";
 import { Transacao } from "@/src/types/geral";
@@ -27,6 +28,11 @@ type Props = {
   setCpfCardSalvo: (cpf: string) => void;
   enviarPagamentoCartaoSalvo: () => void;
   loading: boolean;
+  setPaymentMethodCardSaved?: (paymentMethod: string) => void; // Adicionado para definir o método de pagamento do cartão salvo
+  setCVV: (cvv: string) => void; // Adicionado para definir o CVV do cartão salvo
+  CVV: string; // Adicionado para receber o CVV do cartão salvo
+  error: string; // Adicionado para receber erros
+  installments: number; // Adicionado para receber a quantidade de parcelas selecionadas
 };
 
 export default function CartaoCreditoSelector({
@@ -43,6 +49,11 @@ export default function CartaoCreditoSelector({
   setCpfCardSalvo,
   enviarPagamentoCartaoSalvo,
   loading,
+  setPaymentMethodCardSaved, // Adicionado para definir o método de pagamento do cartão salvo
+  setCVV, // Adicionado para definir o CVV do cartão salvo
+  CVV, // Adicionado para receber o CVV do cartão salvo
+  error, // Adicionado para receber erros
+  installments, // Adicionado para receber a quantidade de parcelas selecionadas
 }: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pagamentoPix, setPagamentoPix] = useState(false); // Estado para armazenar o ID do pagamento
@@ -57,6 +68,10 @@ export default function CartaoCreditoSelector({
           setSelectedCardId(item.id);
           setCpfCardSalvo(item.cardholder.identification.number);
           buscarParcelas(item.first_six_digits, item.payment_method.id);
+          setPaymentMethodCardSaved &&
+            setPaymentMethodCardSaved(item.payment_method.id);
+          setCVV(""); // Limpa o CVV ao selecionar um cartão
+          setInstallments(0); // Reseta a quantidade de parcelas ao selecionar um cartão
         }}
       >
         <View style={styles.cardHeader}>
@@ -171,7 +186,7 @@ export default function CartaoCreditoSelector({
             <Text style={styles.sectionTitle}>Parcelamento</Text>
             <View style={styles.pickerWrapper}>
               <Picker
-                selectedValue={null}
+                selectedValue={installments}
                 onValueChange={(value) => {
                   if (value) setInstallments(Number(value));
                 }}
@@ -194,8 +209,30 @@ export default function CartaoCreditoSelector({
                 ))}
               </Picker>
             </View>
+
+            <View style={{ marginTop: 10 }}>
+              {/* <Text style={styles.sectionTitle}>CVV (Código de Segurança)</Text> */}
+              <Text style={{ color: "#666" }}>
+                Digite o CVV do cartão selecionado
+              </Text>
+              <TextInput
+                style={styles.input}
+                // placeholder="cvv..."
+                keyboardType="default"
+                value={CVV}
+                onChangeText={(text) => setCVV(text)}
+              ></TextInput>
+            </View>
+
+            {error && <Text style={styles.labelError}>{error}</Text>}
+
             <TouchableOpacity
-              style={[styles.button, styles.buttonSave, { marginTop: 20 }]}
+              style={[
+                styles.button,
+                styles.buttonSave,
+                { marginTop: 20 },
+                !CVV && { backgroundColor: "#ccc" }, // botão desabilitado visualmente
+              ]}
               onPress={() => enviarPagamentoCartaoSalvo()}
             >
               <View style={styles.buttonContent}>
@@ -306,5 +343,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 8,
+    marginBottom: 18,
+    paddingHorizontal: 8,
+    paddingTop: 14,
+    paddingBottom: 14,
+  },
+  labelError: {
+    color: colors.red,
+    marginTop: -18,
+    marginBottom: 18,
   },
 });

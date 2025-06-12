@@ -39,8 +39,8 @@ type InstallmentResponse = {
   payer_costs: InstallmentOption[];
 };
 
-// const MP_PUBLIC_KEY = "APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23"; // Chave pública do Mercado Pago
 const MP_PUBLIC_KEY = "TEST-98f4cccd-2514-4062-a671-68df4b579410"; // Chave pública do Mercado Pago
+// const MP_PUBLIC_KEY = "TEST-98f4cccd-2514-4062-a671-68df4b579410"; // Chave pública do Mercado Pago
 
 export default function CheckoutMercadoPago() {
   const route = useRoute();
@@ -59,6 +59,8 @@ export default function CheckoutMercadoPago() {
   // const [paymentStatusId, setPaymentStatusId] = useState("107841609777"); // Estado para armazenar o ID do pagamento
   const [cpfCardSalvo, setCpfCardSalvo] = useState(""); // Estado para armazenar o CPF do cartão salvo
   const [visiblePagamento, setVisiblePagamento] = useState(false); // Estado para armazenar o ID do pagamento
+  const [visiblePagamentoCartaoSalvo, setVisiblePagamentoCartaoSalvo] =
+    useState(false); // Estado para armazenar o ID do pagamento
   const [savedPaymentData, setSavedPaymentData] = useState<any | null>(null); // Estado para armazenar os dados de pagamento salvos
   const [cardToken, setCardToken] = useState<string | null>(null); // Estado para armazenar o token do cartão
   const [installments, setInstallments] = useState<number>(1); // Estado para armazenar o número de parcelas
@@ -68,6 +70,11 @@ export default function CheckoutMercadoPago() {
   const [loading, setloading] = useState(false);
   const [salvarCartao, setSalvarCartao] = useState(true); // Estado para armazenar se o cartão deve ser salvo ou não
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [payment_methodCardSaved, setPaymentMethodCardSaved] = useState<
+    string | null
+  >(null); // Estado para armazenar o método de pagamento do cartão salvo
+  const [CVV, setCVV] = useState<string>(""); // Estado para armazenar o CVV do cartão
+  const [error, setError] = useState<string>(""); // Estado para armazenar erros
 
   useEffect(() => {
     async function fetchPaymentData(params: QueryParams) {
@@ -81,6 +88,7 @@ export default function CheckoutMercadoPago() {
       if (!dadosCards) {
         setVisiblePagamento(true);
       }
+      setVisiblePagamentoCartaoSalvo(true);
 
       setSavedPaymentData(dadosCards); // Armazena os dados de pagamento salvos
     }
@@ -179,7 +187,18 @@ export default function CheckoutMercadoPago() {
   };
 
   const enviarPagamentoCartaoSalvo = async () => {
+    setError(""); // Limpar erros antes de enviar o pagamento
     // callback chamado ao clicar no botão de submissão dos dados
+    if (!cardToken) {
+      console.error("Token do cartão não está definido.");
+      return;
+    }
+
+    if (CVV.trim() === "") {
+      console.error("CVV não pode estar vazio.");
+      return;
+    }
+
     setloading(true); // Iniciar o carregamento
     return new Promise<void>((resolve, reject) => {
       fetch(api.getBaseApi() + "/pagamentocardsalvo", {
@@ -192,8 +211,9 @@ export default function CheckoutMercadoPago() {
           transaction_amount: registroTransacao.valorTotal,
           token: cardToken,
           installments,
-          payment_method_id: "credit_card",
+          payment_method_id: payment_methodCardSaved,
           deviceId,
+          cvv: CVV, // Adicionar o CVV do cartão
           payer: {
             email: user?.email || email || "", // Garantir que o email seja uma string
             identification: { type: "CPF", number: cpfCardSalvo },
@@ -206,7 +226,11 @@ export default function CheckoutMercadoPago() {
           setPaymentStatusId(response.id); // Definir o estado com o ID do pagamento
           if (response.status === "approved") {
             // pagamento aprovado
-            setVisiblePagamento(false); // Ocultar o componente de pagamento
+            setVisiblePagamentoCartaoSalvo(false); // Ocultar o componente de pagamento
+          }
+
+          if (response.error) {
+            setError(response.error); // Definir o erro se houver
           }
           setloading(false); // Parar o carregamento
           resolve();
@@ -272,7 +296,7 @@ export default function CheckoutMercadoPago() {
           {/* <DeviceIdWeb setDeviceId={setDeviceId} /> */}
           {/* <Text>deviceid:{deviceId}</Text> */}
 
-          {registroTransacao && deviceId && (
+          {visiblePagamentoCartaoSalvo && registroTransacao && deviceId && (
             <CartaoCreditoSelector
               savedPaymentData={savedPaymentData}
               installmentOptions={installmentOptions}
@@ -287,6 +311,11 @@ export default function CheckoutMercadoPago() {
               setCpfCardSalvo={setCpfCardSalvo} // Passar a função para definir o CPF do cartão salvo
               enviarPagamentoCartaoSalvo={enviarPagamentoCartaoSalvo} // Passar a função para enviar o pagamento do cartão salvo
               loading={loading} // Passar o estado de carregamento
+              setPaymentMethodCardSaved={setPaymentMethodCardSaved} // Passar a função para definir o método de pagamento do cartão salvo
+              setCVV={setCVV} // Passar a função para definir o CVV do cartão
+              CVV={CVV} // Passar o estado do CVV do cartão
+              error={error} // Passar o estado de erro
+              installments={installments} // Passar o número de parcelas selecionadas
             />
           )}
           {paymentStatusId && (

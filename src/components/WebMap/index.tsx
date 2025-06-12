@@ -1,3 +1,4 @@
+import colors from "@/src/constants/colors";
 import React from "react";
 import {
   StyleSheet,
@@ -6,6 +7,7 @@ import {
   Text,
   Linking,
   Button,
+  TouchableOpacity,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -35,13 +37,20 @@ const WebMap: React.FC<WebMapProps> = ({ location }) => {
     Linking.openURL(url);
   };
 
+  const handleOpenWaze = () => {
+    const wazeUrl = `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes`;
+    Linking.openURL(wazeUrl).catch(() =>
+      alert("Não foi possível abrir o Waze.")
+    );
+  };
+
   return (
     <View style={styles.container}>
       {Platform.OS === "web" ? (
         <iframe
           width="100%"
           height="500"
-          style={{ border: 0 }}
+          style={{ border: 0, borderRadius: 15 }}
           src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyDOKub2Z7hwFD9BiMxNfXPSSwKJ--YG_rU&q=${latitude},${longitude}&zoom=15`}
           allowFullScreen
         />
@@ -58,7 +67,31 @@ const WebMap: React.FC<WebMapProps> = ({ location }) => {
           )}
         />
       )}
-      <Button title="Abrir no Google Maps" onPress={handleOpenMaps} />
+      <View style={styles.buttons}>
+        <TouchableOpacity
+          onPress={handleOpenMaps}
+          style={{
+            padding: 10,
+            backgroundColor: "rgb(0, 146, 250)",
+            borderRadius: 5,
+          }}
+        >
+          <Text style={{ color: colors.branco }}>Abrir no Google Maps</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleOpenWaze}
+          style={{
+            padding: 10,
+            backgroundColor: "#rgb(0, 146, 250)",
+            borderRadius: 5,
+          }}
+        >
+          <Text style={{ color: colors.branco }}>Abrir no Waze</Text>
+        </TouchableOpacity>
+
+        {/* <Button title="Abrir no Google Maps" onPress={handleOpenMaps} />
+        <Button title="Abrir no Waze" onPress={handleOpenWaze} /> */}
+      </View>
     </View>
   );
 };
@@ -77,6 +110,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  buttons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
 });
 

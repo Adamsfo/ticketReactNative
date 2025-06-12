@@ -28,6 +28,7 @@ import CounterTicket from "@/src/components/CounterTicket";
 import { api } from "@/src/lib/api";
 import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
+import { useCart } from "@/src/contexts_/CartContext";
 
 const { width } = Dimensions.get("window");
 
@@ -35,6 +36,7 @@ export default function Index() {
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
+  const { state, dispatch } = useCart();
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };
   const [formData, setFormData] = useState<Evento>({
@@ -78,6 +80,7 @@ export default function Index() {
 
   useFocusEffect(
     useCallback(() => {
+      zerarIngressos();
       if (id > 0) {
         getRegistros(id);
         getRegistrosIngressos({ filters: { idEvento: id } });
@@ -98,18 +101,11 @@ export default function Index() {
     setModalVisible(false);
   };
 
-  // const zerarItem = (id: number) => {
-  //   console.log("zerarItem");
-  //   const reg = registrosEventoIngressos.map((ingresso) => {
-  //     if (ingresso.id === id) {
-  //       ingresso.qtde = 0;
-  //     }
-  //     return ingresso;
-  //   });
-
-  //   setRegistrosEventoIngressos([]);
-  //   setRegistrosEventoIngressos(reg);
-  // };
+  const zerarIngressos = () => {
+    state.items.map((ingresso) => {
+      dispatch({ type: "REMOVE_ITEM", id: ingresso.id });
+    });
+  };
 
   return (
     <LinearGradient
