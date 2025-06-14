@@ -4,8 +4,8 @@ import { router } from "expo-router";
 import { Platform } from "react-native";
 
 const BASEAPI = [
-  "http://192.168.18.95:9000",
-  // 'http://201.71.153.116:9000',
+  // "http://localhost:9000",
+  "http://15.229.161.174:9000",
   "Homologação",
   "1.0.32",
   "http://localhost:8081/",
