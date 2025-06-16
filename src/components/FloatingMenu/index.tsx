@@ -25,13 +25,16 @@ const FloatingMenu = ({ color }: { color?: string }) => {
   const { user, setAuth } = useAuth();
 
   const fetchToken = async () => {
-    console.log("Fetching token...");
-    let _token = await AsyncStorage.getItem("token");
-    console.log("Token:", _token); // Verifique se o token está sendo recuperado
+    let _token;
+
+    if (Platform.OS === "web") {
+      _token = localStorage.getItem("token") ?? "";
+    } else {
+      _token = (await AsyncStorage.getItem("token")) ?? "";
+    }
 
     if (_token) {
       const response = await apiAuth.getUsurioToken(_token);
-      console.log("API Response:", response); // Verifique a resposta da API
 
       if (response) {
         setAuth(response as unknown as Usuario);
@@ -74,7 +77,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
                 { color: color ? color : colors.roxo },
               ]}
             >
-              Entrar ou Cadastre-se
+              Entre ou Cadastre-se
             </Text>
             <Feather
               name="user"

@@ -39,8 +39,20 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
     setLoading(true);
 
     const result = await apiAuth.login({ login: email, senha: password });
-    const vUser = await fetchToken();
     if (result.success) {
+      let _token;
+
+      if (Platform.OS === "web") {
+        _token = localStorage.getItem("token") ?? "";
+      } else {
+        _token = (await AsyncStorage.getItem("token")) ?? "";
+      }
+
+      const vUserResponse = await apiAuth.getUsuario({
+        filters: { token: _token },
+      });
+      const vUser: Usuario = vUserResponse.data[0];
+
       if (!vUser?.ativo) {
         setUsuarioAtivar(vUser ?? null);
         setMsg("Conta não ativada.\n\n");
@@ -61,32 +73,32 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
     }
   }
 
-  const fetchToken = async () => {
-    console.log("Fetching token...");
-    let _token = await AsyncStorage.getItem("token");
-    console.log("Token:", _token); // Verifique se o token está sendo recuperado
+  // const fetchToken = async () => {
+  //   console.log("Fetching token...");
+  //   let _token = await AsyncStorage.getItem("token");
+  //   console.log("Token:", _token); // Verifique se o token está sendo recuperado
 
-    if (_token) {
-      const response = await apiAuth.getUsurioToken(_token);
-      console.log("API Response:", response); // Verifique a resposta da API
+  //   if (_token) {
+  //     const response = await apiAuth.getUsurioToken(_token);
+  //     console.log("API Response:", response); // Verifique a resposta da API
 
-      if (response) {
-        const vuser = response as unknown as Usuario;
-        if (vuser.ativo) {
-          await AsyncStorage.setItem("usuario", JSON.stringify(response));
-          setAuth(response as unknown as Usuario);
-        }
-        return response as unknown as Usuario;
-      } else {
-        // setUsuario({} as Usuario);
-        setAuth({} as Usuario);
-      }
-    } else {
-      // setUsuario({} as Usuario);
-      setAuth({} as Usuario);
-      await AsyncStorage.removeItem("usuario");
-    }
-  };
+  //     if (response) {
+  //       const vuser = response as unknown as Usuario;
+  //       if (vuser.ativo) {
+  //         await AsyncStorage.setItem("usuario", JSON.stringify(response));
+  //         setAuth(response as unknown as Usuario);
+  //       }
+  //       return response as unknown as Usuario;
+  //     } else {
+  //       // setUsuario({} as Usuario);
+  //       setAuth({} as Usuario);
+  //     }
+  //   } else {
+  //     // setUsuario({} as Usuario);
+  //     setAuth({} as Usuario);
+  //     await AsyncStorage.removeItem("usuario");
+  //   }
+  // };
 
   const isEmail = (value: string): boolean => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -124,7 +136,7 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
           {/* <Text style={style.logoText}>
             Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
           </Text> */}
-          <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
+          <Text style={style.slogan}>Faça login para comprar seu Ingresso</Text>
         </View>
 
         <View style={style.form}>
@@ -257,6 +269,7 @@ const style = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 14,
     paddingBottom: 14,
+    fontSize: 16,
   },
   button: {
     backgroundColor: colors.laranjado,

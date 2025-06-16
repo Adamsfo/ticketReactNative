@@ -23,8 +23,8 @@ interface Props {
 
 export default function ModalVerificacao({ onClose, msg, user }: Props) {
   const [selectedOption, setSelectedOption] = useState<
-    "email" | "sms" | "whatsapp" | null
-  >(null);
+    "email" | "sms" | "whatsapp"
+  >("email");
   const [step, setStep] = useState<1 | 2>(1);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>("");
@@ -54,7 +54,6 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
       code,
       user?.id ?? 0
     );
-    console.log(result);
     const data = result.data;
     if (data.error) {
       setError(data.error);
@@ -64,7 +63,7 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={onClose}>
+    <TouchableWithoutFeedback>
       <View style={styles.modalContainer}>
         <TouchableWithoutFeedback>
           <View style={styles.container}>
@@ -173,9 +172,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+    paddingHorizontal: "15%",
   },
   container: {
-    width: Platform.OS === "web" ? "40%" : "90%",
+    // width: Platform.OS === "web" ? "40%" : "90%",
+    width: "100%",
+
     backgroundColor: "#FFF",
     borderRadius: 12,
     padding: 20,

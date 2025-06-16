@@ -27,7 +27,10 @@ export default function Index({ route }: any) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (param.includes("checkoutmp")) {
+      console.log("URL Params:", param.toString());
+      const param2 = param.toString().replace("jangoingressos.com.br", "");
+
+      if (param2.includes("checkoutmp")) {
         const urlParams = new URLSearchParams(param);
 
         const idEvento = urlParams.get("idEvento");
@@ -49,7 +52,7 @@ export default function Index({ route }: any) {
           //     decodeURIComponent(param.split("registroTransacao=")[1] as string)
           //   ),
         });
-      } else if (param.includes("ingresso")) {
+      } else if (param2.includes("ingresso")) {
         const url = new URL(param);
         const urlParams = new URLSearchParams(url.search);
 
@@ -58,7 +61,7 @@ export default function Index({ route }: any) {
         navigation.navigate("ingresso", {
           qrcode: qrcode,
         });
-      } else if (param.includes("redefinirsenha")) {
+      } else if (param2.includes("redefinirsenha")) {
         const url = new URL(param);
         const urlParams = new URLSearchParams(url.search);
 
@@ -67,6 +70,8 @@ export default function Index({ route }: any) {
         navigation.navigate("redefinirsenha", {
           token,
         });
+      } else if (param2.includes("home")) {
+        navigation.navigate("home");
       } else {
         navigation.navigate("home");
       }

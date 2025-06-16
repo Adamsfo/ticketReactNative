@@ -42,7 +42,7 @@ class ApiAuth {
   // Método get Usuario por token
   public async getUsurioToken<T>(token: string): Promise<ApiResponse<T[]>> {
     const request = await api.request<T[]>(
-      `/usuario?filters={"token":"${token}"}`,
+      `/usuario?filters={"token":"${token}", "ativo":1}`,
       "GET"
     );
     const registro = request.data && (request.data[0] as T);

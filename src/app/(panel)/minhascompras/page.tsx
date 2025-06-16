@@ -118,35 +118,37 @@ export default function Index() {
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
         >
-          <View style={styles.area}>
-            {Platform.OS === "web" && <CustomGridTitle data={data} />}
-            {registros.map((item: Transacao, index: number) => (
-              <CustomGrid
-                key={index}
-                onItemPress={handleModalEdit}
-                data={[
-                  {
-                    label: data[0].label,
-                    content: item.id.toString(),
-                    id: item.id,
-                  },
-                  {
-                    label: data[1].label,
-                    content: format(
-                      parseISO(item.dataTransacao.toString()),
-                      "dd/MM/yyyy HH:mm:ss"
-                    ),
-                    id: item.id,
-                  },
-                  {
-                    label: data[2].label,
-                    content: formatCurrency(item.valorTotal.toString()),
-                    id: item.id,
-                  },
-                ]}
-              />
-            ))}
-          </View>
+          {registros[0] && (
+            <View style={styles.area}>
+              {Platform.OS === "web" && <CustomGridTitle data={data} />}
+              {registros.map((item: Transacao, index: number) => (
+                <CustomGrid
+                  key={index}
+                  onItemPress={handleModalEdit}
+                  data={[
+                    {
+                      label: data[0].label,
+                      content: item.id.toString(),
+                      id: item.id,
+                    },
+                    {
+                      label: data[1].label,
+                      content: format(
+                        parseISO(item.dataTransacao.toString()),
+                        "dd/MM/yyyy HH:mm:ss"
+                      ),
+                      id: item.id,
+                    },
+                    {
+                      label: data[2].label,
+                      content: formatCurrency(item.valorTotal.toString()),
+                      id: item.id,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+          )}
         </ScrollView>
         <Footer />
         {/* <FlatList

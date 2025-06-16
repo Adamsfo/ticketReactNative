@@ -40,15 +40,30 @@ export default function Login({ onClose }: ModalMsgProps) {
     setLoading(true);
 
     const result = await apiAuth.login({ login: email, senha: password });
-    const vUser = await fetchToken();
+
     if (result.success) {
-      if (!vUser?.ativo) {
-        setUsuarioAtivar(vUser ?? null);
+      let _token;
+
+      if (Platform.OS === "web") {
+        _token = localStorage.getItem("token") ?? "";
+      } else {
+        _token = (await AsyncStorage.getItem("token")) ?? "";
+      }
+
+      const vUserResponse = await apiAuth.getUsuario({
+        filters: { token: _token },
+      });
+      const vUser: Usuario = vUserResponse.data[0];
+
+      if (!vUser.ativo) {
+        setUsuarioAtivar(vUser);
         setMsg("Conta não ativada.\n\n");
         setModalMsg(true);
         setLoading(false);
         return;
       }
+
+      await fetchToken();
 
       if (onClose) {
         onClose();
@@ -63,9 +78,13 @@ export default function Login({ onClose }: ModalMsgProps) {
   }
 
   const fetchToken = async () => {
-    console.log("Fetching token...");
-    let _token = await AsyncStorage.getItem("token");
-    console.log("Token:", _token); // Verifique se o token está sendo recuperado
+    let _token;
+
+    if (Platform.OS === "web") {
+      _token = localStorage.getItem("token") ?? "";
+    } else {
+      _token = (await AsyncStorage.getItem("token")) ?? "";
+    }
 
     if (_token) {
       const response = await apiAuth.getUsurioToken(_token);
@@ -139,7 +158,7 @@ export default function Login({ onClose }: ModalMsgProps) {
           {/* <Text style={style.logoText}>
             Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
           </Text> */}
-          <Text style={style.slogan}>Faça login para comprar seu Ticket</Text>
+          <Text style={style.slogan}>Faça login para comprar seu Ingresso</Text>
         </View>
 
         <View style={style.form}>
@@ -273,6 +292,7 @@ const style = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 14,
     paddingBottom: 14,
+    fontSize: 16,
   },
   button: {
     backgroundColor: colors.laranjado,
