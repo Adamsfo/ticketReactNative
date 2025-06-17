@@ -139,6 +139,36 @@ function Routes() {
             component={TipoIngresso}
             options={{ headerShown: false, title: "Tipo Ingresso" }}
           />
+          <Drawer.Screen
+            name="minhaconta"
+            component={MinhaConta}
+            options={{
+              headerShown: false,
+              title: "Conta",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "person" : "person-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="meusingressos"
+            component={MeusIngressos}
+            options={{
+              headerShown: false,
+              title: "Meus Ingressos",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "ticket" : "ticket-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
         </>
       );
     }
@@ -175,6 +205,36 @@ function Routes() {
             name="validador"
             component={Validador}
             options={{ headerShown: false, title: "Validador" }}
+          />
+          <Drawer.Screen
+            name="minhaconta"
+            component={MinhaConta}
+            options={{
+              headerShown: false,
+              title: "Conta",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "person" : "person-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="meusingressos"
+            component={MeusIngressos}
+            options={{
+              headerShown: false,
+              title: "Meus Ingressos",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "ticket" : "ticket-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
           />
         </>
       );

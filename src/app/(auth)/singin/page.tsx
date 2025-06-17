@@ -55,7 +55,7 @@ export default function Login({ onClose }: ModalMsgProps) {
       });
       const vUser: Usuario = vUserResponse.data[0];
 
-      if (!vUser.ativo) {
+      if (vUser && !vUser.ativo) {
         setUsuarioAtivar(vUser);
         setMsg("Conta não ativada.\n\n");
         setModalMsg(true);

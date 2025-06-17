@@ -61,6 +61,8 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
         return;
       }
 
+      await fetchToken();
+
       if (onClose) {
         onClose();
       } else {
@@ -73,32 +75,36 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
     }
   }
 
-  // const fetchToken = async () => {
-  //   console.log("Fetching token...");
-  //   let _token = await AsyncStorage.getItem("token");
-  //   console.log("Token:", _token); // Verifique se o token está sendo recuperado
+  const fetchToken = async () => {
+    let _token;
 
-  //   if (_token) {
-  //     const response = await apiAuth.getUsurioToken(_token);
-  //     console.log("API Response:", response); // Verifique a resposta da API
+    if (Platform.OS === "web") {
+      _token = localStorage.getItem("token") ?? "";
+    } else {
+      _token = (await AsyncStorage.getItem("token")) ?? "";
+    }
 
-  //     if (response) {
-  //       const vuser = response as unknown as Usuario;
-  //       if (vuser.ativo) {
-  //         await AsyncStorage.setItem("usuario", JSON.stringify(response));
-  //         setAuth(response as unknown as Usuario);
-  //       }
-  //       return response as unknown as Usuario;
-  //     } else {
-  //       // setUsuario({} as Usuario);
-  //       setAuth({} as Usuario);
-  //     }
-  //   } else {
-  //     // setUsuario({} as Usuario);
-  //     setAuth({} as Usuario);
-  //     await AsyncStorage.removeItem("usuario");
-  //   }
-  // };
+    if (_token) {
+      const response = await apiAuth.getUsurioToken(_token);
+      console.log("API Response:", response); // Verifique a resposta da API
+
+      if (response) {
+        const vuser = response as unknown as Usuario;
+        if (vuser.ativo) {
+          await AsyncStorage.setItem("usuario", JSON.stringify(response));
+          setAuth(response as unknown as Usuario);
+        }
+        return response as unknown as Usuario;
+      } else {
+        // setUsuario({} as Usuario);
+        setAuth({} as Usuario);
+      }
+    } else {
+      // setUsuario({} as Usuario);
+      setAuth({} as Usuario);
+      await AsyncStorage.removeItem("usuario");
+    }
+  };
 
   const isEmail = (value: string): boolean => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

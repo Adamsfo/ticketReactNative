@@ -68,7 +68,7 @@ export default function ModalEventoIngresso({
       let taxa = parseFloat(
         value.toString().replace("R$ ", "").replace(",", ".")
       );
-      const taxaCalculada = ((taxa * 5) / 100).toFixed(2).toString();
+      const taxaCalculada = ((taxa * 10) / 100).toFixed(2).toString();
       taxa = parseFloat(taxaCalculada);
       const valor = taxa + parseFloat(value.toString().replace("R$ ", ""));
       setFormData({ ...formData, taxaServico: taxa, [field]: value, valor });

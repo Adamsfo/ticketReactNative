@@ -27,6 +27,7 @@ import { Switch } from "react-native-gesture-handler";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
 import DeviceIdWeb from "../DeviceIdWeb";
+import StatusPaymentCustomizado from "../StatusPaymentCustomizado";
 
 type InstallmentOption = {
   installments: number;
@@ -78,6 +79,8 @@ export default function CheckoutMercadoPago() {
   >(null); // Estado para armazenar o método de pagamento do cartão salvo
   const [CVV, setCVV] = useState<string>(""); // Estado para armazenar o CVV do cartão
   const [error, setError] = useState<string>(""); // Estado para armazenar erros
+  const [consultaPagamento, setConsultaPagamento] = useState(false);
+  const [dadosDePagamento, setDadosDePagamento] = useState({} as any);
 
   useEffect(() => {
     async function fetchPaymentData(params: QueryParams) {
@@ -103,6 +106,48 @@ export default function CheckoutMercadoPago() {
       fetchPaymentData({ filters: { email: email } });
     }
   }, []);
+
+  useEffect(() => {
+    if (paymentStatusId === "" || !consultaPagamento) return;
+
+    const interval = setInterval(() => {
+      verificarStatusPagamentoPix();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [paymentStatusId, consultaPagamento]);
+
+  useEffect(() => {
+    setConsultaPagamento(true);
+  }, [paymentStatusId]);
+
+  const verificarStatusPagamentoPix = async () => {
+    // console.log("isPolling", isPolling);
+
+    if (!consultaPagamento) return;
+
+    try {
+      const response = await apiGeral.getResource("/consultapagamento", {
+        // filters: { id: "107841609777" },
+        // filters: { id: paymentStatusId, email },
+        filters: { id: paymentStatusId, email: user?.email || email },
+        pageSize: 10,
+      });
+
+      const dados: { status: string } = Array.isArray(response?.data)
+        ? { status: "" }
+        : response?.data ?? { status: "" };
+
+      setDadosDePagamento(response.data);
+
+      if (dados.status === "approved") {
+        setConsultaPagamento(false);
+        setVisiblePagamentoCartaoSalvo(false); // Ocultar o componente de pagamento
+      }
+    } catch (error) {
+      console.log("Erro ao verificar status do pagamento PIX:", error);
+    }
+  };
 
   const customization = {
     visual: {
@@ -321,12 +366,9 @@ export default function CheckoutMercadoPago() {
               installments={installments} // Passar o número de parcelas selecionadas
             />
           )}
-          {paymentStatusId && (
-            <StatusScreen
-              initialization={{ paymentId: paymentStatusId }} // Passar o ID do pagamento para o StatusScreen
-              onReady={onReady}
-              onError={onError}
-            />
+
+          {dadosDePagamento && dadosDePagamento.status && (
+            <StatusPaymentCustomizado data={dadosDePagamento} />
           )}
 
           {visiblePagamento && (

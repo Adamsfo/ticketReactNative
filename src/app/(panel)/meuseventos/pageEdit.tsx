@@ -37,6 +37,7 @@ import ModalEventoIngresso from "./modalEventoIngresso";
 import { useNavigation } from "@react-navigation/native";
 import AddressPicker from "@/src/components/AddressPicker";
 import Select from "@/src/components/Select";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -56,6 +57,7 @@ export default function Index() {
   const [itemsProdutor, setItemsProdutor] = useState<
     { value: number; label: string }[]
   >([]);
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState<Evento>({
     id: 0,
@@ -102,6 +104,7 @@ export default function Index() {
 
   const handleSave = async () => {
     setErrors({});
+    console.log("entrou");
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -136,7 +139,6 @@ export default function Index() {
   };
 
   const getRegistros = async (id: number) => {
-    await getRegistrosProdutor();
     console.log("id", id);
     if (id > 0) {
       const response = await apiGeral.getResourceById<Evento>(endpointApi, id);
@@ -175,6 +177,8 @@ export default function Index() {
 
   useFocusEffect(
     useCallback(() => {
+      getRegistrosProdutor();
+
       const fetchData = async () => {
         setRegistrosEventoIngressos([]);
         await getRegistros(id);
@@ -216,6 +220,7 @@ export default function Index() {
   };
 
   const getRegistrosProdutor = async () => {
+    console.log("getRegistrosProdutor");
     const response = await apiGeral.getResource<Produtor>("/produtor");
 
     const registrosData = (response.data ?? []).map((record: Produtor) => ({
@@ -424,7 +429,7 @@ export default function Index() {
             />
           </View>
 
-          {itemsProdutor.length > 0 && (
+          {(itemsProdutor.length > 0 || user?.id === 1) && (
             <View style={{ marginBottom: 16 }}>
               <Text style={styles.label}>Produtor</Text>
               <Select

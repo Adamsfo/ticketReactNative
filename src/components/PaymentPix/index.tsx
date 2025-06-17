@@ -30,46 +30,6 @@ export default function PaymentPix({
   const [qrCodeBase64, setQrCodeBase64] = useState<string>("");
   const [copyPasteCode, setCopyPasteCode] = useState<string>("");
   const [loading, setloading] = useState(false);
-  const [idPagamento, setIdPagamento] = useState<string>("");
-  const [isPolling, setIsPolling] = useState(true);
-
-  const verificarStatusPagamentoPix = async () => {
-    console.log("isPolling", isPolling);
-
-    if (!isPolling) return;
-
-    try {
-      const response = await apiGeral.getResource("/consultapagamento", {
-        // filters: { id: "107841609777" },
-        filters: { id: idPagamento, email },
-        pageSize: 10,
-      });
-
-      const dados: { status: string } = Array.isArray(response?.data)
-        ? { status: "" }
-        : response?.data ?? { status: "" };
-
-      if (dados.status === "approved") {
-        console.log("Pagamento aprovado!");
-        setPaymentStatusId(idPagamento);
-        setIsPolling(false);
-      }
-
-      console.log("responsePagamentostatus", response);
-    } catch (error) {
-      console.log("Erro ao verificar status do pagamento PIX:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (idPagamento === "" || !isPolling) return;
-
-    const interval = setInterval(() => {
-      verificarStatusPagamentoPix();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [idPagamento, isPolling]);
 
   const fetchPixPayment = async () => {
     try {
@@ -92,9 +52,7 @@ export default function PaymentPix({
       const pixData = responseData.point_of_interaction.transaction_data;
       setQrCodeBase64(pixData.qr_code_base64);
       setCopyPasteCode(pixData.qr_code);
-      // setPaymentStatusId(responseData.id);
-      setIdPagamento(responseData.id);
-      setIsPolling(true);
+      setPaymentStatusId(responseData.id);
       setloading(false);
     } catch (error) {
       console.error("Erro ao gerar Pix:", error);
