@@ -78,7 +78,7 @@ export default function Index() {
           style={{
             flexDirection: "row",
             gap: 8,
-            marginBottom: 16,
+            marginBottom: 10,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -137,8 +137,8 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 5,
-    paddingTop: 10,
+    paddingHorizontal: 5,
+    // paddingTop: 10,
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
     // marginRight: Platform.OS === "web" ? 200 : 0,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "600",
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: 10,
   },
   list: {
     gap: 16,
@@ -219,5 +219,6 @@ const styles = StyleSheet.create({
   listaEventos: {
     marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
     marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    gap: 12,
   },
 });

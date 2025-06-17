@@ -118,6 +118,8 @@ export default function CheckoutMercadoPago() {
   }, [paymentStatusId, consultaPagamento]);
 
   useEffect(() => {
+    if (paymentStatusId === "") return;
+
     setConsultaPagamento(true);
   }, [paymentStatusId]);
 
@@ -364,6 +366,14 @@ export default function CheckoutMercadoPago() {
               CVV={CVV} // Passar o estado do CVV do cartão
               error={error} // Passar o estado de erro
               installments={installments} // Passar o número de parcelas selecionadas
+            />
+          )}
+
+          {consultaPagamento && (
+            <ActivityIndicator
+              size="large"
+              color={colors.azul}
+              style={{ marginTop: 15 }}
             />
           )}
 

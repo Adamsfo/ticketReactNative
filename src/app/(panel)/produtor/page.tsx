@@ -205,6 +205,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 14,
     paddingBottom: 14,
+    fontSize: 16,
   },
   labelError: {
     color: colors.red,

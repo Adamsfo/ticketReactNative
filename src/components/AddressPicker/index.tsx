@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
     paddingHorizontal: 8,
+    fontSize: 16,
   },
 });
 
