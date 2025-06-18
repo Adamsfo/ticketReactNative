@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   imagem: {
     width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%",
-    height: Platform.OS === "web" ? (width <= 1000 ? 300 : 500) : 300,
+    height: Platform.OS === "web" ? (width <= 1000 ? 265 : 550) : 265,
     resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
     borderRadius: 20,
     // margin: 20,

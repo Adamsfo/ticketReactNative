@@ -8,11 +8,15 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  TextInput, // ou @react-native-picker/picker se for novo projeto
+  TextInput,
+  Platform, // ou @react-native-picker/picker se for novo projeto
 } from "react-native";
 import PaymentPix from "../PaymentPix";
 import { Transacao } from "@/src/types/geral";
 import { api } from "@/src/lib/api";
+import { initMercadoPago, Wallet } from "@mercadopago/sdk-react";
+
+const MP_PUBLIC_KEY = "APP_USR-499790e3-36ba-4f0d-8b54-a05c499ad93c"; // Chave pública do Mercado Pago
 
 type Props = {
   savedPaymentData: any;
@@ -57,6 +61,12 @@ export default function CartaoCreditoSelector({
 }: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pagamentoPix, setPagamentoPix] = useState(false); // Estado para armazenar o ID do pagamento
+  const [pagamentoPro, setPagamentoPro] = useState(false); // Estado para armazenar o ID do pagamento
+  const [preferenceId, setPreferenceId] = useState<string | null>(null);
+
+  initMercadoPago(MP_PUBLIC_KEY, {
+    locale: "pt-BR",
+  });
 
   const renderCard = ({ item }: any) => {
     const isSelected = item.id === selectedCardId;
@@ -94,6 +104,44 @@ export default function CartaoCreditoSelector({
         </Text>
       </TouchableOpacity>
     );
+  };
+
+  const abrirCheckoutPro = async () => {
+    return new Promise<void>((resolve, reject) => {
+      fetch(api.getBaseApi() + "/getpreference", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idTransacao: registroTransacao.id,
+          transaction_amount: registroTransacao.valorTotal,
+          payer: {
+            email: email, // Garantir que o email seja uma string
+            // email: user?.email || email || "", // Garantir que o email seja uma string
+            // identification: { type: "CPF", number: cpfCardSalvo },
+          },
+        }), // Adicione o ID do usuário aqui
+      })
+        .then((response) => response.json())
+        .then((response) => {
+          if (response.init_point) {
+            console.log("Preference ID:", response.preference_id);
+            setPreferenceId(response.preference_id); // Armazenar o preference_id
+            // console.log("init_point:", response);
+            // 👉 Abre no navegador
+            // window.open(response.init_point, "_blank");
+            // Ou no mobile você pode usar Linking.openURL(init_point);
+          }
+
+          resolve();
+        })
+        .catch((error) => {
+          // setloading(false); // Parar o carregamento
+          // lidar com a resposta de erro ao tentar criar o pagamento
+          reject();
+        });
+    });
   };
 
   return (
@@ -159,6 +207,24 @@ export default function CartaoCreditoSelector({
             </Text>
           </View>
         </TouchableOpacity>
+        {/* <TouchableOpacity
+          style={[styles.card, pagamentoPro && styles.cardSelected]}
+          onPress={() => {
+            setPagamentoPro(true);
+            abrirCheckoutPro();
+          }}
+        >
+          <View style={styles.cardHeader}>
+            <Text
+              style={[
+                styles.cardBrand,
+                pagamentoPro && styles.cardBrandSelected,
+              ]}
+            >
+              {Platform.OS === "ios" ? "Apple Pay" : "Google Pay"}
+            </Text>
+          </View>
+        </TouchableOpacity> */}
       </View>
       {!pagamentoPix && savedPaymentData?.cards?.length > 0 && (
         <>
@@ -255,6 +321,9 @@ export default function CartaoCreditoSelector({
           idTransacao={registroTransacao.id} // Replace 0 with an appropriate fallback value
           setPaymentStatusId={setPaymentStatusId} // Passar a função para definir o ID do pagamento
         ></PaymentPix>
+      )}
+      {pagamentoPro && preferenceId && (
+        <Wallet initialization={{ preferenceId }} />
       )}
     </View>
   );

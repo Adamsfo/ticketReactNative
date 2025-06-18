@@ -8,13 +8,19 @@ import {
   Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 interface ModalMsgProps {
   onClose: () => void;
-  msg?: string;
+  idEvento: number;
 }
 
-export default function ModalMsg({ onClose, msg }: ModalMsgProps) {
+export default function ModalCondicoesCompra({
+  onClose,
+  idEvento,
+}: ModalMsgProps) {
+  const navigation = useNavigation() as any;
+
   return (
     <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.modalContainer}>
@@ -32,7 +38,41 @@ export default function ModalMsg({ onClose, msg }: ModalMsgProps) {
 
             <View style={styles.area}>
               <Text style={styles.mensagem}>
-                <Text>{msg}</Text>
+                <View
+                  style={{
+                    backgroundColor: "#fff",
+                    padding: 20,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text>
+                    Ao aceitar as condições de compra, você concorda com
+                    os&nbsp;
+                    <Text
+                      style={{ color: "blue" }}
+                      onPress={() => {
+                        navigation.navigate("evento", {
+                          id: idEvento,
+                        });
+                        onClose();
+                      }}
+                    >
+                      termos e condições do evento
+                    </Text>
+                    , incluindo políticas de reembolso e cancelamento, que estão
+                    nas informações do evento.
+                  </Text>
+                  {/* <View style={[styles.footer, { paddingTop: 10 }]}>
+                    <TouchableOpacity
+                      onPress={() => onClose()}
+                      style={[styles.button, styles.buttonClose]}
+                    >
+                      <Text style={{ color: "red", marginTop: 15 }}>
+                        Fechar
+                      </Text>
+                    </TouchableOpacity>
+                  </View> */}
+                </View>
               </Text>
             </View>
           </View>
@@ -83,5 +123,21 @@ const styles = StyleSheet.create({
     color: "#1a7a7a7",
     marginBottom: 30,
     marginTop: 10,
+  },
+  button: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  buttonClose: {
+    backgroundColor: "rgb(211, 211, 211)",
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    // marginTop: 10,
   },
 });

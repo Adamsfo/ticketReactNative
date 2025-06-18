@@ -31,6 +31,8 @@ import Login from "@/src/app/(auth)/singin/page";
 import { apiAuth } from "@/src/lib/auth";
 import ModalLogin from "@/src/app/(auth)/singin/ModalLogin";
 import { useAuth } from "@/src/contexts_/AuthContext";
+import { Switch } from "react-native-gesture-handler";
+import ModalCondicoesCompra from "../ModalCondicoesCompra";
 
 const { width } = Dimensions.get("window");
 
@@ -55,6 +57,9 @@ export default function ModalResumoIngresso({
   const [msg, setMsg] = React.useState("");
   const { user } = useAuth();
   const [loading, setLoading] = React.useState(false);
+  const [aceiteCompra, setAceiteCompra] = React.useState(false);
+  const [visibleCondicoesCompra, setVisibleCondicoesCompra] =
+    React.useState(false);
 
   const removeItemFromCart = (id: number) => {
     dispatch({ type: "REMOVE_ITEM", id });
@@ -153,6 +158,10 @@ export default function ModalResumoIngresso({
     setVisibleMsg(false);
   };
 
+  const handelCloseCondicoesCompra = () => {
+    setVisibleCondicoesCompra(false);
+  };
+
   const handlePagamento = async () => {
     try {
       if (!user?.id) {
@@ -162,6 +171,12 @@ export default function ModalResumoIngresso({
 
       if (!(IngressoTransacao ?? [])[0]) {
         setMsg("Não existe ingresso para este evento.");
+        setVisibleMsg(true);
+        return;
+      }
+
+      if (!aceiteCompra) {
+        setMsg("Aceitar condições de compra para continuar.");
         setVisibleMsg(true);
         return;
       }
@@ -248,14 +263,46 @@ export default function ModalResumoIngresso({
             {step === 2 && (
               <View
                 style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  paddingHorizontal: 30,
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  // paddingHorizontal: 30,
                 }}
               >
                 <Text style={styles.title}>
                   Total: {formatCurrency(calculateValor())}
                 </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    // paddingHorizontal: 30,
+                  }}
+                >
+                  <Switch
+                    trackColor={{ false: colors.cinza, true: colors.azul }}
+                    thumbColor={colors.azul}
+                    // ios_backgroundColor={colors.cinza}
+                    onValueChange={(value) => {
+                      setAceiteCompra(!aceiteCompra);
+                    }}
+                    value={aceiteCompra}
+                  ></Switch>
+                  <Text
+                    style={[styles.title, { paddingLeft: 8, marginTop: -2 }]}
+                  >
+                    Li e aceito as condições de compra
+                    <Feather
+                      name="info"
+                      size={20}
+                      color={colors.azul}
+                      style={{ paddingLeft: 5 }}
+                      onPress={() => {
+                        setVisibleCondicoesCompra(true);
+                      }}
+                    />
+                  </Text>
+                </View>
               </View>
             )}
             {visibleDetalhe && (
@@ -371,6 +418,22 @@ export default function ModalResumoIngresso({
           <TouchableWithoutFeedback onPress={handelCloseMsg}>
             <View style={{ flex: 1 }}>
               <ModalMsg onClose={handelCloseMsg} msg={msg} />
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        <Modal
+          visible={visibleCondicoesCompra}
+          transparent
+          animationType="fade"
+          onRequestClose={handelCloseCondicoesCompra}
+        >
+          <TouchableWithoutFeedback onPress={handelCloseCondicoesCompra}>
+            <View style={{ flex: 1 }}>
+              <ModalCondicoesCompra
+                onClose={handelCloseCondicoesCompra}
+                idEvento={id}
+              />
             </View>
           </TouchableWithoutFeedback>
         </Modal>

@@ -176,9 +176,9 @@ export default function CardIngresso({ item, getRegistros }: Props) {
           <TouchableOpacity
             style={styles.button}
             onPress={async () => {
-              const url = `${api
-                .getBaseApi()
-                .replace("9000", "8081")}/ingresso?qrcode=${item.qrcode}`;
+              const url = `${api.getBaseUrlSite()}ingresso?qrcode=${
+                item.qrcode
+              }`;
 
               if (Platform.OS === "web") {
                 try {

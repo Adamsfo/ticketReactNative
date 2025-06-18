@@ -70,6 +70,15 @@ export default function Index({ route }: any) {
         navigation.navigate("redefinirsenha", {
           token,
         });
+      } else if (param2.includes("evento?")) {
+        const url = new URL(param);
+        const urlParams = new URLSearchParams(url.search);
+
+        const id = urlParams.get("id");
+
+        navigation.navigate("evento", {
+          id,
+        });
       } else if (param2.includes("home")) {
         navigation.navigate("home");
       } else {
