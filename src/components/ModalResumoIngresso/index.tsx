@@ -225,7 +225,11 @@ export default function ModalResumoIngresso({
                 }}
               >
                 <Text style={styles.title}>
-                  Total: {formatCurrency(calculatePreco())} + taxas
+                  Total:{" "}
+                  {formatCurrency(calculatePreco()) +
+                    " (+ Taxa: " +
+                    formatCurrency(calculateTaxa()) +
+                    ")"}
                 </Text>
                 <TouchableOpacity
                   onPress={() => setVisibleDetalhe(!visibleDetalhe)}
@@ -300,7 +304,14 @@ export default function ModalResumoIngresso({
                           >
                             {formatCurrency(
                               (item.qtde * item.eventoIngresso.preco).toFixed(2)
-                            )}
+                            ) +
+                              " (+ Taxa: " +
+                              formatCurrency(
+                                (
+                                  item.qtde * item.eventoIngresso.taxaServico
+                                ).toFixed(2)
+                              ) +
+                              ")"}
                           </Text>
                         </View>
                       </View>
@@ -398,7 +409,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     color: colors.cinza,
   },

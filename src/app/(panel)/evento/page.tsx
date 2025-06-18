@@ -346,12 +346,14 @@ const styles = StyleSheet.create({
   },
   containerImagem: {
     alignItems: "center",
+    padding: 2,
   },
   imagem: {
     width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%",
     height: Platform.OS === "web" ? (width <= 1000 ? 300 : 500) : 300,
-    resizeMode: "cover",
+    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
     borderRadius: 20,
+    // margin: 20,
   },
   dadosBasicos: {
     backgroundColor: "rgba(255,255,255, 0.21)",

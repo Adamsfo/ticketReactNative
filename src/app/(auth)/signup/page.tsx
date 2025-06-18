@@ -249,7 +249,7 @@ export default function Signup() {
             {/* <Text style={style.logoText}>
               Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
             </Text> */}
-            <Text style={style.slogan}>Criar uma conta</Text>
+            <Text style={style.slogan}>Cadastrar conta</Text>
           </View>
 
           <ScrollView
@@ -382,7 +382,11 @@ export default function Signup() {
                         alignItems: "center",
                         borderRadius: 8,
                       }}
-                      onPress={() => navigation.navigate("recuperarsenha")}
+                      onPress={() =>
+                        navigation.navigate("recuperarsenha", {
+                          pemail: formData.email,
+                        })
+                      }
                     >
                       <Text style={style.buttonText}>Recuperar senha</Text>
                     </TouchableOpacity>

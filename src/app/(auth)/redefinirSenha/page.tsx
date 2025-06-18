@@ -138,7 +138,9 @@ export default function Signup() {
             {formData.nomeCompleto && (
               <View style={styles.form}>
                 <Text style={styles.labelNome}>
-                  {formData.nomeCompleto + " " + formData.sobreNome}
+                  {formData.nomeCompleto +
+                    " " +
+                    (formData.sobreNome === null ? "" : formData.sobreNome)}
                 </Text>
                 <View>
                   <Text style={styles.label}>Senha</Text>

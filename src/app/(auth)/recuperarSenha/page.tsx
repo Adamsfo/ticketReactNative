@@ -23,8 +23,11 @@ import StatusBarPage from "@/src/components/StatusBarPage";
 import { useNavigation } from "@react-navigation/native";
 import { api } from "../../../lib/api";
 import ModalMsg from "@/src/components/ModalMsg";
+import { useRoute } from "@react-navigation/native";
 
 export default function Signup() {
+  const route = useRoute();
+  const { pemail } = route.params as { pemail: string };
   const navigation = useNavigation() as any;
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -38,7 +41,7 @@ export default function Signup() {
   };
 
   useEffect(() => {
-    setEmail("");
+    setEmail(pemail || "");
     setError("");
   }, []);
 
@@ -86,9 +89,9 @@ export default function Signup() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={styles.header}>
-            <Text style={styles.logoText}>
+            {/* <Text style={styles.logoText}>
               Ticket<Text style={{ color: colors.laranjado }}>Jango</Text>
-            </Text>
+            </Text> */}
             <Text style={styles.slogan}>Recuperar Senha</Text>
           </View>
 

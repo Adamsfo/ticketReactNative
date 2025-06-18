@@ -35,7 +35,8 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
     <View
       style={{
         flexDirection: "row",
-        padding: 7,
+        paddingBottom: 10,
+        paddingTop: 5,
         justifyContent: "space-between",
         alignItems: "center",
         borderBottomWidth: 1,
@@ -52,14 +53,19 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
         >
           <View
             style={{
-              flexDirection: "row",
+              flexDirection: "column",
               justifyContent: "space-between",
               flex: 1,
             }}
           >
             <View>
               <Text
-                style={{ fontWeight: "normal", paddingLeft: 5, fontSize: 18 }}
+                style={{
+                  fontWeight: "600",
+                  paddingLeft: 5,
+                  fontSize: 20,
+                  marginBottom: 2,
+                }}
               >
                 {data.nome}
               </Text>
@@ -68,15 +74,19 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
               <Text
                 style={{ fontWeight: "normal", paddingLeft: 5, fontSize: 18 }}
               >
-                {formatCurrency(data.preco)}
+                {formatCurrency(data.preco)} (+ Taxa{" "}
+                {formatCurrency(data.taxaServico || 0)})
               </Text>
             </View>
+            <Text style={{ paddingLeft: 5, fontSize: 14, color: colors.zinc }}>
+              {data.descricao}
+            </Text>
           </View>
           <View
             style={{
               marginLeft: 10,
               alignItems: "center",
-              justifyContent: "flex-start", // Alinha os itens no topo
+              justifyContent: "center", // Alinha os itens no topo
             }}
           >
             <View
@@ -121,47 +131,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
             </View>
           </View>
         </View>
-        <Text style={{ paddingLeft: 5, fontSize: 14, color: colors.zinc }}>
-          {data.descricao}
-        </Text>
       </View>
-      {/* <View>
-        <View
-          style={{
-            marginLeft: 10,
-            alignItems: "center",
-            justifyContent: "flex-start", // Alinha os itens no topo
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <TouchableOpacity
-              style={{
-                backgroundColor: "rgb(0, 146, 250)",
-                borderRadius: 5,
-              }}
-              onPress={() => setCount(count + 1)}
-            >
-              <Feather name="plus" size={28} color="white"></Feather>
-            </TouchableOpacity>
-            <Text style={{ fontSize: 18, marginHorizontal: 5 }}>{count}</Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: "rgb(0, 146, 250)",
-                borderRadius: 5,
-              }}
-              onPress={() => setCount(count - 1)}
-            >
-              <Feather name="minus" size={28} color="white"></Feather>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View> */}
     </View>
   );
 };

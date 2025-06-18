@@ -202,7 +202,11 @@ export default function Login({ onClose }: ModalMsgProps) {
                     alignItems: "center",
                     borderRadius: 8,
                   }}
-                  onPress={() => navigation.navigate("recuperarsenha")}
+                  onPress={() =>
+                    navigation.navigate("recuperarsenha", {
+                      email: email,
+                    })
+                  }
                 >
                   <Text style={style.buttonText}>Recuperar senha</Text>
                 </TouchableOpacity>

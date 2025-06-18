@@ -27,7 +27,7 @@ const Accordion: React.FC<AccordionProps> = ({ index, title, children }) => {
         <Text style={styles.headerText}>{title}</Text>
         <Ionicons
           name={expanded ? "chevron-up" : "chevron-down"}
-          size={20}
+          size={22}
           color="#444"
           style={styles.icon}
         />
@@ -54,8 +54,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerText: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
   },
   icon: {
     marginLeft: 10,

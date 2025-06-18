@@ -186,7 +186,14 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
                     alignItems: "center",
                     borderRadius: 8,
                   }}
-                  onPress={() => navigation.navigate("recuperarsenha")}
+                  onPress={() => {
+                    if (onClose) {
+                      onClose();
+                    }
+                    navigation.navigate("recuperarsenha", {
+                      pemail: email,
+                    });
+                  }}
                 >
                   <Text style={style.buttonText}>Recuperar senha</Text>
                 </TouchableOpacity>

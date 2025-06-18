@@ -9,7 +9,7 @@ const BASEAPI = [
   "https://api.jangoingressos.com.br",
   "Homologação",
   "1.0.32",
-  "http://localhost:8081/",
+  "https://jangoingressos.com.br/",
 ];
 
 export const isAuthenticated = async (): Promise<boolean> => {
