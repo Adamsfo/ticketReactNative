@@ -15,20 +15,23 @@ const CustomGridTitle: React.FC<CustomGridProps> = ({ data }) => {
   const { width } = Dimensions.get("window");
   const isMobile = width < 768;
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.row, isMobile && styles.column]}>
-        {data.map((item, index) => (
-          <View key={index} style={styles.box}>
-            <Text style={styles.textLabel}>{item.label}</Text>
+  if (!isMobile) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.row, isMobile && styles.column]}>
+          {data.map((item, index) => (
+            <View key={index} style={styles.box}>
+              <Text style={styles.textLabel}>{item.label}</Text>
+            </View>
+          ))}
+          <View style={{ ...styles.boxIcone }}>
+            <Feather name="edit" size={18} color="rgba(255,255,255, 0.21)" />
           </View>
-        ))}
-        <View style={{ ...styles.boxIcone }}>
-          <Feather name="edit" size={18} color="rgba(255,255,255, 0.21)" />
         </View>
       </View>
-    </View>
-  );
+    );
+  }
+  return null;
 };
 
 const styles = StyleSheet.create({

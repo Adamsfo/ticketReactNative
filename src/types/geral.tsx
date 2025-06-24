@@ -99,6 +99,9 @@ export interface EventoIngresso {
   lote?: string;
   status: StatusEventoIngresso;
   TipoIngresso_descricao?: StatusEventoIngresso;
+  idCupomPromocional?: number | null;
+  CupomPromocional_nome?: string;
+  TipoIngresso?: TipoIngresso;
 }
 
 export interface FormPropsEdit {
@@ -361,6 +364,7 @@ export interface IngressoTransacao {
   Ingresso_EventoIngresso?: EventoIngresso;
   Ingresso_dataValidade: Date;
   Ingresso_nomeImpresso?: string;
+  precoDesconto?: number;
 }
 
 export interface UsuarioMetodoPagamento {
@@ -422,4 +426,24 @@ export interface ProdutorAcesso {
   idProdutor: number;
   tipoAcesso: TipoAcesso;
   idUsuario: number;
+}
+
+export enum TipoDesconto {
+  Percentual = "Percentual",
+  Fixo = "Fixo",
+}
+
+export interface CupomPromocional {
+  id: number;
+  nome: string;
+  idProdutor: number;
+  tipoDesconto: TipoDesconto; // Exemplo: 'percentual', 'valor_fixo'
+  valorDesconto: number; // Valor do desconto, se aplicável
+}
+
+export interface CupomPromocionalValidade {
+  id: number;
+  idCupomPromocional: number;
+  dataInicial: Date;
+  dataFinal: Date;
 }

@@ -14,11 +14,12 @@ import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
 import {
-  Evento,
-  EventoIngresso,
+  CupomPromocional,
+  CupomPromocionalValidade,
   Produtor,
   QueryParams,
   Status,
+  TipoDesconto,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -33,74 +34,70 @@ import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useRoute } from "@react-navigation/native";
-import ModalEventoIngresso from "./modalEventoIngresso";
 import { useNavigation } from "@react-navigation/native";
 import AddressPicker from "@/src/components/AddressPicker";
 import Select from "@/src/components/Select";
 import { useAuth } from "@/src/contexts_/AuthContext";
+import { Badge } from "@/src/components/Badge";
+import ModalCupomPromocionalValidade from "./modalCupomPromocionalValidade";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
   const route = useRoute();
   const { id } = route.params as { id: number };
-  const endpointApi = "/evento";
+  const [idCupomPromocionalValidade, setIdCupomPromocionalValidade] =
+    useState(0);
+  const endpointApi = "/cupompromocional";
   const navigation = useNavigation() as any;
-  const endpointApiIngressos = "/eventoingresso";
+  const endpointApiValidade = "/cupompromocionalvalidade";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
-    EventoIngresso[]
+  const [registrosValidade, setRegistrosValidade] = useState<
+    CupomPromocionalValidade[]
   >([]);
-  const [modalEventoIngressoVisible, setModalEventoIngressoVisible] =
-    useState(false);
-  const [idEventoIngresso, setIdEventoIngresso] = useState(0);
+
   const [itemsProdutor, setItemsProdutor] = useState<
     { value: number; label: string }[]
   >([]);
+
+  const [
+    modalVisibleCupomPromocionalValidade,
+    setModalVisibleCupomPromocionalValidade,
+  ] = useState(false);
+
   const { user } = useAuth();
 
-  const [formData, setFormData] = useState<Evento>({
+  const [formData, setFormData] = useState<CupomPromocional>({
     id: 0,
     nome: "",
-    descricao: "",
-    imagem: "",
-    data_hora_inicio: new Date(),
-    data_hora_fim: new Date(),
-    endereco: "",
-    idUsuario: 0,
     idProdutor: 0,
-    status: "Ativo" as Status,
+    tipoDesconto: "Percentual" as TipoDesconto,
+    valorDesconto: 0,
   });
 
-  const dataEventoIngressos = [
-    { label: "Setor", content: "" },
-    { label: "Título", content: "" },
-    { label: "Valor a Receber", content: "" },
-    { label: "Taxa", content: "" },
-    { label: "Valor Venda", content: "" },
-    { label: "Quantidade", content: "" },
-    { label: "Status", content: "" },
-    { label: "Cupom Promocional", content: "" },
+  const titleItensGrid = [
+    { label: "Data Inicial", content: "" },
+    { label: "Data Final", content: "" },
   ];
 
-  const itensStatus = [
-    { value: "Ativo", label: "Ativo" },
-    { value: "Oculto", label: "Oculto" },
-    { value: "Finalizado", label: "Finalizado" },
-  ];
+  // const itensStatus = [
+  //   { value: "Ativo", label: "Ativo" },
+  //   { value: "Oculto", label: "Oculto" },
+  //   { value: "Finalizado", label: "Finalizado" },
+  // ];
 
   const handleChange = (field: any, value: string | number | Date) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const getRegistrosIngressos = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<EventoIngresso>(
-      endpointApiIngressos,
+  const getRegistrosValidade = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<CupomPromocionalValidade>(
+      endpointApiValidade,
       { ...params, pageSize: 200 }
     );
     const registrosData = response.data ?? [];
 
-    setRegistrosEventoIngressos(registrosData);
+    setRegistrosValidade(registrosData);
   };
 
   const handleSave = async () => {
@@ -114,27 +111,26 @@ export default function Index() {
     }
 
     if (id > 0) {
-      await apiGeral.updateResorce<Evento>(endpointApi, formData);
-      navigation.navigate("meusevento");
+      await apiGeral.updateResorce<CupomPromocional>(endpointApi, formData);
     } else {
-      const ret = await apiGeral.createResource<Evento>(endpointApi, formData);
-      navigation.navigate("meuseventonewingresso", { id: ret.data.id });
+      const ret = await apiGeral.createResource<CupomPromocional>(
+        endpointApi,
+        formData
+      );
     }
+
+    navigation.navigate("cupompromocional");
   };
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.nome) newErrors.nome = "Nome é obrigatório.";
-    if (!formData.descricao) newErrors.descricao = "Descrição é obrigatório.";
-    if (!formData.data_hora_inicio)
-      newErrors.data_hora_inicio = "Data Inicio é obrigatório.";
-    if (!formData.data_hora_fim)
-      newErrors.data_hora_fim = "Data Fim é obrigatório.";
-    if (!formData.idProdutor) newErrors.idProdutor = "Produtor é obrigatório.";
-    if (!formData.endereco) newErrors.endereco = "Endereço é obrigatório.";
-    if (!formData.latitude) newErrors.endereco = "Latitude é obrigatório.";
-    if (!formData.latitude) newErrors.endereco = "Longitude é obrigatório.";
+    if (!formData.idProdutor) newErrors.descricao = "Produtor é obrigatório.";
+    if (!formData.tipoDesconto)
+      newErrors.tipoDesconto = "Tipo desconto é obrigatório.";
+    if (!formData.valorDesconto)
+      newErrors.valorDesconto = "Valor é obrigatório.";
 
     return newErrors;
   };
@@ -142,37 +138,26 @@ export default function Index() {
   const getRegistros = async (id: number) => {
     console.log("id", id);
     if (id > 0) {
-      const response = await apiGeral.getResourceById<Evento>(endpointApi, id);
+      const response = await apiGeral.getResourceById<CupomPromocional>(
+        endpointApi,
+        id
+      );
 
-      let data = response as unknown as Evento;
-      data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
-      data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      getRegistrosIngressos({ filters: { idEvento: id } });
+      let data = response as unknown as CupomPromocional;
+
+      getRegistrosValidade({ filters: { idCupomPromocional: id } });
       // setFormData(data as Evento);
       formData.id = data.id;
       formData.nome = data.nome;
-      formData.imagem = data.imagem;
-      formData.data_hora_inicio = data.data_hora_inicio;
-      formData.data_hora_fim = data.data_hora_fim;
-      formData.endereco = data.endereco;
-      formData.idUsuario = data.idUsuario;
       formData.idProdutor = data.idProdutor;
-      formData.mapa = data.mapa;
-      formData.status = data.status;
-      formData.latitude = data.latitude;
-      formData.longitude = data.longitude;
-      formData.descricao = data.descricao;
+      formData.tipoDesconto = data.tipoDesconto || "Percentual";
+      formData.valorDesconto = data.valorDesconto || 0;
     } else {
       formData.id = 0;
       formData.nome = "";
-      formData.descricao = "";
-      formData.imagem = "";
-      formData.data_hora_inicio = new Date();
-      formData.data_hora_fim = new Date();
-      formData.endereco = "";
-      formData.idUsuario = 0;
       formData.idProdutor = 0;
-      formData.mapa = "";
+      formData.tipoDesconto = "Percentual" as TipoDesconto;
+      formData.valorDesconto = 0;
     }
   };
 
@@ -181,43 +166,24 @@ export default function Index() {
       getRegistrosProdutor();
 
       const fetchData = async () => {
-        setRegistrosEventoIngressos([]);
+        setRegistrosValidade([]);
         await getRegistros(id);
       };
 
       if (id > 0) {
         fetchData();
+      } else {
+        formData.id = 0;
+        formData.nome = "";
+        formData.idProdutor = 0;
+        formData.tipoDesconto = "Percentual" as TipoDesconto;
+        formData.valorDesconto = 0;
       }
     }, [id])
   );
 
-  const handleModalEdit = (id: number) => {
-    setIdEventoIngresso(id);
-    setModalEventoIngressoVisible(true);
-  };
-
-  const handleModalNovo = () => {
-    setIdEventoIngresso(0);
-    setModalEventoIngressoVisible(true);
-  };
-
-  const handleCloseModalEventoIngresso = () => {
-    setModalEventoIngressoVisible(false);
-    getRegistrosIngressos({ filters: { idEvento: id } });
-  };
-
   const onClose = () => {
-    navigation.navigate("meusevento");
-  };
-
-  const handleSaveLocation = (location: {
-    latitude: number;
-    longitude: number;
-    endereco: string;
-  }) => {
-    formData.latitude = location.latitude.toString();
-    formData.longitude = location.longitude.toString();
-    formData.endereco = location.endereco;
+    navigation.navigate("cupompromocional");
   };
 
   const getRegistrosProdutor = async () => {
@@ -232,6 +198,22 @@ export default function Index() {
     setItemsProdutor(registrosData);
   };
 
+  const handleModalEdit = (id: number) => {
+    console.log("handleModalEdit", id);
+    setIdCupomPromocionalValidade(id);
+    setModalVisibleCupomPromocionalValidade(true);
+  };
+
+  const handleCloseModalEventoIngresso = () => {
+    setModalVisibleCupomPromocionalValidade(false);
+    getRegistrosValidade({ filters: { idCupomPromocional: id } });
+  };
+
+  const handleModalNovo = () => {
+    setIdCupomPromocionalValidade(0);
+    setModalVisibleCupomPromocionalValidade(true);
+  };
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -241,7 +223,7 @@ export default function Index() {
       <BarMenu />
 
       <View style={styles.container}>
-        <Text style={styles.titulo}>Informações do Evento</Text>
+        <Text style={styles.titulo}>Informações do Cupom Promocional</Text>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -252,15 +234,6 @@ export default function Index() {
             height: "100%",
           }}
         >
-          <View style={{ marginBottom: 16 }}>
-            <Text style={styles.label}>Status</Text>
-            <Select
-              items={itensStatus}
-              currentValue={formData.status ?? ""}
-              onValueChange={(text) => handleChange("status", text)}
-            ></Select>
-          </View>
-
           <View>
             <Text style={styles.label}>Nome</Text>
             <TextInput
@@ -276,41 +249,7 @@ export default function Index() {
             )}
           </View>
 
-          <View>
-            <Text style={styles.label}>Imagem</Text>
-            <ImageUploader
-              value={formData.imagem || ""}
-              onChange={(value) => handleChange("imagem", value)}
-            />
-          </View>
-
-          <View
-            style={{
-              marginBottom: 45,
-              flex: 1,
-              minHeight: Platform.OS === "web" ? 200 : 350,
-            }}
-          >
-            <SafeAreaView style={{ height: "100%" }}>
-              <Text style={styles.label}>Informações</Text>
-              {Platform.OS === "web" ? (
-                <QuillEditorWeb
-                  value={formData.descricao || ""}
-                  onChange={(value) => handleChange("descricao", value)}
-                />
-              ) : (
-                <QuillEditorMobile
-                  value={formData.descricao || ""}
-                  onChange={(value) => handleChange("descricao", value)}
-                />
-              )}
-            </SafeAreaView>
-            {errors.descricao && (
-              <Text style={styles.labelError}>{errors.descricao}</Text>
-            )}
-          </View>
-
-          <Text style={styles.label}>Data e Hora</Text>
+          {/* <Text style={styles.label}>Data e Hora</Text>
           <View style={styles.eventDetails}>
             <View style={styles.eventDetailItem}>
               <Text style={styles.labelData}>Data Inicio:</Text>
@@ -329,85 +268,34 @@ export default function Index() {
             {errors.nomeCompleto && (
               <Text style={styles.labelError}>{errors.descricao}</Text>
             )}
-          </View>
-          <View style={styles.eventDetails}>
-            <View style={styles.eventDetailItem}>
-              <Text style={styles.labelData}>Data Fim:</Text>
-              <DatePickerComponente
-                value={formData.data_hora_fim || ""}
-                onChange={(value) => handleChange("data_hora_fim", value)}
-              />
-            </View>
-            <View style={styles.eventDetailItem}>
-              <Text style={styles.labelData}>Hora Fim:</Text>
-              <TimePickerComponente
-                value={formData.data_hora_fim || ""}
-                onChange={(value) => handleChange("data_hora_fim", value)}
-              />
-            </View>
-            {errors.nomeCompleto && (
-              <Text style={styles.labelError}>{errors.descricao}</Text>
-            )}
-          </View>
-
-          <View>
-            <Text style={styles.label}>Mapa do Evento</Text>
-            <ImageUploader
-              value={formData.mapa || ""}
-              onChange={(value) => handleChange("mapa", value)}
-            />
-          </View>
+          </View> */}
 
           {id > 0 && (
             <View style={{ marginBottom: 16 }}>
-              <Text style={styles.label}>Ingressos</Text>
+              <Text style={styles.label}>Data para Cupom Promocional</Text>
               {Platform.OS === "web" && (
-                <CustomGridTitle data={dataEventoIngressos} />
+                <CustomGridTitle data={titleItensGrid} />
               )}
-              {registrosEventoIngressos.map(
-                (item: EventoIngresso, index: number) => (
+              {registrosValidade.map(
+                (item: CupomPromocionalValidade, index: number) => (
                   <CustomGrid
                     key={index}
                     onItemPress={handleModalEdit}
                     data={[
                       {
-                        label: dataEventoIngressos[0].label,
-                        content: item.TipoIngresso_descricao?.toString() || "",
+                        label: titleItensGrid[0].label,
+                        content: format(
+                          parseISO(item.dataInicial.toString()),
+                          "dd/MM/yyyy"
+                        ),
                         id: item.id,
                       },
                       {
-                        label: dataEventoIngressos[1].label,
-                        content: item.nome,
-                        id: item.id,
-                      },
-                      {
-                        label: dataEventoIngressos[2].label,
-                        content: formatCurrency(item.preco),
-                        id: item.id,
-                      },
-                      {
-                        label: dataEventoIngressos[3].label,
-                        content: formatCurrency(item.taxaServico),
-                        id: item.id,
-                      },
-                      {
-                        label: dataEventoIngressos[4].label,
-                        content: formatCurrency(item.valor),
-                        id: item.id,
-                      },
-                      {
-                        label: dataEventoIngressos[5].label,
-                        content: item.qtde.toString(),
-                        id: item.id,
-                      },
-                      {
-                        label: dataEventoIngressos[6].label,
-                        content: item.status,
-                        id: item.id,
-                      },
-                      {
-                        label: dataEventoIngressos[7].label,
-                        content: item.CupomPromocional_nome || "",
+                        label: titleItensGrid[1].label,
+                        content: format(
+                          parseISO(item.dataFinal.toString()),
+                          "dd/MM/yyyy"
+                        ),
                         id: item.id,
                       },
                     ]}
@@ -427,13 +315,62 @@ export default function Index() {
             </View>
           )}
 
-          <View>
-            <Text style={styles.label}>Localização</Text>
-            <AddressPicker
-              onSave={handleSaveLocation}
-              initialAddress={formData.endereco}
-            />
+          <Text style={styles.label}>Tipo de Desconto</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                handleChange("tipoDesconto", "Percentual");
+              }}
+            >
+              <Badge
+                variant={
+                  formData.tipoDesconto === "Percentual"
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                Percentual
+              </Badge>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                handleChange("tipoDesconto", "Fixo");
+              }}
+            >
+              <Badge
+                variant={
+                  formData.tipoDesconto === "Fixo" ? "default" : "secondary"
+                }
+              >
+                Fixo
+              </Badge>
+            </TouchableOpacity>
           </View>
+          <TextInput
+            style={styles.input}
+            multiline={Platform.OS === "web" ? false : true}
+            placeholder="Valor do Desconto..."
+            keyboardType="default"
+            value={
+              formData.tipoDesconto === "Fixo"
+                ? formatCurrency(
+                    formData.valorDesconto.toString().replace("R$ ", "")
+                  )
+                : formData.valorDesconto.toString()
+            }
+            onChangeText={(text) =>
+              handleChange(
+                "valorDesconto",
+                text.replace("R$ ", "").replace(",", ".")
+              )
+            }
+          ></TextInput>
 
           {(itemsProdutor.length > 0 || user?.id === 1) && (
             <View style={{ marginBottom: 16 }}>
@@ -460,17 +397,16 @@ export default function Index() {
               style={[styles.button, styles.buttonSave]}
               onPress={handleSave}
             >
-              <Text style={styles.buttonText}>
-                {id > 0 ? "Salvar" : "Proximo"}{" "}
-              </Text>
+              <Text style={styles.buttonText}>Salvar</Text>
             </TouchableOpacity>
           </View>
-          <ModalEventoIngresso
-            id={idEventoIngresso}
-            idEvento={id}
-            visible={modalEventoIngressoVisible}
+
+          <ModalCupomPromocionalValidade
+            id={idCupomPromocionalValidade}
+            idCupomPromocional={id}
+            visible={modalVisibleCupomPromocionalValidade}
             onClose={handleCloseModalEventoIngresso}
-          />
+          ></ModalCupomPromocionalValidade>
         </ScrollView>
       </View>
     </LinearGradient>
@@ -481,8 +417,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? 300 : 20,
-    marginLeft: Platform.OS === "web" ? 300 : 20,
+    marginHorizontal:
+      Platform.OS === "web" ? (width > 1000 ? "15%" : "5%") : "5%",
     marginBottom: 20,
     height: 500,
   },

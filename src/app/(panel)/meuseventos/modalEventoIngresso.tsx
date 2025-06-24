@@ -12,6 +12,7 @@ import { View, TouchableWithoutFeedback, ScrollView } from "react-native";
 import colors from "@/src/constants/colors";
 import { apiGeral } from "@/src/lib/geral";
 import {
+  CupomPromocional,
   EventoIngresso,
   StatusEventoIngresso,
   TipoIngresso,
@@ -51,9 +52,14 @@ export default function ModalEventoIngresso({
     valor: 0,
     lote: "",
     status: "Oculto" as StatusEventoIngresso,
+    idCupomPromocional: 0,
   });
 
   const [itemsTipoIngresso, setItemsTipoIngresso] = useState<
+    { value: number; label: string }[]
+  >([]);
+
+  const [itemsCupomPromocional, setItemsCupomPromocional] = useState<
     { value: number; label: string }[]
   >([]);
 
@@ -87,9 +93,21 @@ export default function ModalEventoIngresso({
     }
 
     if (id > 0) {
-      await apiGeral.updateResorce<EventoIngresso>(endpointApi, formData);
+      await apiGeral.updateResorce<EventoIngresso>(endpointApi, {
+        ...formData,
+        idCupomPromocional:
+          formData.idCupomPromocional === 0
+            ? null
+            : formData.idCupomPromocional,
+      });
     } else {
-      await apiGeral.createResource<EventoIngresso>(endpointApi, formData);
+      await apiGeral.createResource<EventoIngresso>(endpointApi, {
+        ...formData,
+        idCupomPromocional:
+          formData.idCupomPromocional === 0
+            ? null
+            : formData.idCupomPromocional,
+      });
     }
 
     onClose();
@@ -118,6 +136,7 @@ export default function ModalEventoIngresso({
     );
 
     const registro = response as EventoIngresso;
+    console.log("Registro:", registro);
     setFormData({
       id: registro.id,
       nome: registro.nome,
@@ -130,6 +149,9 @@ export default function ModalEventoIngresso({
       valor: registro.valor,
       lote: registro.lote,
       status: registro.status,
+      idCupomPromocional: registro.idCupomPromocional
+        ? registro.idCupomPromocional
+        : 0,
     });
   };
 
@@ -137,6 +159,7 @@ export default function ModalEventoIngresso({
     if (visible) {
       setErrors({});
       getRegistrosTipoIngresso();
+      getRegistrosCupomPromocional();
       if (id > 0) {
         getRegistros();
       } else {
@@ -152,6 +175,7 @@ export default function ModalEventoIngresso({
           valor: 0,
           lote: "",
           status: "Oculto" as StatusEventoIngresso,
+          idCupomPromocional: 0,
         });
       }
     }
@@ -168,6 +192,27 @@ export default function ModalEventoIngresso({
     }));
 
     setItemsTipoIngresso(registrosData);
+  };
+
+  const getRegistrosCupomPromocional = async () => {
+    const response = await apiGeral.getResource<CupomPromocional>(
+      "/cupompromocional",
+      {
+        pageSize: 100,
+      }
+    );
+
+    const registrosData = (response.data ?? []).map(
+      (record: CupomPromocional) => ({
+        value: record.id,
+        label: record.nome,
+      })
+    );
+
+    setItemsCupomPromocional([
+      { value: 0, label: "Nenhum Cupom selecionado" },
+      ...registrosData,
+    ]);
   };
 
   return (
@@ -320,6 +365,23 @@ export default function ModalEventoIngresso({
                 value={formData.descricao}
                 onChangeText={(text) => handleChange("descricao", text)}
               ></TextInput>
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text style={styles.label}>Cupom Promocinal</Text>
+              <Select
+                items={itemsCupomPromocional}
+                currentValue={formData.idCupomPromocional}
+                onValueChange={(text) =>
+                  handleChange("idCupomPromocional", text)
+                }
+                holederFirstItem="Nenhum cupom selecionado"
+              ></Select>
+              {errors.idCupomPromocional && (
+                <Text style={styles.labelError}>
+                  {errors.idCupomPromocional}
+                </Text>
+              )}
             </View>
           </ScrollView>
 

@@ -34,7 +34,7 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
             style={styles.box}
             onPress={() => onItemPress && onItemPress(data[0].id)}
           >
-            {Platform.OS !== "web" && (
+            {isMobile && (
               <Text style={styles.textLabel}>{item.label + ":"}</Text>
             )}
             <Text style={styles.text}>{item.content}</Text>

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -36,7 +36,7 @@ import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, set } from "date-fns";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import { Switch } from "react-native-gesture-handler";
 import { useAuth } from "@/src/contexts_/AuthContext";
@@ -54,6 +54,10 @@ export default function Index() {
     idTransacao: number;
     idEvento: number;
   };
+  const [cupomDesconto, setCupomDesconto] = useState<string>("");
+  const [infoCupomDesconto, setInfoCupomDesconto] = useState<string | null>(
+    null
+  );
 
   const [formData, setFormData] = useState<Evento>({
     id: 0,
@@ -86,6 +90,8 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       if (idTransacao > 0) {
+        setCupomDesconto("");
+        setInfoCupomDesconto(null);
         getRegistros(idEvento);
         getTransacao({ filters: { id: state.transacao?.id } });
       }
@@ -236,11 +242,11 @@ export default function Index() {
 
     setRegistrosTransacao(registrosData[0]);
 
-    if (registrosData[0]?.id > 0) {
-      if (calculateTotal() !== String(registrosData[0]?.valorTotal)) {
-        navigation.navigate("ingressos", { id: idEvento });
-      }
-    }
+    // if (registrosData[0]?.id > 0) {
+    //   if (calculateTotal() !== String(registrosData[0]?.valorTotal)) {
+    //     navigation.navigate("ingressos", { id: idEvento });
+    //   }
+    // }
 
     getIngressoTransacao({
       filters: { idTransacao: state.transacao?.id },
@@ -258,7 +264,38 @@ export default function Index() {
     const registrosData = response.data ?? [];
     console.log("witsh", width);
 
+    console.log("registrosData", registrosData);
     setRegistrosIngressoTransacao(registrosData);
+  };
+
+  const processarCupomDesconto = async () => {
+    if (cupomDesconto.trim() != "") {
+      const response = await apiGeral.createResource<any>(
+        "/ingressotransacaocupomdesconto",
+        {
+          idTransacao: state.transacao?.id,
+          nomeCupomDesconto: cupomDesconto,
+        }
+      );
+
+      setInfoCupomDesconto(response.data.message || null);
+
+      if (!response.data.message.includes("sucesso")) {
+        setCupomDesconto("");
+        return;
+      }
+
+      dispatch({ type: "REMOVE_TRANSACAO" });
+
+      dispatch({
+        type: "ADD_TRANSACAO",
+        transacao: response.data.transacaoAtualizada,
+      });
+
+      await getTransacao({
+        filters: { id: state.transacao?.id },
+      });
+    }
   };
 
   return (
@@ -303,11 +340,54 @@ export default function Index() {
                 </View>
               </View>
 
+              <View style={styles.areaCupomDesconto}>
+                <Text style={{ fontWeight: 700 }}>Cupom de Desconto</Text>
+                <View style={{ flexDirection: "row", marginTop: 10 }}>
+                  <TextInput
+                    style={styles.input}
+                    multiline={Platform.OS === "web" ? false : true}
+                    placeholder="Nome do desconto..."
+                    keyboardType="default"
+                    value={cupomDesconto}
+                    onChangeText={(text) => setCupomDesconto(text)}
+                  ></TextInput>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: colors.azul,
+                      padding: 10,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      height: 50,
+                      justifyContent: "center",
+                    }}
+                    onPress={async () => {
+                      await processarCupomDesconto();
+                    }}
+                  >
+                    <Text style={{ color: colors.branco, fontWeight: "bold" }}>
+                      Aplicar Cupom
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {infoCupomDesconto != "" && (
+                  <Text
+                    style={[
+                      infoCupomDesconto?.includes("sucesso")
+                        ? styles.labelSucesso
+                        : styles.labelError,
+                    ]}
+                  >
+                    {infoCupomDesconto}
+                  </Text>
+                )}
+              </View>
+
               <View style={styles.areaResumo}>
                 <Text style={styles.titulo}>Resumo</Text>
                 <View>
                   <FlatList
-                    data={state.items}
+                    data={registrosIngressoTransacao}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
                       <View
@@ -338,18 +418,32 @@ export default function Index() {
                                 fontSize: 14,
                               }}
                             >
-                              {item.qtde} x
+                              {/* {item.qtde} x */}1 x
                             </Text>
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {item.eventoIngresso.TipoIngresso_descricao}
+                              {
+                                item.Ingresso_EventoIngresso?.TipoIngresso
+                                  ?.descricao
+                              }
                             </Text>
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {item.eventoIngresso.nome}
+                              {item.Ingresso_EventoIngresso?.nome}
                             </Text>
+                            {item.precoDesconto && (
+                              <Text
+                                style={{
+                                  paddingHorizontal: 3,
+                                  fontSize: 14,
+                                  color: colors.green,
+                                }}
+                              >
+                                Desconto: {formatCurrency(item.precoDesconto)}
+                              </Text>
+                            )}
                           </View>
                           <View>
                             <Text
@@ -358,11 +452,12 @@ export default function Index() {
                                 fontSize: 14,
                               }}
                             >
-                              {formatCurrency(
+                              {/* {formatCurrency(
                                 (item.qtde * item.eventoIngresso.preco).toFixed(
                                   2
                                 )
-                              )}
+                              )} */}
+                              {formatCurrency(item.preco ?? 0)}
                             </Text>
                           </View>
                         </View>
@@ -494,6 +589,11 @@ const styles = StyleSheet.create({
     marginTop: -18,
     marginBottom: 18,
   },
+  labelSucesso: {
+    color: colors.green,
+    marginTop: -18,
+    marginBottom: 18,
+  },
   eventDetails: {
     flexWrap: "wrap",
     width: Platform.OS === "web" ? width - 432 : -32,
@@ -519,6 +619,17 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: "row",
     justifyContent: "center",
+  },
+  areaCupomDesconto: {
+    backgroundColor: "rgba(255,255,255, 0.21)",
+    marginTop: 7,
+    paddingTop: 15,
+    paddingRight: 15,
+    paddingLeft: 15,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
+    borderRadius: 20,
+    // flex: 1,
   },
   areaStep: {
     justifyContent: "center",

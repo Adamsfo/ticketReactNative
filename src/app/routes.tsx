@@ -35,6 +35,8 @@ import {
 import RecuperarSenha from "./(auth)/recuperarSenha/page";
 import RedefinirSenha from "./(auth)/redefinirSenha/page";
 import { useAuth } from "../contexts_/AuthContext";
+import CupomPromocional from "./(panel)/cupomPromocional/page";
+import CupomPromocionalEdit from "./(panel)/cupomPromocional/pageEdit";
 
 // Simule ou obtenha de algum contexto/autenticação
 // Aqui você pode obter esses valores de um contexto, props, Redux ou qualquer outro gerenciador de estado
@@ -169,6 +171,21 @@ function Routes() {
               ),
             }}
           />
+          <Drawer.Screen
+            name="cupompromocional"
+            component={CupomPromocional}
+            options={{ headerShown: false, title: "Cupom Promocional" }}
+          />
+          <Drawer.Screen
+            name="cupompromocionaledit"
+            component={CupomPromocionalEdit}
+            options={{
+              headerShown: false,
+              drawerLabel: () => null,
+              drawerIcon: () => null,
+              drawerItemStyle: { display: "none" },
+            }}
+          />
         </>
       );
     }
@@ -192,9 +209,54 @@ function Routes() {
             }}
           />
           <Drawer.Screen
+            name="meusingressos"
+            component={MeusIngressos}
+            options={{
+              headerShown: false,
+              title: "Meus Ingressos",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "ticket" : "ticket-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="minhascompras"
+            component={MinhasCompras}
+            options={{
+              headerShown: false,
+              title: "Minhas Compras",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "briefcase" : "briefcase-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="meusevento"
             component={MeusEventos}
             options={{ headerShown: false, title: "Meus Eventos" }}
+          />
+          <Drawer.Screen
+            name="cupompromocional"
+            component={CupomPromocional}
+            options={{ headerShown: false, title: "Cupom Promocional" }}
+          />
+          <Drawer.Screen
+            name="cupompromocionaledit"
+            component={CupomPromocionalEdit}
+            options={{
+              headerShown: false,
+              drawerLabel: () => null,
+              drawerIcon: () => null,
+              drawerItemStyle: { display: "none" },
+            }}
           />
           <Drawer.Screen
             name="produtor"
@@ -215,21 +277,6 @@ function Routes() {
               drawerIcon: ({ focused, size, color }) => (
                 <Ionicons
                   name={focused ? "person" : "person-outline"}
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="meusingressos"
-            component={MeusIngressos}
-            options={{
-              headerShown: false,
-              title: "Meus Ingressos",
-              drawerIcon: ({ focused, size, color }) => (
-                <Ionicons
-                  name={focused ? "ticket" : "ticket-outline"}
                   size={size}
                   color={color}
                 />

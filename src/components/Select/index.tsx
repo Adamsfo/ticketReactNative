@@ -6,12 +6,14 @@ interface SelectProps {
   items: { label: string; value: any }[];
   currentValue: any;
   onValueChange: (value: any) => void;
+  holederFirstItem?: string;
 }
 
 const Select: React.FC<SelectProps> = ({
   items,
   currentValue,
   onValueChange,
+  holederFirstItem,
 }) => {
   const [selectedItem, setSelectedItem] = useState(currentValue);
 
@@ -21,9 +23,7 @@ const Select: React.FC<SelectProps> = ({
   };
 
   useEffect(() => {
-    if (currentValue != null) {
-      setSelectedItem(currentValue);
-    }
+    setSelectedItem(currentValue);
   }, [currentValue]);
 
   return (
@@ -31,9 +31,11 @@ const Select: React.FC<SelectProps> = ({
       <RNPickerSelect
         onValueChange={handleValueChange}
         items={items}
-        value={selectedItem}
+        value={currentValue}
         style={pickerSelectStyles}
-        placeholder={{ label: "Selecione um item...", value: null }}
+        // placeholder={{
+        //   label: "Selecione um item...",
+        // }}
       />
       {/* {selectedItem && (
         <Text style={styles.selected}>Item selecionado: {selectedItem}</Text>

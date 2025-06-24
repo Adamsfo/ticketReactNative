@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -54,7 +55,6 @@ export default function Index() {
     EventoIngresso[]
   >([]);
   const [modalVisible, setModalVisible] = useState(true);
-
   const data = [{ label: "Nome", content: "Nome" }];
 
   const getRegistros = async (id: number) => {
