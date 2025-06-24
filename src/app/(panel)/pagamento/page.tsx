@@ -15,6 +15,7 @@ import BarMenu from "@/src/components/BarMenu";
 import {
   Evento,
   EventoIngresso,
+  IngressoTransacao,
   QueryParams,
   Transacao,
 } from "@/src/types/geral";
@@ -40,6 +41,9 @@ export default function Index() {
     idEvento: number;
     registroTransacao: Transacao;
   };
+  const [registrosIngressoTransacao, setRegistrosIngressoTransacao] = useState<
+    IngressoTransacao[]
+  >([]);
 
   //Jango
   // initMercadoPago("APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23", {
@@ -62,12 +66,6 @@ export default function Index() {
     idUsuario: 0,
     idProdutor: 0,
   });
-  const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
-    EventoIngresso[]
-  >([]);
-  const [modalVisible, setModalVisible] = useState(true);
-
-  const data = [{ label: "Nome", content: "Nome" }];
 
   const getRegistros = async (idEvento: number) => {
     if (idEvento > 0) {
@@ -80,7 +78,26 @@ export default function Index() {
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
       setFormData(data as Evento);
+
+      getIngressoTransacao({
+        filters: { idTransacao: state.transacao?.id },
+      });
     }
+  };
+
+  const getIngressoTransacao = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<IngressoTransacao>(
+      "/ingressotransacao",
+      {
+        ...params,
+        pageSize: 200,
+      }
+    );
+    const registrosData = response.data ?? [];
+    console.log("witsh", width);
+
+    console.log("registrosData", registrosData);
+    setRegistrosIngressoTransacao(registrosData);
   };
 
   // const getRegistrosIngressos = async (params: QueryParams) => {
@@ -102,42 +119,28 @@ export default function Index() {
     }, [idEvento])
   );
 
-  const zerarItem = (id: number) => {
-    console.log("zerarItem");
-    const reg = registrosEventoIngressos.map((ingresso) => {
-      if (ingresso.id === id) {
-        ingresso.qtde = 0;
+  type IngressoAgrupado = IngressoTransacao & { qtde: number };
+
+  const agruparIngressos = (
+    ingressos: IngressoTransacao[]
+  ): IngressoAgrupado[] => {
+    const mapa = new Map<string, IngressoAgrupado>();
+
+    ingressos.forEach((item) => {
+      const chave = `${item.Ingresso_EventoIngresso?.TipoIngresso?.id}-${item.Ingresso_EventoIngresso?.nome}`;
+
+      if (mapa.has(chave)) {
+        const existente = mapa.get(chave)!;
+        existente.qtde += 1;
+      } else {
+        mapa.set(chave, { ...item, qtde: 1 });
       }
-      return ingresso;
     });
 
-    setRegistrosEventoIngressos([]);
-    setRegistrosEventoIngressos(reg);
+    return Array.from(mapa.values());
   };
 
-  const calculateTotalPreco = () => {
-    return state.items
-      .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.preco;
-      }, 0)
-      .toFixed(2);
-  };
-
-  const calculateTotalTaxa = () => {
-    return state.items
-      .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.taxaServico;
-      }, 0)
-      .toFixed(2);
-  };
-
-  const calculateTotal = () => {
-    return state.items
-      .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.valor;
-      }, 0)
-      .toFixed(2);
-  };
+  const ingressosAgrupados = agruparIngressos(registrosIngressoTransacao);
 
   return (
     <LinearGradient
@@ -184,8 +187,8 @@ export default function Index() {
               <View style={styles.areaResumo}>
                 <Text style={styles.titulo}>Resumo</Text>
                 <View>
-                  <FlatList
-                    data={state.items}
+                  <FlatList<IngressoAgrupado>
+                    data={ingressosAgrupados}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
                       <View
@@ -194,7 +197,6 @@ export default function Index() {
                           alignItems: "center",
                           paddingVertical: 3,
                           marginHorizontal: 5,
-                          // flex: 1,
                         }}
                       >
                         <View
@@ -204,11 +206,7 @@ export default function Index() {
                             justifyContent: "space-between",
                           }}
                         >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                            }}
-                          >
+                          <View style={{ flexDirection: "row" }}>
                             <Text
                               style={{
                                 paddingHorizontal: 3,
@@ -221,26 +219,34 @@ export default function Index() {
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {item.eventoIngresso.TipoIngresso_descricao}
+                              {
+                                item.Ingresso_EventoIngresso?.TipoIngresso
+                                  ?.descricao
+                              }
                             </Text>
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {item.eventoIngresso.nome}
+                              {item.Ingresso_EventoIngresso?.nome}
                             </Text>
+                            {item.precoDesconto ? (
+                              <Text
+                                style={{
+                                  paddingHorizontal: 3,
+                                  fontSize: 14,
+                                  color: colors.green,
+                                }}
+                              >
+                                Desconto:{" "}
+                                {formatCurrency(item.precoDesconto * item.qtde)}
+                              </Text>
+                            ) : null}
                           </View>
                           <View>
                             <Text
-                              style={{
-                                paddingHorizontal: 3,
-                                fontSize: 14,
-                              }}
+                              style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {formatCurrency(
-                                (item.qtde * item.eventoIngresso.preco).toFixed(
-                                  2
-                                )
-                              )}
+                              {formatCurrency(item.preco * item.qtde)}
                             </Text>
                           </View>
                         </View>

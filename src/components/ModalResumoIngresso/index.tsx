@@ -270,7 +270,8 @@ export default function ModalResumoIngresso({
                 }}
               >
                 <Text style={styles.title}>
-                  Total: {formatCurrency(calculateValor())}
+                  Total:{" "}
+                  {formatCurrency(RegistroTransacao?.valorTotal ?? "0.00")}
                 </Text>
                 <View
                   style={{

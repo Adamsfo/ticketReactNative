@@ -298,6 +298,29 @@ export default function Index() {
     }
   };
 
+  type IngressoAgrupado = IngressoTransacao & { qtde: number };
+
+  const agruparIngressos = (
+    ingressos: IngressoTransacao[]
+  ): IngressoAgrupado[] => {
+    const mapa = new Map<string, IngressoAgrupado>();
+
+    ingressos.forEach((item) => {
+      const chave = `${item.Ingresso_EventoIngresso?.TipoIngresso?.id}-${item.Ingresso_EventoIngresso?.nome}`;
+
+      if (mapa.has(chave)) {
+        const existente = mapa.get(chave)!;
+        existente.qtde += 1;
+      } else {
+        mapa.set(chave, { ...item, qtde: 1 });
+      }
+    });
+
+    return Array.from(mapa.values());
+  };
+
+  const ingressosAgrupados = agruparIngressos(registrosIngressoTransacao);
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -386,8 +409,8 @@ export default function Index() {
               <View style={styles.areaResumo}>
                 <Text style={styles.titulo}>Resumo</Text>
                 <View>
-                  <FlatList
-                    data={registrosIngressoTransacao}
+                  <FlatList<IngressoAgrupado>
+                    data={ingressosAgrupados}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
                       <View
@@ -396,7 +419,6 @@ export default function Index() {
                           alignItems: "center",
                           paddingVertical: 3,
                           marginHorizontal: 5,
-                          // flex: 1,
                         }}
                       >
                         <View
@@ -406,11 +428,7 @@ export default function Index() {
                             justifyContent: "space-between",
                           }}
                         >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                            }}
-                          >
+                          <View style={{ flexDirection: "row" }}>
                             <Text
                               style={{
                                 paddingHorizontal: 3,
@@ -418,7 +436,7 @@ export default function Index() {
                                 fontSize: 14,
                               }}
                             >
-                              {/* {item.qtde} x */}1 x
+                              {item.qtde} x
                             </Text>
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
@@ -433,7 +451,7 @@ export default function Index() {
                             >
                               {item.Ingresso_EventoIngresso?.nome}
                             </Text>
-                            {item.precoDesconto && (
+                            {item.precoDesconto ? (
                               <Text
                                 style={{
                                   paddingHorizontal: 3,
@@ -441,23 +459,16 @@ export default function Index() {
                                   color: colors.green,
                                 }}
                               >
-                                Desconto: {formatCurrency(item.precoDesconto)}
+                                Desconto:{" "}
+                                {formatCurrency(item.precoDesconto * item.qtde)}
                               </Text>
-                            )}
+                            ) : null}
                           </View>
                           <View>
                             <Text
-                              style={{
-                                paddingHorizontal: 3,
-                                fontSize: 14,
-                              }}
+                              style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {/* {formatCurrency(
-                                (item.qtde * item.eventoIngresso.preco).toFixed(
-                                  2
-                                )
-                              )} */}
-                              {formatCurrency(item.preco ?? 0)}
+                              {formatCurrency(item.preco * item.qtde)}
                             </Text>
                           </View>
                         </View>

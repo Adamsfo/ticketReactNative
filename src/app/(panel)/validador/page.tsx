@@ -62,7 +62,7 @@ export default function Index() {
 
   useFocusEffect(
     useCallback(() => {
-      setCpf("006.642.821-13");
+      setCpf("");
       setIngressos([]);
       setIngressosSelecionados([]);
       setqrcode(null);
@@ -84,8 +84,6 @@ export default function Index() {
       filters: { cpf },
     });
 
-    console.log("Usuario encontrado:", ret);
-
     const usuario = ret.data && ret.data.length > 0 ? ret.data[0] : undefined;
 
     if (!usuario) {
@@ -93,15 +91,11 @@ export default function Index() {
       return;
     }
 
-    console.log("Usuario encontrado:", usuario);
-
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
       filters: { idUsuario: usuario?.id, status: "Confirmado" },
       pageSize: 200,
     });
     let registrosData = response.data ?? [];
-
-    console.log("Registros com QRCode:", registrosData);
 
     setIngressos(registrosData);
   };
@@ -185,11 +179,13 @@ export default function Index() {
       ingressos: ingressosSelecionados,
     });
 
-    if (json.success === false) {
+    if (json.message) {
       setErrors({ geral: json.message ?? "Ocorreu um erro desconhecido." });
+      return;
     }
 
     getIngressosUsuario();
+    setCpf("");
   };
 
   const handleValidaCPF = () => {
@@ -277,7 +273,7 @@ export default function Index() {
             alignContent: "center",
             alignItems: "center",
             justifyContent: "center",
-            marginTop: 15,
+            marginTop: 25,
           }}
         >
           {errors.geral && (

@@ -1,12 +1,14 @@
 function formatCurrency(value: number | string) {
-  // Convert the value to a string if it's a number
-  let stringValue = value.toString();
+  const number = typeof value === "string" ? parseFloat(value) : value;
 
-  // Replace the dot with a comma
-  stringValue = stringValue.replace(".", ",");
+  if (isNaN(number)) return "R$ 0,00";
 
-  // Add the currency symbol (R$)
-  return `R$ ${stringValue}`;
+  return number.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default formatCurrency;
