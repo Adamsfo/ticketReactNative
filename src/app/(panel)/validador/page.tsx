@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -41,6 +42,7 @@ export default function Index() {
     []
   );
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [loading, setLoading] = useState<boolean>(false);
 
   const getRegistroQrCode = async (params: QueryParams) => {
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
@@ -173,6 +175,7 @@ export default function Index() {
       return;
     }
 
+    setLoading(true);
     setErrors({});
 
     const json = await apiGeral.createResource("/validadorjango", {
@@ -181,11 +184,14 @@ export default function Index() {
 
     if (json.message) {
       setErrors({ geral: json.message ?? "Ocorreu um erro desconhecido." });
+      setLoading(false);
       return;
     }
 
-    getIngressosUsuario();
+    setIngressos([]);
+    setIngressosSelecionados([]);
     setCpf("");
+    setLoading(false);
   };
 
   const handleValidaCPF = () => {
@@ -301,7 +307,12 @@ export default function Index() {
             style={[styles.button, styles.buttonSave]}
             onPress={() => handleAbrirConta()}
           >
-            <Text style={{ color: colors.branco }}>Abrir Conta</Text>
+            <Text style={{ color: colors.branco }}>
+              {loading && (
+                <ActivityIndicator size="small" color={colors.laranjado} />
+              )}
+              Abrir Conta
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
