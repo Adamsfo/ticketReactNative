@@ -35,6 +35,7 @@ export interface Usuario {
   sobreNome?: string;
   endpoint?: string;
   admGeral?: boolean;
+  preCadastro?: boolean;
 }
 
 export interface Cidade {
@@ -311,6 +312,11 @@ export interface TicketHistorico {
   status: "DISPONÍVEL" | "PENDENTE" | "CANCELADO" | "UTILIZADO";
 }
 
+export enum TipoVendidoCortesia {
+  Vendido = "Vendido",
+  Cortesia = "Cortesia",
+}
+
 export interface Ingresso {
   id: number;
   idEvento: number;
@@ -336,6 +342,10 @@ export interface Ingresso {
   EventoIngresso_nome?: string;
   TipoIngresso_descricao?: string;
   nomeImpresso?: string;
+  tipo?: TipoVendidoCortesia;
+  Usuario_cpf?: string;
+  Usuario_email?: string;
+  Usuario_nomeCompleto?: string;
 }
 
 export interface Transacao {
