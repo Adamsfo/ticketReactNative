@@ -91,7 +91,8 @@ export default function TabCortesia() {
           <View
             style={{
               alignItems: "flex-end",
-              marginBottom: Platform.OS === "web" ? 0 : 10,
+              marginBottom:
+                Platform.OS === "web" ? (width <= 1000 ? 10 : 0) : 10,
             }}
           >
             <TouchableOpacity

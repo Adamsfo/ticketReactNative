@@ -83,7 +83,7 @@ export default function Index() {
       zerarIngressos();
       if (id > 0) {
         getRegistros(id);
-        getRegistrosIngressos({ filters: { idEvento: id } });
+        // getRegistrosIngressos({ filters: { idEvento: id } });
       }
     }, [id])
   );
