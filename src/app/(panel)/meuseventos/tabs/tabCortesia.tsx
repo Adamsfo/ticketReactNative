@@ -38,6 +38,7 @@ export default function TabCortesia() {
   const { user } = useAuth();
 
   const data = [
+    { label: "Código" },
     { label: "Setor" },
     { label: "Ingresso" },
     { label: "Nome Usuário" },
@@ -87,6 +88,19 @@ export default function TabCortesia() {
         showsHorizontalScrollIndicator={false}
       >
         <View style={styles.area}>
+          <View
+            style={{
+              alignItems: "flex-end",
+              marginBottom: Platform.OS === "web" ? 0 : 10,
+            }}
+          >
+            <TouchableOpacity
+              style={styles.newButton}
+              onPress={handleModalNovo}
+            >
+              <Text style={styles.newButtonText}>Novo</Text>
+            </TouchableOpacity>
+          </View>
           {Platform.OS === "web" && <CustomGridTitle data={data} />}
           {registros.map((item: Ingresso, index: number) => (
             <CustomGrid
@@ -95,46 +109,46 @@ export default function TabCortesia() {
               data={[
                 {
                   label: data[0].label,
-                  content: item.TipoIngresso_descricao ?? "",
+                  content: item.id.toString(),
                   id: item.id,
                 },
                 {
                   label: data[1].label,
-                  content: item.EventoIngresso_nome ?? "",
+                  content: item.TipoIngresso_descricao ?? "",
                   id: item.id,
                 },
                 {
                   label: data[2].label,
-                  content: item.Usuario_nomeCompleto ?? "",
+                  content: item.EventoIngresso_nome ?? "",
                   id: item.id,
                 },
                 {
                   label: data[3].label,
-                  content: item.nomeImpresso ?? "",
+                  content: item.Usuario_nomeCompleto ?? "",
                   id: item.id,
                 },
                 {
                   label: data[4].label,
+                  content: item.nomeImpresso ?? "",
+                  id: item.id,
+                },
+                {
+                  label: data[5].label,
                   content: item.status ?? "",
                   id: item.id,
                 },
               ]}
             />
           ))}
-          <View style={{ alignItems: "flex-end" }}>
-            <TouchableOpacity
-              style={styles.newButton}
-              onPress={handleModalNovo}
-            >
-              <Text style={styles.newButtonText}>Novo</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
       <Modal visible={visibleModalCortesia} transparent animationType="fade">
         <ModalCortesia
           idEvento={id}
-          onClose={() => setVisibleModalCortesia(false)}
+          onClose={() => {
+            setVisibleModalCortesia(false);
+            getRegistros();
+          }}
         />
       </Modal>
     </View>

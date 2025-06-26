@@ -66,6 +66,9 @@ export default function CardIngresso({ item, getRegistros }: Props) {
       item.Evento_imagem
     }" />
           <div class="title">${item.Evento_nome}</div>
+          ${
+            item.tipo === "Cortesia" ? '<div class="ticket">Cortesia</div>' : ""
+          }
           <div class="ticket">${item.TipoIngresso_descricao} ${
       item.EventoIngresso_nome
     }</div>
@@ -122,13 +125,17 @@ export default function CardIngresso({ item, getRegistros }: Props) {
             {item.status}
           </Badge>
         </View>
-
+        {item.tipo === "Cortesia" && (
+          <View style={styles.row}>
+            <Text style={styles.ticketTitle}>Cortesia</Text>
+          </View>
+        )}
         <View>
           <Text style={styles.ticketTitle}>
             {item.TipoIngresso_descricao} {item.EventoIngresso_nome}
           </Text>
         </View>
-        {/* {item.nomeImpresso && ( */}
+
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text style={styles.labelNome}>{item.nomeImpresso}</Text>
           <TouchableOpacity
@@ -138,7 +145,6 @@ export default function CardIngresso({ item, getRegistros }: Props) {
             <Feather name="edit" size={18} color={colors.branco} />
           </TouchableOpacity>
         </View>
-        {/* )} */}
         <View style={styles.row}>
           <CalendarIcon size={16} color="#6b7280" />
           <Text style={styles.text}>
@@ -276,7 +282,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 16,
-    gap: 8,
+    gap: 5,
   },
   header: {
     flexDirection: "row",
@@ -304,7 +310,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     // gap: 1,
-    marginTop: 4,
+    marginTop: 0,
   },
   text: {
     color: "#6b7280",

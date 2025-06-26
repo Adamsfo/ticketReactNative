@@ -57,8 +57,14 @@ class ApiGeral {
     data: any
   ): Promise<ApiResponse> {
     const usuario = JSON.parse((await AsyncStorage.getItem("usuario")) || "{}");
-    return api.request<T>(endpoint, "POST", { ...data, idUsuario: usuario.id });
-    // return await api.request<T>(endpoint, "POST", {data });
+
+    // Só adiciona idUsuario se não estiver presente em data
+    const requestData = {
+      ...data,
+      ...(data?.idUsuario == null && { idUsuario: usuario.id }),
+    };
+
+    return api.request<T>(endpoint, "POST", requestData);
   }
 
   public async updateResorce<T>(

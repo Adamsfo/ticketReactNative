@@ -272,7 +272,9 @@ export default function Index() {
 
           {id > 0 && (
             <View style={{ marginBottom: 16 }}>
-              <Text style={styles.label}>Data para Cupom Promocional</Text>
+              <Text style={styles.label}>
+                Data Validade do Cupom Promocional
+              </Text>
               {Platform.OS === "web" && (
                 <CustomGridTitle data={titleItensGrid} />
               )}

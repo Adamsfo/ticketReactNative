@@ -9,16 +9,24 @@ import {
   TextInput,
   Dimensions,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { apiGeral } from "@/src/lib/geral";
-import { EventoIngresso, QueryParams, Usuario } from "@/src/types/geral";
+import {
+  EventoIngresso,
+  Ingresso,
+  QueryParams,
+  Usuario,
+} from "@/src/types/geral";
 import colors from "@/src/constants/colors";
 import { apiAuth } from "@/src/lib/auth";
 import Accordion from "@/src/components/Accordion";
 import CounterTicket from "@/src/components/CounterTicket";
 import apiJango from "@/src/lib/apiJango";
 import { api } from "@/src/lib/api";
+import { useCart } from "@/src/contexts_/CartContext";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 const { width } = Dimensions.get("window");
 
@@ -29,6 +37,8 @@ interface ModalMsgProps {
 
 export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
   const endpointApiIngressos = "/eventoingresso";
+  const { state, dispatch } = useCart();
+  const { user } = useAuth();
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [infoUsuario, setInfoUsuario] = useState<string>("");
   const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
@@ -309,6 +319,52 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
     return newErrors;
   };
 
+  const gerarIngressos = async () => {
+    if (state.items.length > 0) {
+      for (let i = 0; i < state.items.length; i++) {
+        const item = state.items[i];
+        for (let j = 0; j < item.qtde; j++) {
+          let json = await apiGeral.createResource<Ingresso>("/ingresso", {
+            idEvento: item.eventoIngresso.idEvento,
+            idEventoIngresso: item.eventoIngresso.id,
+            idTipoIngresso: item.eventoIngresso.idTipoIngresso,
+            idUsuario: formData.id,
+            idUsuarioCriouIngresso: user?.id,
+            tipo: "Cortesia",
+            status: "Confirmado",
+            nomeImpresso:
+              formData.nomeCompleto +
+              " " +
+              (formData.sobreNome ? formData.sobreNome : ""),
+            // idTransacao: idTransacao,
+          });
+          let ingresso = json.data as unknown as Ingresso;
+        }
+      }
+    }
+  };
+
+  const handleGerarCortesia = async () => {
+    if (formData.id === 0) {
+      setInfoUsuario(
+        "Usuário não encontrado. Preencha os dados para fazer o pre-cadastro."
+      );
+      return;
+    }
+
+    setLoading(true);
+    await gerarIngressos();
+    zerarIngressos();
+    onClose();
+    setLoading(false);
+  };
+
+  const zerarIngressos = () => {
+    state.items.map((ingresso) => {
+      dispatch({ type: "REMOVE_ITEM", id: ingresso.id });
+    });
+  };
+
   return (
     <TouchableWithoutFeedback>
       <View style={styles.modalContainer}>
@@ -447,7 +503,15 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
                     style={styles.newButton}
                     onPress={handleCadastrarUsuario}
                   >
-                    <Text style={styles.newButtonText}>Cadastrar Usuário</Text>
+                    <Text style={styles.newButtonText}>
+                      {loading ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={colors.laranjado}
+                        />
+                      ) : null}
+                      Cadastrar Usuário
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -479,9 +543,17 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
               <View style={{ alignItems: "flex-end" }}>
                 <TouchableOpacity
                   style={styles.newButton}
-                  // onPress={handleModalNovo}
+                  onPress={handleGerarCortesia}
                 >
-                  <Text style={styles.newButtonText}>Gerar</Text>
+                  <Text style={styles.newButtonText}>
+                    {loading ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.laranjado}
+                      />
+                    ) : null}
+                    Gerar
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

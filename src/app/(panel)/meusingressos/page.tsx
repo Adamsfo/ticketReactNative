@@ -27,6 +27,7 @@ import {
   WalletCardsIcon,
   WalletIcon,
 } from "lucide-react-native";
+import { Feather } from "@expo/vector-icons";
 import { Badge } from "@/src/components/Badge";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { api } from "@/src/lib/api";
@@ -83,6 +84,14 @@ export default function Index() {
             justifyContent: "center",
           }}
         >
+          <TouchableOpacity
+            onPress={() =>
+              getRegistros({ filters: { idUsuario: user?.id, status: status } })
+            }
+          >
+            <Feather name="refresh-cw" size={24} color={colors.azul} />
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => {
               setStatus("Confirmado");
