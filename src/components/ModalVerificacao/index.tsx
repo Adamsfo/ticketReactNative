@@ -33,10 +33,43 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
   const enviarCodigo = async () => {
     if (selectedOption) {
       setLoading(true);
-      const result = await apiAuth.enviaCodigoAtivacao(
-        selectedOption === "email" ? user?.email ?? "" : user?.telefone ?? "",
-        selectedOption
-      );
+      if (selectedOption === "email") {
+        const result = await apiAuth.enviaCodigoAtivacao(
+          selectedOption === "email" ? user?.email ?? "" : user?.telefone ?? "",
+          selectedOption
+        );
+      }
+      if (selectedOption === "whatsapp") {
+        const result = await apiAuth.enviaCodigoAtivacao(
+          selectedOption === "whatsapp"
+            ? user?.email ?? ""
+            : user?.telefone ?? "",
+          selectedOption
+        );
+
+        const options = {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+            Authorization: "d597037283078574746e95b4e78ddd52",
+          },
+          body: JSON.stringify({
+            number: formatPhoneToE164(user?.telefone ?? ""),
+            message: `Seu código de verificação é: ${result.data.code}. Não compartilhe com ninguém.`,
+          }),
+        };
+
+        fetch(
+          "https://v5.chatpro.com.br/chatpro-4p8b76i8oq/api/v1/send_message",
+          options
+        )
+          .then((res) => res.json())
+          .then((res) => console.log(res))
+          .catch((err) =>
+            setError("Erro ao enviar mensagem via WhatsApp: " + err)
+          );
+      }
       setStep(2);
       setLoading(false);
     }
@@ -47,6 +80,13 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
       setSelectedOption("email");
     }, [])
   );
+
+  function formatPhoneToE164(phone: string): string {
+    // Remove caracteres não numéricos
+    const cleaned = phone.replace(/\D/g, "");
+    // Adiciona o código do país se não estiver presente
+    return cleaned.startsWith("55") ? `+${cleaned}` : `+55${cleaned}`;
+  }
 
   const onVerify = async (code: string) => {
     const result = await apiAuth.varificaAtivarConta(
@@ -84,7 +124,7 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
                   </Text>
                   <View style={styles.buttonGroup}>
                     {/* {["email", "sms", "whatsapp"].map((type) => ( */}
-                    {["email"].map((type) => (
+                    {["email", "whatsapp"].map((type) => (
                       <TouchableOpacity
                         key={type}
                         style={[
