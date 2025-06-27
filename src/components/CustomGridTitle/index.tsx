@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, Dimensions } from "react-native";
 
 interface DataItem {
   label: string;
+  isButton?: boolean;
 }
 
 interface CustomGridProps {
@@ -18,15 +19,25 @@ const CustomGridTitle: React.FC<CustomGridProps> = ({ data }) => {
   if (!isMobile) {
     return (
       <View style={styles.container}>
-        <View style={[styles.row, isMobile && styles.column]}>
-          {data.map((item, index) => (
-            <View key={index} style={styles.box}>
-              <Text style={styles.textLabel}>{item.label}</Text>
-            </View>
-          ))}
-          <View style={{ ...styles.boxIcone }}>
+        <View
+          style={[styles.row, isMobile ? styles.column : styles.rowDesktop]}
+        >
+          {data.map((item, index) =>
+            !item.isButton ? (
+              <View key={index} style={styles.box}>
+                <Text style={styles.textLabel}>{item.label}</Text>
+              </View>
+            ) : null
+          )}
+          {/* <View style={{ ...styles.boxIcone }}>
             <Feather name="edit" size={18} color="rgba(255,255,255, 0.21)" />
-          </View>
+          </View> */}
+          {/* Se houver pelo menos um item com isButton === true, exibe coluna "Ações" */}
+          {data.some((item) => item.isButton) && (
+            <View key="acoes" style={{ width: 55 }}>
+              <Text style={styles.textLabel}>Ações</Text>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -54,6 +65,7 @@ const styles = StyleSheet.create({
     margin: 5,
     flex: 1,
     alignItems: "center",
+    justifyContent: "flex-start",
     flexDirection: "row",
   },
   boxIcone: {
@@ -69,8 +81,15 @@ const styles = StyleSheet.create({
     // color: "#FFF",
     marginRight: 5,
     fontWeight: "bold",
-    alignItems: "center",
-    alignContent: "center",
+    alignItems: "flex-start",
+    alignContent: "flex-start",
+    textAlign: "left",
+  },
+  rowDesktop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "flex-start",
+    justifyContent: "space-around",
   },
 });
 

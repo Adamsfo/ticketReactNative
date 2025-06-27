@@ -47,7 +47,13 @@ export default function Index() {
   const [status, setStatus] = useState("Pago");
   const navigation = useNavigation() as any;
 
-  const data = [{ label: "Código" }, { label: "Data" }, { label: "Valor" }];
+  const data = [
+    { label: "Código" },
+    { label: "Data" },
+    { label: "Valor" },
+    { label: "Cancelar", isButton: true },
+    { label: "Alterar", isButton: true },
+  ];
 
   const getRegistros = async (params: QueryParams) => {
     const response = await apiGeral.getResource<Transacao>(endpointApi, {
@@ -143,6 +149,22 @@ export default function Index() {
                       label: data[2].label,
                       content: formatCurrency(item.valorTotal.toString()),
                       id: item.id,
+                    },
+                    {
+                      label: data[3].label,
+                      content: formatCurrency(item.valorTotal.toString()),
+                      id: item.id,
+                      iconName: "trash",
+                      isButton: true,
+                      onPress: (id) => console.log("Apagar", id),
+                    },
+                    {
+                      label: data[4].label,
+                      content: formatCurrency(item.valorTotal.toString()),
+                      id: item.id,
+                      iconName: "activity",
+                      isButton: true,
+                      onPress: (id) => console.log("Apagar", id),
                     },
                   ]}
                 />

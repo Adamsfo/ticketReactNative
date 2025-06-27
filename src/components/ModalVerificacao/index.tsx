@@ -56,7 +56,7 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
           },
           body: JSON.stringify({
             number: formatPhoneToE164(user?.telefone ?? ""),
-            message: `Seu código de verificação é: ${result.data.code}. Não compartilhe com ninguém.`,
+            message: `Seu código de verificação no Jango Ingressos é: ${result.data.code}. Não compartilhe com ninguém.`,
           }),
         };
 
