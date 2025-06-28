@@ -36,6 +36,7 @@ export default function Index() {
     { label: "Inicio" },
     { label: "Fim" },
     { label: "Status" },
+    { label: "Detalhes do Evento", isButton: true },
   ];
 
   const getRegistros = async () => {
@@ -136,6 +137,14 @@ export default function Index() {
                     label: data[2].label,
                     content: item.status ?? "",
                     id: item.id,
+                  },
+                  {
+                    label: data[4].label,
+                    // content: formatCurrency(item.valorTotal.toString()),
+                    id: item.id,
+                    iconName: "check-square",
+                    isButton: true,
+                    onPress: handleModalEdit,
                   },
                 ]}
               />

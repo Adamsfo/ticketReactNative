@@ -81,7 +81,8 @@ export default function MeusEventosInfo() {
     { label: "Valor Venda", content: "" },
     { label: "Quantidade", content: "" },
     { label: "Status", content: "" },
-    { label: "Cupom Promocional", content: "" },
+    { label: "Cupom", content: "" },
+    { label: "Alterar", content: "" },
   ];
 
   const itensStatus = [
@@ -401,6 +402,14 @@ export default function MeusEventosInfo() {
                       label: dataEventoIngressos[7].label,
                       content: item.CupomPromocional_nome || "",
                       id: item.id,
+                    },
+                    {
+                      label: dataEventoIngressos[8].label,
+                      // content: formatCurrency(item.valorTotal.toString()),
+                      id: item.id,
+                      iconName: "check-square",
+                      isButton: true,
+                      onPress: handleModalEdit,
                     },
                   ]}
                 />

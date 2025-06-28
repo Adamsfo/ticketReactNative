@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -36,6 +37,8 @@ import CardIngresso from "@/src/components/CardIngresso";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useNavigation } from "@react-navigation/native";
 import Footer from "@/src/components/Footer";
+import ModalMsgSimNao from "@/src/components/ModalMsgSimNao";
+import ModalMsg from "@/src/components/ModalMsg";
 
 const { width } = Dimensions.get("window");
 
@@ -46,13 +49,17 @@ export default function Index() {
   const { user } = useAuth();
   const [status, setStatus] = useState("Pago");
   const navigation = useNavigation() as any;
+  const [modalMsgSimNao, setModalMsgSimNao] = useState(false);
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [idCancelar, setIdCancelar] = useState(0);
 
   const data = [
     { label: "Código" },
     { label: "Data" },
     { label: "Valor" },
-    { label: "Cancelar", isButton: true },
-    { label: "Alterar", isButton: true },
+    { label: "Cancelar Compra", isButton: true },
+    { label: "Ver Ingressos", isButton: true },
   ];
 
   const getRegistros = async (params: QueryParams) => {
@@ -75,6 +82,30 @@ export default function Index() {
 
   const handleModalEdit = (id: number) => {
     navigation.navigate("ingressostransacao", { idTransacao: id });
+  };
+
+  const handleCancelarCompra = async (id: number) => {
+    try {
+      const responde = await apiGeral.createResource<any>("/pagamentoestorno", {
+        idTransacao: id,
+      });
+
+      // Se tiver erro no campo data.error, exibe a mensagem de erro
+      if (responde?.data?.error) {
+        setMsg("Compra não foi cancelada, " + responde.data.error);
+      } else {
+        setMsg("Compra cancelada com sucesso!");
+      }
+
+      setModalMsg(true);
+    } catch (error) {
+      console.error("Erro ao cancelar compra:", error);
+    }
+  };
+
+  const handleClickCancelarCompra = (id: number) => {
+    setIdCancelar(id);
+    setModalMsgSimNao(true);
   };
 
   return (
@@ -154,17 +185,17 @@ export default function Index() {
                       label: data[3].label,
                       content: formatCurrency(item.valorTotal.toString()),
                       id: item.id,
-                      iconName: "trash",
+                      iconName: "trash-2",
                       isButton: true,
-                      onPress: (id) => console.log("Apagar", id),
+                      onPress: () => handleClickCancelarCompra(item.id),
                     },
                     {
                       label: data[4].label,
                       content: formatCurrency(item.valorTotal.toString()),
                       id: item.id,
-                      iconName: "activity",
+                      iconName: "check-square",
                       isButton: true,
-                      onPress: (id) => console.log("Apagar", id),
+                      onPress: handleModalEdit,
                     },
                   ]}
                 />
@@ -172,6 +203,30 @@ export default function Index() {
             </View>
           )}
         </ScrollView>
+        <Modal visible={modalMsgSimNao} transparent animationType="fade">
+          <ModalMsgSimNao
+            onClose={() => {
+              setModalMsgSimNao(false);
+              getRegistros({
+                filters: { idUsuario: user?.id, status: status },
+              });
+            }}
+            msg={
+              "A compra só será cancelada se todos os ingressos estiverem com status 'Confirmado'. Deseja realmente cancelar a compra?"
+            }
+            onConfirm={() => handleCancelarCompra(idCancelar)}
+          />
+        </Modal>
+
+        <Modal visible={modalMsg} transparent animationType="fade">
+          <ModalMsg
+            onClose={() => {
+              setModalMsg(false);
+            }}
+            msg={msg}
+          />
+        </Modal>
+
         <Footer />
         {/* <FlatList
           key={`grid-${width > 600 ? "3" : "1"}`}
@@ -279,8 +334,6 @@ const styles = StyleSheet.create({
     paddingRight: 25,
     paddingLeft: 25,
     paddingTop: 15,
-    marginRight: Platform.OS === "web" ? 200 : 0,
-    marginLeft: Platform.OS === "web" ? 200 : 0,
     paddingBottom: 25,
     borderRadius: 20,
     flex: 1,

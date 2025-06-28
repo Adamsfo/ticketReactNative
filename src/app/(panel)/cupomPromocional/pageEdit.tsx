@@ -78,6 +78,7 @@ export default function Index() {
   const titleItensGrid = [
     { label: "Data Inicial", content: "" },
     { label: "Data Final", content: "" },
+    { label: "Alterar", isButton: true },
   ];
 
   // const itensStatus = [
@@ -299,6 +300,14 @@ export default function Index() {
                           "dd/MM/yyyy"
                         ),
                         id: item.id,
+                      },
+                      {
+                        label: titleItensGrid[2].label,
+                        // content: formatCurrency(item.valorTotal.toString()),
+                        id: item.id,
+                        iconName: "check-square",
+                        isButton: true,
+                        onPress: handleModalEdit,
                       },
                     ]}
                   />

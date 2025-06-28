@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Dimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { View, TouchableWithoutFeedback, ScrollView } from "react-native";
@@ -23,6 +24,8 @@ import QuillEditorMobile from "@/src/components/QuillEditorMobile";
 import Select from "@/src/components/Select";
 import formatCurrency from "@/src/components/FormatCurrency";
 import CurrencyInput from "@/src/components/CurrencyInput";
+
+const { width } = Dimensions.get("window");
 
 interface ModalMsgProps {
   id: number;
@@ -358,7 +361,7 @@ export default function ModalEventoIngresso({
             <View>
               <Text style={styles.label}>Informações adicionais</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { maxWidth: 400 }]}
                 multiline={true}
                 placeholder="Exemplo: Adulto, Criança, Inteiro, Meia..."
                 keyboardType="default"
@@ -420,7 +423,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   container: {
-    width: Platform.OS === "web" ? "60%" : "90%",
+    width: Platform.OS === "web" ? (width <= 1000 ? "90%" : "60%") : "90%",
     backgroundColor: "#FFF",
     borderRadius: 20,
     paddingHorizontal: 15,
@@ -460,6 +463,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     fontSize: 16,
+    maxWidth: 110,
   },
   inputNoEdit: {
     borderWidth: 1,
@@ -470,6 +474,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     backgroundColor: colors.gray,
+    maxWidth: 110,
   },
   labelError: {
     color: colors.red,

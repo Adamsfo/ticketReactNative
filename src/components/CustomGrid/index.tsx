@@ -9,6 +9,7 @@ import {
   Platform,
   TouchableOpacity,
 } from "react-native";
+import TooltipWrapper from "../ToolTipWrapper";
 
 interface DataItem {
   label?: string;
@@ -42,9 +43,15 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
           };
 
           const ContentComponent = (
-            <View style={styles.box}>
+            <View style={item.isButton ? styles.boxAcoes : styles.box}>
               {item.label && isMobile && (
-                <Text style={styles.textLabel}>{item.label}:</Text>
+                <Text
+                  style={
+                    item.isButton ? styles.textLabelAcoes : styles.textLabel
+                  }
+                >
+                  {item.label} {item.isButton ? " " : ":"}
+                </Text>
               )}
               {isIcon ? (
                 <Feather name={item.iconName} size={18} color={colors.branco} />
@@ -55,9 +62,15 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
           );
 
           return item.isButton || isIcon ? (
-            <TouchableOpacity key={index} onPress={handlePress}>
-              {ContentComponent}
-            </TouchableOpacity>
+            <TooltipWrapper label={item.label || ""}>
+              <TouchableOpacity
+                style={styles.areaboxAcoes}
+                key={index}
+                onPress={handlePress}
+              >
+                {ContentComponent}
+              </TouchableOpacity>
+            </TooltipWrapper>
           ) : (
             <View style={styles.areabox} key={index}>
               {ContentComponent}
@@ -84,13 +97,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 5,
     marginBottom: 2,
-    backgroundColor: colors.azul,
-    // borderWidth: 1,
+    // backgroundColor: colors.azul,
+    borderWidth: 1,
     borderRadius: 5,
   },
   row: {
     flexDirection: "column",
     // justifyContent: "space-between",
+    // backgroundColor: colors.azul,
   },
   rowDesktop: {
     flexDirection: "row",
@@ -101,6 +115,12 @@ const styles = StyleSheet.create({
   areabox: {
     flex: 1,
     justifyContent: "space-between",
+    // backgroundColor: colors.azul,
+  },
+  areaboxAcoes: {
+    // flex: 1,
+    // justifyContent: "space-between",
+    backgroundColor: colors.azul,
   },
   column: {
     flexDirection: "column",
@@ -112,6 +132,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     flex: 1,
   },
+  boxAcoes: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 4,
+    marginHorizontal: 8,
+    justifyContent: "center",
+    flex: 1,
+  },
   boxIcone: {
     margin: 8,
     padding: 4,
@@ -119,9 +147,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: {
-    color: "#FFF",
+    // color: "#FFF",
+    color: "black",
   },
   textLabel: {
+    // color: "#FFF",
+    color: "black",
+    marginRight: 4,
+    fontWeight: "bold",
+  },
+  textLabelAcoes: {
     color: "#FFF",
     marginRight: 4,
     fontWeight: "bold",

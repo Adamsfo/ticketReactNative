@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  Dimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { View, TouchableWithoutFeedback, ScrollView } from "react-native";
@@ -17,6 +18,8 @@ import ImageUploader from "@/src/components/ImageUploader";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QuillEditorWeb from "@/src/components/QuillEditorWeb";
 import QuillEditorMobile from "@/src/components/QuillEditorMobile";
+
+const { width } = Dimensions.get("window");
 
 interface ModalMsgProps {
   id: number;
@@ -186,7 +189,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   container: {
-    width: Platform.OS === "web" ? "60%" : "90%",
+    width: Platform.OS === "web" ? (width > 1000 ? "40%" : "95%") : "100%",
     backgroundColor: "#FFF",
     borderRadius: 20,
     paddingHorizontal: 15,

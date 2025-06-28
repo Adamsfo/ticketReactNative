@@ -155,8 +155,7 @@ export default function ModalCupomPromocionalValidade({
 
           <ScrollView contentContainerStyle={styles.content}>
             <Text style={styles.title}>
-              Informações da Validade do Cupom Promocional {idCupomPromocional}{" "}
-              {formData.idCupomPromocional}
+              Informações da Validade do Cupom Promocional
             </Text>
 
             <View style={{ flexDirection: "column", alignItems: "center" }}>
@@ -228,7 +227,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   container: {
-    width: Platform.OS === "web" ? (width > 1000 ? "40%" : "90%") : "100%",
+    width: Platform.OS === "web" ? (width > 1000 ? "40%" : "95%") : "100%",
     backgroundColor: "#FFF",
     borderRadius: 20,
     paddingHorizontal: 15,

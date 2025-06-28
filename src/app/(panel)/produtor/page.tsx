@@ -29,7 +29,10 @@ export default function Index() {
   const [id, setid] = useState(0);
   const { isProdutor, user } = useAuth();
 
-  const data = [{ label: "Nome", content: "Nome" }];
+  const data = [
+    { label: "Nome", content: "Nome" },
+    { label: "Alterar", content: "" },
+  ];
 
   const getRegistros = async () => {
     if (isProdutor) {
@@ -110,6 +113,14 @@ export default function Index() {
                     label: data[0].label,
                     content: item.nome,
                     id: item.id,
+                  },
+                  {
+                    label: data[1].label,
+                    // content: formatCurrency(item.valorTotal.toString()),
+                    id: item.id,
+                    iconName: "check-square",
+                    isButton: true,
+                    onPress: handleModalEdit,
                   },
                 ]}
               />

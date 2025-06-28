@@ -36,6 +36,7 @@ export default function Index() {
     { label: "Nome" },
     { label: "Tipo Desconto" },
     { label: "Valor" },
+    { label: "Alterar", isButton: true },
   ];
 
   const getRegistros = async () => {
@@ -134,6 +135,14 @@ export default function Index() {
                         ? formatCurrency(item.valorDesconto.toFixed(2))
                         : item.valorDesconto.toString(),
                     id: item.id,
+                  },
+                  {
+                    label: data[3].label,
+                    // content: formatCurrency(item.valorTotal.toString()),
+                    id: item.id,
+                    iconName: "check-square",
+                    isButton: true,
+                    onPress: handleModalEdit,
                   },
                 ]}
               />
