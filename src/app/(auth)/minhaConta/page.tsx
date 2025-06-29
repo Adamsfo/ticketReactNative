@@ -20,7 +20,6 @@ import { apiAuth } from "@/src/lib/auth";
 import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import { useNavigation } from "@react-navigation/native";
-import apiJango from "@/src/lib/apiJango";
 import ModalMsg from "@/src/components/ModalMsg";
 import { api } from "@/src/lib/api";
 import ModalVerificacao from "@/src/components/ModalVerificacao";

@@ -23,7 +23,6 @@ import colors from "@/src/constants/colors";
 import { apiAuth } from "@/src/lib/auth";
 import Accordion from "@/src/components/Accordion";
 import CounterTicket from "@/src/components/CounterTicket";
-import apiJango from "@/src/lib/apiJango";
 import { api } from "@/src/lib/api";
 import { useCart } from "@/src/contexts_/CartContext";
 import { useAuth } from "@/src/contexts_/AuthContext";
@@ -115,10 +114,14 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
   };
 
   const handleGetClienteJango = async (cpf: string) => {
-    const cliente = await apiJango().getCliente(cpf);
+    const resCliente = await apiGeral.createResource<any>("/clientejango", {
+      cpf: cpf?.replace(/\D/g, "") ?? "",
+    });
 
-    if (cliente[0]) {
-      const nomePartes = cliente[0].nome.trim().split(" ");
+    const cliente = resCliente.data;
+
+    if (cliente) {
+      const nomePartes = cliente.nome.trim().split(" ");
       const primeiroNome = nomePartes[0];
       const sobrenome = nomePartes.slice(1).join(" "); // junta o restante como sobrenome
 
@@ -126,11 +129,11 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
         ...formData,
         nomeCompleto: primeiroNome,
         sobreNome: sobrenome,
-        telefone: cliente[0].telefone_celular
-          ? formatPhone(cliente[0].telefone_celular)
+        telefone: cliente.telefone_celular
+          ? formatPhone(cliente.telefone_celular)
           : "",
-        email: cliente[0].email,
-        id_cliente: cliente[0].id_cliente,
+        email: cliente.email ? cliente.email : "",
+        id_cliente: cliente.id_cliente,
       });
     }
   };
@@ -230,23 +233,27 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
 
     if (dados.id_cliente === 0) {
       try {
-        await apiJango().atualizarCliente({
-          CPF_CNPJ: (dados.cpf ?? "").replace(/\D/g, ""),
-          NOME: dados.nomeCompleto + " " + dados.sobreNome,
-          TELEFONE_CELULAR: (dados.telefone ?? "").replace(/\D/g, ""),
-          EMAIL: dados.email,
-        });
+        const resCliente = await apiGeral.createResource<any>(
+          "/clientejangoadd",
+          {
+            cpf: (dados.cpf ?? "").replace(/\D/g, ""),
+            nomeCompleto: dados.nomeCompleto,
+            sobreNome: dados.sobreNome,
+            telefone: (dados.telefone ?? "").replace(/\D/g, ""),
+            email: dados.email,
+          }
+        );
 
-        const cliente = await apiJango().getCliente(dados.cpf ?? "");
+        const cliente = resCliente.data;
 
-        if (cliente[0]) {
+        if (cliente) {
           dados = {
             ...dados,
-            id_cliente: cliente[0].id_cliente,
+            id_cliente: cliente.id_cliente,
           };
           setFormData({
             ...formData,
-            id_cliente: cliente[0].id_cliente,
+            id_cliente: cliente.id_cliente,
           });
         }
       } catch (error) {

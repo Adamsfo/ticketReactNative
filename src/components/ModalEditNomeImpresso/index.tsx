@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Platform,
   TextInput,
+  Dimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
@@ -17,6 +18,8 @@ interface ModalMsgProps {
   onClose: () => void;
   item: Ingresso;
 }
+
+const { width } = Dimensions.get("window");
 
 export default function ModalEditNomeImpresso({
   onClose,
@@ -99,7 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)", // Fundo semi-transparente
   },
   container: {
-    width: Platform.OS === "web" ? "40%" : "90%", // Largura do modal
+    width: Platform.OS === "web" ? (width <= 1000 ? "90%" : "60%") : "90%",
     backgroundColor: "#FFF",
     borderRadius: 10,
     padding: 15,

@@ -55,6 +55,8 @@ export default function Index() {
     });
     let registrosData = response.data ?? [];
 
+    console.log("Registros:", registrosData);
+
     console.log("Registros com QRCode:", registrosData);
 
     setRegistros(registrosData);

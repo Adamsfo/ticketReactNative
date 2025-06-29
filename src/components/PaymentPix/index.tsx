@@ -8,11 +8,13 @@ import {
   Clipboard,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { api } from "@/src/lib/api";
 import { apiGeral } from "@/src/lib/geral";
 import { QueryParams } from "@/src/types/geral";
 import colors from "@/src/constants/colors";
+import ModalMsg from "../ModalMsg";
 
 type Props = {
   valor: number;
@@ -30,6 +32,8 @@ export default function PaymentPix({
   const [qrCodeBase64, setQrCodeBase64] = useState<string>("");
   const [copyPasteCode, setCopyPasteCode] = useState<string>("");
   const [loading, setloading] = useState(false);
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msg, setMsg] = useState("");
 
   const fetchPixPayment = async () => {
     try {
@@ -103,9 +107,21 @@ export default function PaymentPix({
       {copyPasteCode && (
         <Button
           title="Copiar código Pix"
-          onPress={() => Clipboard.setString(copyPasteCode)}
+          onPress={() => {
+            Clipboard.setString(copyPasteCode);
+            setMsg("Código Pix copiado para a área de transferência!");
+            setModalMsg(true);
+          }}
         />
       )}
+      <Modal visible={modalMsg} transparent animationType="fade">
+        <ModalMsg
+          onClose={() => {
+            setModalMsg(false);
+          }}
+          msg={msg}
+        />
+      </Modal>
     </View>
   );
 }

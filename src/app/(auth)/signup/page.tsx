@@ -20,10 +20,10 @@ import { apiAuth } from "@/src/lib/auth";
 import BarMenu from "../../../components/BarMenu";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import { useNavigation } from "@react-navigation/native";
-import apiJango from "@/src/lib/apiJango";
 import ModalMsg from "@/src/components/ModalMsg";
 import { api } from "@/src/lib/api";
 import ModalVerificacao from "@/src/components/ModalVerificacao";
+import { apiGeral } from "@/src/lib/geral";
 
 export default function Signup() {
   const navigation = useNavigation() as any;
@@ -127,23 +127,27 @@ export default function Signup() {
 
     if (dados.id_cliente === 0) {
       try {
-        await apiJango().atualizarCliente({
-          CPF_CNPJ: (dados.cpf ?? "").replace(/\D/g, ""),
-          NOME: dados.nomeCompleto + " " + dados.sobreNome,
-          TELEFONE_CELULAR: (dados.telefone ?? "").replace(/\D/g, ""),
-          EMAIL: dados.email,
-        });
+        const resCliente = await apiGeral.createResource<any>(
+          "/clientejangoadd",
+          {
+            cpf: (dados.cpf ?? "").replace(/\D/g, ""),
+            nomeCompleto: dados.nomeCompleto,
+            sobreNome: dados.sobreNome,
+            telefone: (dados.telefone ?? "").replace(/\D/g, ""),
+            email: dados.email,
+          }
+        );
 
-        const cliente = await apiJango().getCliente(dados.cpf ?? "");
+        const cliente = resCliente.data;
 
-        if (cliente[0]) {
+        if (cliente) {
           dados = {
             ...dados,
-            id_cliente: cliente[0].id_cliente,
+            id_cliente: cliente.id_cliente,
           };
           setFormData({
             ...formData,
-            id_cliente: cliente[0].id_cliente,
+            id_cliente: cliente.id_cliente,
           });
         }
       } catch (error) {
@@ -217,10 +221,14 @@ export default function Signup() {
   };
 
   const handleGetClienteJango = async (cpf: string) => {
-    const cliente = await apiJango().getCliente(cpf);
+    const resCliente = await apiGeral.createResource<any>("/clientejango", {
+      cpf: cpf?.replace(/\D/g, "") ?? "",
+    });
 
-    if (cliente[0]) {
-      const nomePartes = cliente[0].nome.trim().split(" ");
+    const cliente = resCliente.data;
+
+    if (cliente) {
+      const nomePartes = cliente.nome.trim().split(" ");
       const primeiroNome = nomePartes[0];
       const sobrenome = nomePartes.slice(1).join(" "); // junta o restante como sobrenome
 
@@ -228,9 +236,9 @@ export default function Signup() {
         ...formData,
         nomeCompleto: primeiroNome,
         sobreNome: sobrenome,
-        telefone: formatPhone(cliente[0].telefone_celular),
-        email: cliente[0].email,
-        id_cliente: cliente[0].id_cliente,
+        telefone: formatPhone(cliente.telefone_celular),
+        email: cliente.email ? cliente.email : "",
+        id_cliente: cliente.id_cliente,
       });
     }
   };
@@ -289,7 +297,9 @@ export default function Signup() {
                   placeholder="Nome..."
                   keyboardType="default"
                   value={formData.nomeCompleto}
-                  onChangeText={(text) => handleChange("nomeCompleto", text)}
+                  onChangeText={(text) =>
+                    handleChange("nomeCompleto", text.toUpperCase())
+                  }
                 ></TextInput>
                 {errors.nomeCompleto && (
                   <Text style={style.labelError}>{errors.nomeCompleto}</Text>
@@ -303,7 +313,9 @@ export default function Signup() {
                   placeholder="Sobrenome..."
                   keyboardType="default"
                   value={formData.sobreNome}
-                  onChangeText={(text) => handleChange("sobreNome", text)}
+                  onChangeText={(text) =>
+                    handleChange("sobreNome", text.toUpperCase())
+                  }
                 ></TextInput>
                 {errors.sobreNome && (
                   <Text style={style.labelError}>{errors.sobreNome}</Text>

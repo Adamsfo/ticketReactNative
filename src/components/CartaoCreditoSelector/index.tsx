@@ -146,7 +146,7 @@ export default function CartaoCreditoSelector({
 
   return (
     <View style={styles.container}>
-      <View style={{ flexDirection: "row" }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         <TouchableOpacity
           style={[
             styles.card,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f2f2f2",
     borderRadius: 12,
     padding: 16,
-    marginRight: 12,
+    // marginRight: 12,
     // width: 250,
     elevation: 2,
   },

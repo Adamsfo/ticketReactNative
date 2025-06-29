@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "ticket",
-    "slug": "ticket",
+    "name": "Jango Ingressos",
+    "slug": "jangoingressos",
+    "description": "Venda e gestão de ingressos com facilidade.",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
@@ -49,8 +50,6 @@
     "experiments": {
       "typedRoutes": true
     },
-    "assetBundlePatterns": [
-      "assets/*"
-    ]
+    "assetBundlePatterns": ["assets/*"]
   }
 }
