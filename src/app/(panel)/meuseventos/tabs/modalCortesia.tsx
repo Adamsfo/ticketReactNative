@@ -507,18 +507,24 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
                   style={[styles.area, { marginBottom: 20, marginTop: -10 }]}
                 >
                   <TouchableOpacity
-                    style={styles.newButton}
+                    style={[
+                      styles.newButton,
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                    ]}
                     onPress={handleCadastrarUsuario}
                   >
-                    <Text style={styles.newButtonText}>
-                      {loading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.laranjado}
-                        />
-                      ) : null}
-                      Cadastrar Usuário
-                    </Text>
+                    {loading && (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.laranjado}
+                        style={{ marginRight: 8 }}
+                      />
+                    )}
+                    <Text style={styles.newButtonText}>Cadastrar Usuário</Text>
                   </TouchableOpacity>
                 </View>
               )}

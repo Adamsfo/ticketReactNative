@@ -460,7 +460,7 @@ export default function MeusEventosInfo() {
             onPress={handleSave}
           >
             <Text style={styles.buttonText}>
-              {id > 0 ? "Salvar" : "Proximo"}{" "}
+              {id > 0 ? "Salvar" : "Próximo"}{" "}
             </Text>
           </TouchableOpacity>
         </View>

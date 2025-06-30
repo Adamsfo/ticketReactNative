@@ -297,9 +297,10 @@ export default function CartaoCreditoSelector({
                 styles.button,
                 styles.buttonSave,
                 { marginTop: 20 },
-                !CVV && { backgroundColor: "#ccc" }, // botão desabilitado visualmente
+                ...(!CVV ? [{ backgroundColor: "#ccc" }] : []),
               ]}
-              onPress={() => enviarPagamentoCartaoSalvo()}
+              onPress={enviarPagamentoCartaoSalvo}
+              disabled={!CVV || loading}
             >
               <View style={styles.buttonContent}>
                 {loading && (

@@ -82,6 +82,7 @@ export default function PaymentPix({
       <TouchableOpacity
         style={[styles.button, styles.buttonSave]}
         onPress={() => fetchPixPayment()}
+        disabled={loading}
       >
         <View style={styles.buttonContent}>
           {loading && (

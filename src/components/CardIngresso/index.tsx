@@ -226,8 +226,7 @@ export default function CardIngresso({ item, getRegistros }: Props) {
             onPress={() => setVisibleModalUsuario(true)}
           >
             <Text style={styles.buttonText}>
-              <Feather name="share" size={16} color="#fff" /> Atribuir outro
-              usuário
+              <Feather name="share" size={16} color="#fff" /> Transferir
             </Text>
           </TouchableOpacity>
         </View>

@@ -190,9 +190,10 @@ export default function Login({ onClose }: ModalMsgProps) {
             />
           </View>
 
-          {error && (
-            <Text style={style.labelError}>
-              {error}
+          {error !== "" && (
+            <View style={{ marginBottom: 18 }}>
+              <Text style={style.labelError}>{error}</Text>
+
               {error.includes("Credenciais inválidas") && (
                 <TouchableOpacity
                   style={{
@@ -201,6 +202,7 @@ export default function Login({ onClose }: ModalMsgProps) {
                     backgroundColor: colors.laranjado,
                     alignItems: "center",
                     borderRadius: 8,
+                    marginTop: 8,
                   }}
                   onPress={() =>
                     navigation.navigate("recuperarsenha", {
@@ -211,7 +213,7 @@ export default function Login({ onClose }: ModalMsgProps) {
                   <Text style={style.buttonText}>Recuperar senha</Text>
                 </TouchableOpacity>
               )}
-            </Text>
+            </View>
           )}
 
           <Pressable style={style.button} onPress={handleLogin}>

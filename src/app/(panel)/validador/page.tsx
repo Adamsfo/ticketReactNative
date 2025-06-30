@@ -293,6 +293,7 @@ export default function Index() {
             alignContent: "center",
             alignItems: "center",
             justifyContent: "center",
+            gap: 12,
           }}
         >
           <Text style={{ color: colors.branco }}>
@@ -303,16 +304,27 @@ export default function Index() {
               ingressosSelecionados.length > 1 ? "s" : ""
             } selecionado${ingressosSelecionados.length > 1 ? "s" : ""}`}
           </Text>
+
           <TouchableOpacity
-            style={[styles.button, styles.buttonSave]}
-            onPress={() => handleAbrirConta()}
+            style={[
+              styles.button,
+              styles.buttonSave,
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              },
+            ]}
+            onPress={handleAbrirConta}
           >
-            <Text style={{ color: colors.branco }}>
-              {loading && (
-                <ActivityIndicator size="small" color={colors.laranjado} />
-              )}
-              Abrir Conta
-            </Text>
+            {loading && (
+              <ActivityIndicator
+                size="small"
+                color={colors.laranjado}
+                style={{ marginRight: 8 }}
+              />
+            )}
+            <Text style={{ color: colors.branco }}>Abrir Conta</Text>
           </TouchableOpacity>
         </View>
       </View>

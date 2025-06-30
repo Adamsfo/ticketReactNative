@@ -151,20 +151,23 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
                     style={[
                       styles.sendButton,
                       !selectedOption && { opacity: 0.5 },
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
                     ]}
                     onPress={enviarCodigo}
                     disabled={!selectedOption}
                   >
-                    <Text style={styles.sendText}>
-                      {loading && (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.laranjado}
-                          style={{ marginRight: 10 }}
-                        />
-                      )}
-                      Enviar Código
-                    </Text>
+                    {loading && (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.laranjado}
+                        style={{ marginRight: 10 }}
+                      />
+                    )}
+                    <Text style={styles.sendText}>Enviar Código</Text>
                   </TouchableOpacity>
                 </>
               ) : (

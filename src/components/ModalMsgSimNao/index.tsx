@@ -58,20 +58,25 @@ export default function ModalMsgSimNao({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.buttonYes}
+                  style={[
+                    styles.buttonYes,
+                    {
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    },
+                  ]}
                   onPress={handleConfirm}
+                  disabled={loading}
                 >
-                  <Text style={styles.buttonText}>
-                    {loading ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={colors.laranjado}
-                      />
-                    ) : (
-                      ""
-                    )}
-                    Sim
-                  </Text>
+                  {loading && (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.laranjado}
+                      style={{ marginRight: 8 }}
+                    />
+                  )}
+                  <Text style={styles.buttonText}>Sim</Text>
                 </TouchableOpacity>
               </View>
             </View>

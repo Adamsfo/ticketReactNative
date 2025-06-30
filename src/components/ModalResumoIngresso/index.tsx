@@ -389,7 +389,15 @@ export default function ModalResumoIngresso({
               <Text style={styles.buttonText}>Voltar</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.buttonSave]}
+              style={[
+                styles.button,
+                styles.buttonSave,
+                {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+              ]}
               onPress={() => {
                 if (step === 1) {
                   handleCriarTransacao();
@@ -398,12 +406,16 @@ export default function ModalResumoIngresso({
                   handlePagamento();
                 }
               }}
+              disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator size="small" color={colors.laranjado} />
-              ) : (
-                <Text style={styles.buttonText}>Proximo</Text>
+              {loading && (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.laranjado}
+                  style={{ marginRight: 8 }}
+                />
               )}
+              <Text style={styles.buttonText}>Próximo</Text>
             </TouchableOpacity>
           </View>
         </View>

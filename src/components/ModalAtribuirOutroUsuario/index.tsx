@@ -89,7 +89,9 @@ export default function ModalAtribuirOutroUsuario({
               <TouchableOpacity>
                 {/* <Feather name="share" size={30} color="#212743" /> */}
               </TouchableOpacity>
-              <Text style={styles.title}>Atribui Ingresso a outro Usuário</Text>
+              <Text style={styles.title}>
+                Transferir Ingresso a outro Usuário
+              </Text>
               <TouchableOpacity onPress={onClose}>
                 <Feather name="x" size={30} color="#212743" />
               </TouchableOpacity>
@@ -97,7 +99,7 @@ export default function ModalAtribuirOutroUsuario({
 
             <View>
               <Text style={styles.mensagem}>
-                Ao atribuir este ingresso a outro usuário, ele deixará de
+                Ao transferir este ingresso a outro usuário, ele deixará de
                 aparecer na sua lista, passando a ser de propriedade do novo
                 usuário, com um novo QR Code gerado.
               </Text>
@@ -119,7 +121,7 @@ export default function ModalAtribuirOutroUsuario({
               >
                 {NomeUsuarioNovo.length > 0
                   ? NomeUsuarioNovo
-                  : "Novo usuário não encontrado, digite o email para atribuir."}
+                  : "Novo usuário não encontrado, digite o email para transferir."}
               </Text>
               <Text style={[styles.mensagem, { color: "red" }]}>{msg}</Text>
             </View>
@@ -134,7 +136,7 @@ export default function ModalAtribuirOutroUsuario({
                 style={[styles.button, styles.buttonSave]}
                 onPress={handleSave}
               >
-                <Text style={styles.buttonText}>Salvar</Text>
+                <Text style={styles.buttonText}>Transferir</Text>
               </TouchableOpacity>
             </View>
           </View>
