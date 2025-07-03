@@ -360,6 +360,7 @@ export interface Transacao {
     | "Aguardando confirmação"
     | "Pago"
     | "Cancelado";
+  taxaServicoDesconto?: number;
 }
 
 export interface IngressoTransacao {

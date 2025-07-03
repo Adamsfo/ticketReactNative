@@ -495,6 +495,20 @@ export default function Index() {
                   </Text>
                   <Text style={{ fontSize: 16, paddingBottom: 3 }}>
                     Total Taxa:{" "}
+                    {registroTransacao?.taxaServicoDesconto &&
+                      registroTransacao?.taxaServicoDesconto > 0 && (
+                        <Text
+                          style={{
+                            color: colors.greenEscuro,
+                            paddingHorizontal: 5,
+                          }}
+                        >
+                          Desconto:{" "}
+                          {formatCurrency(
+                            registroTransacao?.taxaServicoDesconto ?? 0
+                          )}
+                        </Text>
+                      )}
                     <Text style={{ fontWeight: "bold" }}>
                       {formatCurrency(registroTransacao?.taxaServico ?? 0)}
                     </Text>
