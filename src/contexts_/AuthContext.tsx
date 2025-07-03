@@ -15,6 +15,7 @@ interface AuthContextProps {
   isValidador: boolean;
   isCliente: boolean;
   isAdministrador: boolean;
+  visitasNoSite: number;
 }
 
 const AuthContext = createContext({} as AuthContextProps);
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isValidador, setIsValidador] = useState(false);
   const [isCliente, setIsCliente] = useState(false);
   const [isAdministrador, setIsAdministrador] = useState(false);
+  const [visitasNoSite, setVisitasNoSite] = useState(0);
 
   function setAuth(user: Usuario | null) {
     setUser(user);
@@ -72,6 +74,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     carregarPerfil();
   }, [user]);
 
+  // 👇 Registrar visita ao carregar o app
+  useEffect(() => {
+    const registrarVisita = async () => {
+      try {
+        const response = await apiGeral.createResource<any>(
+          "/visitasnosite",
+          {}
+        );
+
+        console.log("visita registrada:", response);
+
+        if (response?.data?.visitasNoSite !== undefined) {
+          setVisitasNoSite(response.data.visitasNoSite);
+        }
+      } catch (error) {
+        console.error("Erro ao registrar visita:", error);
+      }
+    };
+
+    registrarVisita();
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -81,6 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isValidador,
         isCliente,
         isAdministrador,
+        visitasNoSite,
       }}
     >
       {children}

@@ -1,3 +1,4 @@
+import { useAuth } from "@/src/contexts_/AuthContext";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -10,6 +11,8 @@ import {
 } from "react-native";
 
 const Footer = () => {
+  const { visitasNoSite } = useAuth();
+
   return (
     <View style={styles.footerContainer}>
       <View style={styles.logoSection}>
@@ -53,6 +56,11 @@ const Footer = () => {
         style={styles.logo}
         resizeMode="contain"
       />
+      <View style={styles.logoSection}>
+        <Text style={styles.slogan}>
+          {visitasNoSite} Visitas na Plataforma.
+        </Text>
+      </View>
       <Text style={styles.copy}>
         © {new Date().getFullYear()} Tanz Tecnologia Ltda. Todos os direitos
         reservados.

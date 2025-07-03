@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SplashScreen } from "expo-router";
+import { apiGeral } from "../lib/geral";
 
 export default function Index({ route }: any) {
   const navigation = useNavigation() as any;
