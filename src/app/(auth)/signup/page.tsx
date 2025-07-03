@@ -273,7 +273,7 @@ export default function Signup() {
                 <TextInput
                   style={style.input}
                   placeholder="CPF..."
-                  keyboardType="default"
+                  keyboardType="numeric"
                   value={formData.cpf}
                   onChangeText={(text) => {
                     const formatted = formatCPF(text);

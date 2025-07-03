@@ -456,7 +456,7 @@ export default function Index() {
                                 style={{
                                   paddingHorizontal: 3,
                                   fontSize: 14,
-                                  color: colors.green,
+                                  color: colors.greenEscuro,
                                 }}
                               >
                                 Desconto:{" "}
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   labelSucesso: {
-    color: colors.green,
+    color: colors.greenEscuro,
     marginTop: -18,
     marginBottom: 18,
   },

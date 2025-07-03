@@ -234,11 +234,13 @@ export default function Index() {
                                 style={{
                                   paddingHorizontal: 3,
                                   fontSize: 14,
-                                  color: colors.green,
+                                  color: colors.greenEscuro,
                                 }}
                               >
                                 Desconto:{" "}
-                                {formatCurrency(item.precoDesconto * item.qtde)}
+                                {formatCurrency(
+                                  (item.precoDesconto * item.qtde).toFixed(2)
+                                )}
                               </Text>
                             ) : null}
                           </View>
@@ -246,7 +248,9 @@ export default function Index() {
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {formatCurrency(item.preco * item.qtde)}
+                              {formatCurrency(
+                                (item.preco * item.qtde).toFixed(2)
+                              )}
                             </Text>
                           </View>
                         </View>

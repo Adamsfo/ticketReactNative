@@ -55,9 +55,11 @@ export default function CheckoutMercadoPago() {
     registroTransacao: Transacao;
   };
 
-  initMercadoPago(MP_PUBLIC_KEY, {
-    locale: "pt-BR",
-  });
+  useEffect(() => {
+    initMercadoPago(MP_PUBLIC_KEY, {
+      locale: "pt-BR",
+    });
+  }, []);
 
   const [paymentStatusId, setPaymentStatusId] = useState(""); // Estado para armazenar o ID do pagamento
   // const [paymentStatusId, setPaymentStatusId] = useState("107841609777"); // Estado para armazenar o ID do pagamento
@@ -145,6 +147,9 @@ export default function CheckoutMercadoPago() {
       if (dados.status === "approved") {
         setConsultaPagamento(false);
         setVisiblePagamentoCartaoSalvo(false); // Ocultar o componente de pagamento
+      }
+      if (dados.status === "rejected") {
+        setConsultaPagamento(false);
       }
     } catch (error) {
       console.log("Erro ao verificar status do pagamento PIX:", error);
@@ -366,6 +371,7 @@ export default function CheckoutMercadoPago() {
               CVV={CVV} // Passar o estado do CVV do cartão
               error={error} // Passar o estado de erro
               installments={installments} // Passar o número de parcelas selecionadas
+              setConsultaPagamento={setConsultaPagamento} // Passar a função para definir se a consulta de pagamento está ativa
             />
           )}
 
@@ -375,10 +381,6 @@ export default function CheckoutMercadoPago() {
               color={colors.azul}
               style={{ marginTop: 15 }}
             />
-          )}
-
-          {dadosDePagamento && dadosDePagamento.status && (
-            <StatusPaymentCustomizado data={dadosDePagamento} />
           )}
 
           {visiblePagamento && (
@@ -407,6 +409,10 @@ export default function CheckoutMercadoPago() {
                 onError={onError}
               />
             </View>
+          )}
+
+          {dadosDePagamento && dadosDePagamento.status && (
+            <StatusPaymentCustomizado data={dadosDePagamento} />
           )}
         </View>
       ) : (

@@ -37,6 +37,7 @@ type Props = {
   CVV: string; // Adicionado para receber o CVV do cartão salvo
   error: string; // Adicionado para receber erros
   installments: number; // Adicionado para receber a quantidade de parcelas selecionadas
+  setConsultaPagamento: (consulta: boolean) => void; // Adicionado para definir se a consulta de pagamento está ativa
 };
 
 export default function CartaoCreditoSelector({
@@ -58,6 +59,7 @@ export default function CartaoCreditoSelector({
   CVV, // Adicionado para receber o CVV do cartão salvo
   error, // Adicionado para receber erros
   installments, // Adicionado para receber a quantidade de parcelas selecionadas
+  setConsultaPagamento,
 }: Props) {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [pagamentoPix, setPagamentoPix] = useState(false); // Estado para armazenar o ID do pagamento
@@ -155,6 +157,7 @@ export default function CartaoCreditoSelector({
           onPress={() => {
             setVisiblePagamento(false);
             setPagamentoPix(false);
+            setConsultaPagamento(false);
           }}
         >
           <View style={styles.cardHeader}>
@@ -176,6 +179,7 @@ export default function CartaoCreditoSelector({
           onPress={() => {
             setVisiblePagamento(true);
             setPagamentoPix(false);
+            setConsultaPagamento(false);
           }}
         >
           <View style={styles.cardHeader}>
@@ -194,6 +198,7 @@ export default function CartaoCreditoSelector({
           onPress={() => {
             setPagamentoPix(true);
             setVisiblePagamento(false);
+            setConsultaPagamento(false);
           }}
         >
           <View style={styles.cardHeader}>

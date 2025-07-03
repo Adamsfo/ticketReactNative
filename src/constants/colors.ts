@@ -14,4 +14,5 @@ export default {
   roxo: 'rgb(78, 57, 117)',
   line: 'rgb(227, 227, 229)',
   lightGray: 'rgb(211, 211, 211)',
+  greenEscuro: '#029787',
 };
