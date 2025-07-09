@@ -145,14 +145,17 @@ export default function CardIngresso({ item, getRegistros }: Props) {
             <Feather name="edit" size={18} color={colors.branco} />
           </TouchableOpacity>
         </View>
+
         <View style={styles.row}>
           <CalendarIcon size={16} color="#6b7280" />
           <Text style={styles.text}>
-            {item.Evento_data_hora_inicio
+            {" "}
+            Válido à partir{" "}
+            {item.dataValidade
               ? formatInTimeZone(
-                  parseISO(item.Evento_data_hora_inicio.toString()),
+                  parseISO(item.dataValidade.toString()),
                   "America/Cuiaba",
-                  "dd/MM/yyyy HH:mm"
+                  "dd/MM/yyyy"
                 )
               : "Data não disponível"}
           </Text>

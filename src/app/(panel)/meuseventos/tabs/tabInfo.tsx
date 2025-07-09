@@ -520,6 +520,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     width: 75,
     textAlign: "right",
+    height: 45,
+    lineHeight: 45,
   },
   input: {
     borderWidth: 1,

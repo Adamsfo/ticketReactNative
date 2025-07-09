@@ -21,6 +21,8 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import { CheckCircle, XCircle } from "lucide-react-native";
 import { FlatList } from "react-native-gesture-handler";
+import { formatInTimeZone } from "date-fns-tz";
+import { parseISO } from "date-fns";
 
 type Props = {
   type: string;
@@ -352,7 +354,7 @@ export default function Index() {
             Platform.OS === "web" ? (width > 400 ? 400 : width - 40) : "100%",
           borderRadius: 20,
           marginBottom: 10,
-          padding: 10,
+          padding: 5,
           flexDirection: "row", // Coloca os elementos lado a lado
           alignItems: "center", // Alinha verticalmente
         }}
@@ -391,6 +393,18 @@ export default function Index() {
             style={{ color: colors.branco, fontSize: 16, fontWeight: "bold" }}
           >
             {item.nomeImpresso}
+          </Text>
+          <Text
+            style={{ color: colors.branco, fontSize: 16, fontWeight: "bold" }}
+          >
+            Válido à partir{" "}
+            {item.dataValidade
+              ? formatInTimeZone(
+                  parseISO(item.dataValidade.toString()),
+                  "America/Cuiaba",
+                  "dd/MM/yyyy"
+                )
+              : "Data não disponível"}
           </Text>
         </View>
       </View>

@@ -111,6 +111,7 @@ export default function ModalResumoIngresso({
         preco: calculatePreco(),
         taxaServico: calculateTaxa(),
         valorTotal: calculateValor(),
+        idEvento: state.items[0].eventoIngresso.idEvento,
       });
 
       dispatch({

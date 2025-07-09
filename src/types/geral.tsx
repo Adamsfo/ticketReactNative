@@ -346,6 +346,7 @@ export interface Ingresso {
   Usuario_cpf?: string;
   Usuario_email?: string;
   Usuario_nomeCompleto?: string;
+  dataValidade?: Date;
 }
 
 export interface Transacao {

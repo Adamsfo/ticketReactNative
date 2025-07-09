@@ -1,6 +1,19 @@
+/* Define tamanho mínimo da fonte no input para evitar zoom no iOS */
+.custom-datepicker {
+  font-size: 16px !important;
+  padding: 10px;
+  height: 45px;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
 .react-datepicker-popper {
   z-index: 20000 !important; /* Adjust z-index to ensure DatePicker appears above modal */
+  font-size: 16px;
 }
 .react-datepicker__triangle {
   left: 10px !important; /* Define o indicador para aparecer à esquerda */
+  font-size: 16px;
 }

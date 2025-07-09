@@ -45,6 +45,7 @@ const TimePickerComponente = ({
             portalId="root-portal"
             popperPlacement="bottom-start"
             locale="pt"
+            className="custom-timepicker"
           />
         </View>
       ) : (
