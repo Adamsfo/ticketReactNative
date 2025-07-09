@@ -8,7 +8,7 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, set } from "date-fns";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -24,6 +24,7 @@ import ModalCortesia from "./modalCortesia";
 import colors from "@/src/constants/colors";
 import { useFocusEffect } from "expo-router";
 import formatCurrency from "@/src/components/FormatCurrency";
+import ModalVendasPagas from "./modalVendasPagas";
 
 const { width } = Dimensions.get("window");
 
@@ -44,7 +45,8 @@ export default function TabFinanceiro() {
     valorTaxaProcessamento: number;
   }>({ preco: 0, valorRecebido: 0, valorTaxaProcessamento: 0 });
   const navigation = useNavigation() as any;
-  const [visibleModalCortesia, setVisibleModalCortesia] = useState(false);
+  const [visibleModalVendasPagas, setVisibleModalVendasPagas] = useState(false);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const { user } = useAuth();
 
   const data = [
@@ -52,6 +54,8 @@ export default function TabFinanceiro() {
     { label: "Valor Ingressos" },
     { label: "Taxa Processamento" },
     { label: "Valor Recebido" },
+    { label: "Quantidade de Vendas" },
+    { label: "Analisar Vendas", isButton: true },
   ];
 
   const getRegistros = async () => {
@@ -86,6 +90,12 @@ export default function TabFinanceiro() {
     }, [visibleModal, dataInicio, dataFinal])
   );
 
+  const handleVerVendas = (transcoes: any) => {
+    console.log("Ver Vendas Pagas", transcoes);
+    setTransacoes(transcoes);
+    setVisibleModalVendasPagas(true);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.titulo}>Financeiro</Text>
@@ -114,7 +124,7 @@ export default function TabFinanceiro() {
             </View>
           </View>
 
-          <CustomGridTitle data={data} />
+          {Platform.OS === "web" && <CustomGridTitle data={data} />}
           {registros.map((item, index) => (
             <CustomGrid
               key={index}
@@ -139,8 +149,19 @@ export default function TabFinanceiro() {
                 {
                   id: 3,
                   label: data[3].label,
-                  // content: item.valorRecebido,
                   content: formatCurrency(item.valorRecebido.toFixed(2)),
+                },
+                {
+                  id: 4,
+                  label: data[4].label,
+                  content: item.transacoes.length,
+                },
+                {
+                  id: 5,
+                  label: data[5].label,
+                  iconName: "check-square",
+                  isButton: true,
+                  onPress: () => handleVerVendas(item.transacoes),
                 },
               ]}
             />
@@ -170,13 +191,10 @@ export default function TabFinanceiro() {
         </View>
       </ScrollView>
 
-      <Modal visible={visibleModalCortesia} transparent animationType="fade">
-        <ModalCortesia
-          idEvento={id}
-          onClose={() => {
-            setVisibleModalCortesia(false);
-            getRegistros();
-          }}
+      <Modal visible={visibleModalVendasPagas} transparent animationType="fade">
+        <ModalVendasPagas
+          onClose={() => setVisibleModalVendasPagas(false)}
+          transacoes={transacoes}
         />
       </Modal>
     </View>

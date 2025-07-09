@@ -362,6 +362,8 @@ export interface Transacao {
     | "Pago"
     | "Cancelado";
   taxaServicoDesconto?: number;
+  valorTaxaProcessamento?: number;
+  valorRecebido?: number;
 }
 
 export interface IngressoTransacao {
