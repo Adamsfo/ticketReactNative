@@ -213,7 +213,7 @@ export default function Index() {
             <TextInput
               style={[styles.input, { minWidth: 150 }]}
               placeholder="CPF..."
-              keyboardType="default"
+              keyboardType="numeric"
               value={cpf}
               onChangeText={(text) => {
                 const formatted = formatCPF(text);
