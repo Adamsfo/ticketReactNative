@@ -36,7 +36,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
       style={{
         flexDirection: "row",
         paddingBottom: 10,
-        paddingTop: 5,
+        paddingTop: 3,
         justifyContent: "space-between",
         alignItems: "center",
         borderBottomWidth: 1,
@@ -58,6 +58,20 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
               flex: 1,
             }}
           >
+            {data.lote.length > 1 && (
+              <View>
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    paddingLeft: 5,
+                    fontSize: 20,
+                    // marginBottom: 2,
+                  }}
+                >
+                  {data.lote}
+                </Text>
+              </View>
+            )}
             <View>
               <Text
                 style={{

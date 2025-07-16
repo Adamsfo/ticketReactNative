@@ -135,18 +135,9 @@ export default function Index() {
               source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
               style={styles.imagem}
             />
-            <View>
-              <Text
-                style={[
-                  styles.titulo,
-                  { marginLeft: 10, textAlign: "left", fontSize: 22 },
-                ]}
-              >
-                {formData.nome}
-              </Text>
-              <Text style={{ marginLeft: 10, fontSize: 16 }}>
-                {formData.endereco}
-              </Text>
+            <View style={styles.areaTextoEvento}>
+              <Text style={styles.tituloEvento}>{formData.nome}</Text>
+              {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
             </View>
           </View>
 
@@ -253,10 +244,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   imagem: {
-    width: "100%", // 100% para web, largura da tela para mobile
+    // width: "100%", // 100% para web, largura da tela para mobile
     borderRadius: 20,
-    height: 100,
-    maxWidth: 180,
+    height: 110,
+    width: 180,
     resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
   },
   areaEvento: {
@@ -273,5 +264,23 @@ const styles = StyleSheet.create({
   areaStep: {
     justifyContent: "center",
     alignItems: "center",
+  },
+  areaTextoEvento: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: "center",
+  },
+  tituloEvento: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "left",
+    flexShrink: 1,
+    flexWrap: "wrap",
+  },
+  enderecoEvento: {
+    fontSize: 16,
+    textAlign: "left",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
 });

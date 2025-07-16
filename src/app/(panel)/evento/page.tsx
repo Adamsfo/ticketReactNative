@@ -240,7 +240,18 @@ export default function Index() {
         <html>
           <head>
             <style>
-              body { background-color: transparent; color: black; }
+              body {
+                background-color: transparent;
+                color: black;
+                font-size: 16px;
+                line-height: 1.1; /* <= ajusta o espaçamento entre linhas */
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              }
+              p, li, div {
+                margin: 0 0 8px 0;
+              }
             </style>
           </head>
           <body>
@@ -266,7 +277,9 @@ export default function Index() {
 
       return (
         <View style={styles.dadosBasicos}>
-          <Text style={styles.titulo}>Informações do Evento</Text>
+          <Text style={[styles.titulo, { marginBottom: 0 }]}>
+            Informações do Evento
+          </Text>
           {Platform.OS === "web" ? (
             <iframe
               srcDoc={htmlContent}

@@ -169,18 +169,9 @@ export default function Index() {
                   }}
                   style={styles.imagem}
                 />
-                <View>
-                  <Text
-                    style={[
-                      styles.titulo,
-                      { marginLeft: 10, textAlign: "left", fontSize: 22 },
-                    ]}
-                  >
-                    {formData.nome}
-                  </Text>
-                  <Text style={{ marginLeft: 10, fontSize: 16 }}>
-                    {formData.endereco}
-                  </Text>
+                <View style={styles.areaTextoEvento}>
+                  <Text style={styles.tituloEvento}>{formData.nome}</Text>
+                  {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
                 </View>
               </View>
 
@@ -391,10 +382,10 @@ const styles = StyleSheet.create({
     paddingLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
   },
   imagem: {
-    width: "100%",
+    // width: "100%",
     borderRadius: 20,
-    height: 100,
-    maxWidth: 180,
+    height: 110,
+    width: 180,
     resizeMode: "cover",
   },
   areaEvento: {
@@ -446,5 +437,23 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     marginBottom: 5,
+  },
+  areaTextoEvento: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: "center",
+  },
+  tituloEvento: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "left",
+    flexShrink: 1,
+    flexWrap: "wrap",
+  },
+  enderecoEvento: {
+    fontSize: 16,
+    textAlign: "left",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
 });

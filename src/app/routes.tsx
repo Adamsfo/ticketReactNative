@@ -14,6 +14,7 @@ import MeusEventos from "./(panel)/meuseventos/page";
 import MeusEventosEdit from "./(panel)/meuseventos/pageEdit";
 import MeusEventoNewIngresso from "./(panel)/meuseventos/pageNewIngresso";
 import Produtor from "./(panel)/produtor/page";
+import Usuario from "./(panel)/usuario/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
 import Ingressos from "./(panel)/ingressos/page";
 import Conferencia from "./(panel)/conferencia/page";
@@ -269,11 +270,26 @@ function Routes() {
             options={{ headerShown: false, title: "Validador" }}
           />
           <Drawer.Screen
+            name="usuario"
+            component={Usuario}
+            options={{
+              headerShown: false,
+              title: "Usuários",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "person-circle" : "person-circle-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="minhaconta"
             component={MinhaConta}
             options={{
               headerShown: false,
-              title: "Conta",
+              title: "Minha Conta",
               drawerIcon: ({ focused, size, color }) => (
                 <Ionicons
                   name={focused ? "person" : "person-outline"}

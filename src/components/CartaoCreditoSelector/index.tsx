@@ -350,6 +350,7 @@ const styles = StyleSheet.create({
   },
   cardList: {
     paddingBottom: 12,
+    gap: 3,
   },
   card: {
     backgroundColor: "#f2f2f2",

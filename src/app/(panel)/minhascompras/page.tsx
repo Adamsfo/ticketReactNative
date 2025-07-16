@@ -189,14 +189,14 @@ export default function Index() {
                       isButton: true,
                       onPress: () => handleClickCancelarCompra(item.id),
                     },
-                    {
-                      label: data[4].label,
-                      content: formatCurrency(item.valorTotal.toString()),
-                      id: item.id,
-                      iconName: "check-square",
-                      isButton: true,
-                      onPress: handleModalEdit,
-                    },
+                    // {
+                    //   label: data[4].label,
+                    //   content: formatCurrency(item.valorTotal.toString()),
+                    //   id: item.id,
+                    //   iconName: "check-square",
+                    //   isButton: true,
+                    //   onPress: handleModalEdit,
+                    // },
                   ]}
                 />
               ))}

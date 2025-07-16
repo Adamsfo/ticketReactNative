@@ -302,9 +302,10 @@ export default function Signup() {
               >
                 <TouchableOpacity
                   onPress={() => {
-                    setNovaSenha("Sim");
+                    formData.senha = "";
                     handleChange("senha", "");
                     handleChange("confirmaSenha", "");
+                    setNovaSenha("Sim");
                   }}
                 >
                   <Badge

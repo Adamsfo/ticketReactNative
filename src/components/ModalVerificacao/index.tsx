@@ -7,6 +7,7 @@ import {
   TextInput,
   Platform,
   TouchableWithoutFeedback,
+  Linking,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
@@ -100,6 +101,17 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
     } else {
       onClose();
     }
+  };
+
+  const enviarMsgWhatsapp = async () => {
+    const numero = "5565993074619"; // Substitua pelo número desejado
+    const mensagem =
+      "Olá! Não estou recebendo o código de ativação! Por favor, me ajude. email: " +
+      user?.email; // Mensagem que você deseja enviar
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
+
+    Linking.openURL(url);
+    onClose();
   };
 
   return (
@@ -201,6 +213,19 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
                   </TouchableOpacity>
                 </>
               )}
+              <TouchableOpacity
+                style={{
+                  width: 150,
+                  height: 20,
+                  backgroundColor: colors.laranjado,
+                  alignItems: "center",
+                  borderRadius: 8,
+                  marginTop: 8,
+                }}
+                onPress={enviarMsgWhatsapp}
+              >
+                <Text style={styles.buttonText}>Código não chegou</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -299,5 +324,10 @@ const styles = StyleSheet.create({
     color: colors.red,
     marginTop: -12,
     marginBottom: 18,
+  },
+  buttonText: {
+    color: colors.white,
+    // fontSize: 14,
+    fontWeight: "bold",
   },
 });
