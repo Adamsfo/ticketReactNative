@@ -16,6 +16,7 @@ interface AuthContextProps {
   isCliente: boolean;
   isAdministrador: boolean;
   visitasNoSite: number;
+  isPDV: boolean;
 }
 
 const AuthContext = createContext({} as AuthContextProps);
@@ -28,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isValidador, setIsValidador] = useState(false);
   const [isCliente, setIsCliente] = useState(false);
   const [isAdministrador, setIsAdministrador] = useState(false);
+  const [isPDV, setIsPDV] = useState(false);
   const [visitasNoSite, setVisitasNoSite] = useState(0);
 
   function setAuth(user: Usuario | null) {
@@ -55,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 acesso.tipoAcesso === "Administrador" ? true : false
               );
               setIsValidador(acesso.tipoAcesso === "Validador" ? true : false);
+              setIsPDV(acesso.tipoAcesso === "PDV" ? true : false);
             } else {
               setIsCliente(true);
             }
@@ -68,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsValidador(false);
         setIsCliente(true);
         setIsAdministrador(false);
+        setIsPDV(false);
       }
     };
 
@@ -106,6 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isCliente,
         isAdministrador,
         visitasNoSite,
+        isPDV,
       }}
     >
       {children}

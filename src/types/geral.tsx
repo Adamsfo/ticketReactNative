@@ -103,6 +103,7 @@ export interface EventoIngresso {
   idCupomPromocional?: number | null;
   CupomPromocional_nome?: string;
   TipoIngresso?: TipoIngresso;
+  ingressosConfirmados?: Number;
 }
 
 export interface FormPropsEdit {
@@ -433,6 +434,7 @@ export interface DadosdePagamento {
 export enum TipoAcesso {
   Administrador = "Administrador",
   Validador = "Validador",
+  PDV = "PDV",
 }
 
 export interface ProdutorAcesso {

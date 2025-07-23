@@ -32,6 +32,7 @@ const { width } = Dimensions.get("window");
 export default function Index() {
   const endpointApi = "/evento";
   const route = useRoute();
+  // const { isAdministrador, isValidador, isCliente, isProdutor } = useAuth();
   const [visibleMsg, setVisibleMsg] = useState(false);
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };

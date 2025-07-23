@@ -17,6 +17,7 @@ import BarMenu from "@/src/components/BarMenu";
 import {
   Evento,
   EventoIngresso,
+  Ingresso,
   Produtor,
   QueryParams,
 } from "@/src/types/geral";
@@ -75,7 +76,25 @@ export default function Index() {
     );
     const registrosData = response.data ?? [];
 
-    setRegistrosEventoIngressos(registrosData);
+    let novosRegistros = await Promise.all(
+      registrosData.map(async (ingresso) => {
+        // Aqui você pode fazer algo com cada ingresso, se necessário
+        const ingressosConfirmados = await apiGeral.getResource<Ingresso>(
+          "/ingresso",
+          {
+            filters: {
+              idEventoIngresso: ingresso.id,
+              status: "Confirmado",
+            },
+          }
+        );
+        ingresso.ingressosConfirmados = ingressosConfirmados.data?.length ?? 0;
+
+        return ingresso;
+      })
+    );
+
+    setRegistrosEventoIngressos(novosRegistros);
   };
 
   useFocusEffect(

@@ -72,7 +72,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                 </Text>
               </View>
             )}
-            <View>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Text
                 style={{
                   fontWeight: "600",
@@ -81,7 +81,17 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                   marginBottom: 2,
                 }}
               >
-                {data.nome}
+                {data.nome}{" "}
+              </Text>
+              <Text
+                style={{
+                  fontWeight: "bold",
+                  color: colors.red,
+                  fontSize: 20,
+                  paddingLeft: 5,
+                }}
+              >
+                {data.ingressosConfirmados >= data.qtde ? "ESGOTADO" : ""}
               </Text>
             </View>
             <View>
@@ -133,12 +143,14 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                   backgroundColor: "rgb(0, 146, 250)",
                   borderRadius: 7,
                 }}
-                onPress={() =>
-                  addItemToCart(
-                    (state.items.find((item) => item.id === data.id)?.qtde ||
-                      0) + 1
-                  )
-                }
+                onPress={() => {
+                  if (data.ingressosConfirmados < data.qtde) {
+                    addItemToCart(
+                      (state.items.find((item) => item.id === data.id)?.qtde ||
+                        0) + 1
+                    );
+                  }
+                }}
               >
                 <Feather name="plus" size={28} color="white"></Feather>
               </TouchableOpacity>

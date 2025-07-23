@@ -13,17 +13,20 @@ const phoneNumber = "65993074619"; // Ex: 5599999999999
 export default function FloatingWhatsAppButton() {
   const openWhatsApp = () => {
     const message = encodeURIComponent(
-      "Olá! Preciso de uma ajuda. Se tiver outra sugestão, me manda aqui também!"
+      "Olá! Preciso de uma ajuda. Se tiver outra sugestão, me manda aqui também! 😊"
     );
 
-    const url =
-      Platform.OS === "ios"
-        ? `whatsapp://send?phone=${phoneNumber}&text=${message}`
-        : `https://wa.me/${phoneNumber}?text=${message}`;
+    const urlMobile = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
+    const urlWeb = `https://wa.me/${phoneNumber}?text=${message}`;
 
-    Linking.openURL(url).catch((err) =>
-      console.error("Erro ao abrir o WhatsApp", err)
-    );
+    if (Platform.OS === "web") {
+      // Substitui a aba atual, mais compatível com web mobile
+      window.location.href = urlWeb;
+    } else {
+      Linking.openURL(urlMobile).catch((err) =>
+        console.error("Erro ao abrir o WhatsApp", err)
+      );
+    }
   };
 
   return (

@@ -104,13 +104,21 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
   };
 
   const enviarMsgWhatsapp = async () => {
-    const numero = "5565993074619"; // Substitua pelo número desejado
+    const numero = "5565993074619";
     const mensagem =
       "Olá! Não estou recebendo o código de ativação! Por favor, me ajude. email: " +
-      user?.email; // Mensagem que você deseja enviar
+      user?.email;
+
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 
-    Linking.openURL(url);
+    if (Platform.OS === "web") {
+      window.location.href = url; // Abre diretamente na aba atual (evita tela branca)
+    } else {
+      Linking.openURL(url).catch((err) =>
+        console.error("Erro ao abrir o WhatsApp", err)
+      );
+    }
+
     onClose();
   };
 
