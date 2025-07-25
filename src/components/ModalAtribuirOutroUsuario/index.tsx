@@ -31,6 +31,7 @@ export default function ModalAtribuirOutroUsuario({
   const [msg, setMsg] = useState("");
   const { user } = useAuth();
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
 
   const handleSave = async () => {
     console.log("idUsuarioNovo", idUsuarioNovo);
@@ -80,6 +81,74 @@ export default function ModalAtribuirOutroUsuario({
     }
   };
 
+  const handleBuscaCPF = async () => {
+    setMsg("");
+
+    // Verifica se o e-mail tem pelo menos um "@" e não é vazio
+    if (isValidCPF(cpf)) {
+      try {
+        const response = await apiGeral.getResource<Usuario>("/usuario", {
+          filters: { cpf: cpf },
+        });
+
+        const usuario = Array.isArray(response.data) ? response.data[0] : null;
+
+        if (usuario) {
+          setNomeUsuarioNovo(
+            usuario.nomeCompleto + " " + usuario.sobreNome || ""
+          );
+          setidUsuarioNovo(usuario.id?.toString() || "");
+        } else {
+          setNomeUsuarioNovo("");
+          setidUsuarioNovo("");
+        }
+      } catch (error) {
+        console.error("Erro ao buscar usuário:", error);
+        setNomeUsuarioNovo("");
+        setidUsuarioNovo("");
+      }
+    } else {
+      setNomeUsuarioNovo("");
+      setidUsuarioNovo("");
+    }
+  };
+
+  const formatCPF = (value: string) => {
+    // Remove tudo que não for número
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    // Aplica a máscara do CPF
+    return onlyNumbers
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+      .slice(0, 14); // Garante que não passe de 14 caracteres (formato final)
+  };
+
+  const isValidCPF = (cpf: string): boolean => {
+    cpf = cpf.replace(/\D/g, "");
+
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += Number(cpf[i]) * (10 - i);
+    }
+    let firstDigit = (sum * 10) % 11;
+    if (firstDigit === 10 || firstDigit === 11) firstDigit = 0;
+    if (firstDigit !== Number(cpf[9])) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += Number(cpf[i]) * (11 - i);
+    }
+    let secondDigit = (sum * 10) % 11;
+    if (secondDigit === 10 || secondDigit === 11) secondDigit = 0;
+    if (secondDigit !== Number(cpf[10])) return false;
+
+    return true;
+  };
+
   return (
     <TouchableWithoutFeedback onPress={onClose}>
       <View style={styles.modalContainer}>
@@ -113,6 +182,34 @@ export default function ModalAtribuirOutroUsuario({
                   value={email}
                   onChangeText={handleEmailChange}
                 />
+              </View>
+              <Text style={styles.label}>ou</Text>
+              <View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="CPF..."
+                  keyboardType="numeric"
+                  value={cpf}
+                  onChangeText={(text) => {
+                    const formatted = formatCPF(text);
+                    setCpf(formatted);
+                  }}
+                  onBlur={() => {
+                    if ((cpf?.length ?? 0) === 14) {
+                      handleBuscaCPF();
+                    }
+                  }}
+                ></TextInput>
+                <TouchableOpacity
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: 12,
+                  }}
+                  onPress={handleBuscaCPF}
+                >
+                  <Feather name="search" size={24} color="#212743" />
+                </TouchableOpacity>
               </View>
               <Text
                 style={{

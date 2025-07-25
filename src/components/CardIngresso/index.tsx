@@ -50,14 +50,14 @@ export default function CardIngresso({ item, getRegistros }: Props) {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; max-width: 300px; margin: auto; }
-          .title { font-size: 22px; font-weight: bold; margin-bottom: 12px; }
-          .ticket { font-size: 18px; font-weight: bold; margin-bottom: 12px; }
-          .image { width: 100%; max-height: 250px; object-fit: cover; border-radius: 6px; margin-bottom: 12px; }
-          .info { margin-bottom: 8px; }
-          .label { font-weight: bold; }
-          .qrcode { text-align: center; }
+          body { font-family: Arial, sans-serif; padding: 5px; }
+          .card { border: 1px solid #ddd; padding: 7px; border-radius: 8px; max-width: 300px; margin: auto; }
+          .title { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+          .ticket { font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+          .image { width: 100%; max-height: 250px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; }
+          .info { font-size: 12px; margin-bottom: 6px; }
+          .label { font-size: 12px; font-weight: bold; }
+          .qrcode 
         </style>
       </head>
       <body>
@@ -150,12 +150,12 @@ export default function CardIngresso({ item, getRegistros }: Props) {
           <CalendarIcon size={16} color="#6b7280" />
           <Text style={styles.text}>
             {" "}
-            Válido à partir{" "}
+            {item.idEvento != 1 ? "Início do evento" : "Válido à partir"}{" "}
             {item.dataValidade
               ? formatInTimeZone(
                   parseISO(item.dataValidade.toString()),
                   "America/Cuiaba",
-                  "dd/MM/yyyy"
+                  "dd/MM/yyyy " + (item.idEvento != 1 ? "HH:mm" : "")
                 )
               : "Data não disponível"}
           </Text>

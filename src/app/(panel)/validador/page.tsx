@@ -45,9 +45,7 @@ export default function Index() {
   );
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState<boolean>(false);
-  const { idUsuario } = route.params as {
-    idUsuario: number;
-  };
+  const idUsuario = (route.params as { idUsuario?: number })?.idUsuario ?? 0;
 
   const getRegistroQrCode = async (params: QueryParams) => {
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
@@ -92,7 +90,7 @@ export default function Index() {
   };
 
   useEffect(() => {
-    if (idUsuario) {
+    if (idUsuario && idUsuario > 0) {
       setqrcodeCPF("cpf");
       getUsuario(idUsuario);
     }
