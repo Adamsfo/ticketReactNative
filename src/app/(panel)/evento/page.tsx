@@ -26,13 +26,14 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { api } from "@/src/lib/api";
 import WebView, { WebViewMessageEvent } from "react-native-webview";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
   const endpointApi = "/evento";
   const route = useRoute();
-  // const { isAdministrador, isValidador, isCliente, isProdutor } = useAuth();
+  const { isPDV } = useAuth();
   const [visibleMsg, setVisibleMsg] = useState(false);
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };
@@ -334,7 +335,9 @@ export default function Index() {
         style={styles.floatingButton}
         onPress={() => navigation.navigate("ingressos", { id: id })}
       >
-        <Text style={styles.floatingButtonText}>Comprar Ingressos</Text>
+        <Text style={styles.floatingButtonText}>
+          {isPDV ? "Vender Ingressos" : "Comprar Ingressos"}
+        </Text>
       </TouchableOpacity>
 
       <Modal visible={visibleMsg} transparent animationType="slide">

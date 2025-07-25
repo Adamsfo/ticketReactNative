@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -20,6 +21,7 @@ import {
   Ingresso,
   Produtor,
   QueryParams,
+  Usuario,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -31,16 +33,23 @@ import { api } from "@/src/lib/api";
 import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
 import { useCart } from "@/src/contexts_/CartContext";
+import { useAuth } from "@/src/contexts_/AuthContext";
+import { apiAuth } from "@/src/lib/auth";
+import { Feather } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
 export default function Index() {
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
+  const { isPDV } = useAuth();
   const route = useRoute();
   const { state, dispatch } = useCart();
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [infoUsuario, setInfoUsuario] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
   const [formData, setFormData] = useState<Evento>({
     id: 0,
     nome: "",
@@ -52,6 +61,19 @@ export default function Index() {
     idUsuario: 0,
     idProdutor: 0,
   });
+
+  const [formDataUsuario, setFormDataUsuario] = useState<Usuario>({
+    id: 0,
+    login: "",
+    email: "",
+    senha: "",
+    nomeCompleto: "",
+    confirmaSenha: "",
+    cpf: "",
+    telefone: "",
+    id_cliente: 0,
+  });
+
   const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
     EventoIngresso[]
   >([]);
@@ -65,7 +87,9 @@ export default function Index() {
       let data = response as unknown as Evento;
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      getRegistrosIngressos({ filters: { idEvento: id, status: "Ativo" } });
+      getRegistrosIngressos({
+        filters: { idEvento: id, status: isPDV ? "PDV" : "Ativo" },
+      });
       setFormData(data as Evento);
     }
   };
@@ -100,6 +124,18 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       zerarIngressos();
+      setFormDataUsuario({
+        id: 0,
+        login: "",
+        email: "",
+        senha: "",
+        nomeCompleto: "",
+        sobreNome: "",
+        confirmaSenha: "",
+        cpf: "",
+        telefone: "",
+        id_cliente: 0,
+      });
       if (id > 0) {
         getRegistros(id);
         // getRegistrosIngressos({ filters: { idEvento: id } });
@@ -124,6 +160,248 @@ export default function Index() {
     state.items.map((ingresso) => {
       dispatch({ type: "REMOVE_ITEM", id: ingresso.id });
     });
+  };
+
+  const isValidCPF = (cpf: string): boolean => {
+    cpf = cpf.replace(/\D/g, "");
+
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += Number(cpf[i]) * (10 - i);
+    }
+    let firstDigit = (sum * 10) % 11;
+    if (firstDigit === 10 || firstDigit === 11) firstDigit = 0;
+    if (firstDigit !== Number(cpf[9])) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += Number(cpf[i]) * (11 - i);
+    }
+    let secondDigit = (sum * 10) % 11;
+    if (secondDigit === 10 || secondDigit === 11) secondDigit = 0;
+    if (secondDigit !== Number(cpf[10])) return false;
+
+    return true;
+  };
+
+  const formatCPF = (value: string) => {
+    // Remove tudo que não for número
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    // Aplica a máscara do CPF
+    return onlyNumbers
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+      .slice(0, 14); // Garante que não passe de 14 caracteres (formato final)
+  };
+
+  const formatPhone = (value: string) => {
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    if (onlyNumbers.length <= 10) {
+      // Formato: (99) 9999-9999
+      return onlyNumbers
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2")
+        .slice(0, 14);
+    } else {
+      // Formato: (99) 99999-9999
+      return onlyNumbers
+        .replace(/^(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{5})(\d)/, "$1-$2")
+        .slice(0, 15);
+    }
+  };
+
+  const handleChangeUsuario = (field: keyof Usuario, value: string) => {
+    setFormDataUsuario({ ...formDataUsuario, [field]: value });
+  };
+
+  const handleBuscarUsuario = async () => {
+    setErrors({});
+    formDataUsuario.id = 0;
+    formDataUsuario.id_cliente = 0;
+    formDataUsuario.nomeCompleto = "";
+    formDataUsuario.sobreNome = "";
+    formDataUsuario.email = "";
+    formDataUsuario.telefone = "";
+
+    setInfoUsuario("");
+
+    if (!formDataUsuario.cpf) {
+      setInfoUsuario("O cpf é obrigatório.");
+      return;
+    } else if (!isValidCPF(formDataUsuario.cpf)) {
+      setInfoUsuario("CPF inválido. Verifique e tente novamente.");
+      return;
+    }
+
+    const vUserResponse = await apiAuth.getUsuario({
+      filters: { cpf: formDataUsuario.cpf },
+    });
+    console.log("vUser", vUserResponse);
+
+    const vUser: Usuario = vUserResponse.data[0];
+
+    if (!vUser) {
+      setInfoUsuario(
+        "Usuário não encontrado. Preencha os dados para fazer o pre-cadastro."
+      );
+      handleGetClienteJango(formDataUsuario.cpf);
+      return;
+    }
+
+    setFormDataUsuario(vUser);
+
+    setInfoUsuario("Usuário encontrado.");
+  };
+
+  const handleGetClienteJango = async (cpf: string) => {
+    const resCliente = await apiGeral.createResource<any>("/clientejango", {
+      cpf: cpf?.replace(/\D/g, "") ?? "",
+    });
+
+    const cliente = resCliente.data;
+
+    if (cliente) {
+      const nomePartes = cliente.nome.trim().split(" ");
+      const primeiroNome = nomePartes[0];
+      const sobrenome = nomePartes.slice(1).join(" "); // junta o restante como sobrenome
+
+      setFormDataUsuario({
+        ...formDataUsuario,
+        nomeCompleto: primeiroNome,
+        sobreNome: sobrenome,
+        telefone: cliente.telefone_celular
+          ? formatPhone(cliente.telefone_celular)
+          : "",
+        email: cliente.email ? cliente.email : "",
+        id_cliente: cliente.id_cliente,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (
+      formDataUsuario.id_cliente &&
+      formDataUsuario.id_cliente > 0 &&
+      formDataUsuario.id === 0
+    ) {
+      handleCadastrarUsuario(formDataUsuario);
+    }
+  }, [formDataUsuario.id_cliente]);
+
+  const isEmail = (value: string): boolean => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(value);
+  };
+
+  const validate = () => {
+    const newErrors: { [key: string]: string } = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!formDataUsuario.cpf) {
+      newErrors.cpf = "O cpf é obrigatório.";
+    } else if (!isValidCPF(formDataUsuario.cpf)) {
+      newErrors.cpf = "CPF inválido.";
+    }
+    // if (!formDataUsuario.email) newErrors.email = "O email é obrigatório.";
+    if (!formDataUsuario.telefone)
+      newErrors.telefone = "O telefone é obrigatório.";
+    if (!formDataUsuario.sobreNome)
+      newErrors.sobreNome = "A sobrenome é obrigatória.";
+    if (!formDataUsuario.nomeCompleto)
+      newErrors.nomeCompleto = "Nome Completo é obrigatório.";
+    // if (formDataUsuario.email) {
+    //   if (!emailRegex.test(formDataUsuario.email)) {
+    //     newErrors.email = "Por favor, insira um email válido.";
+    //   }
+    // }
+
+    return newErrors;
+  };
+
+  const handleCadastrarUsuario = async (dados: Usuario) => {
+    setErrors({});
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setLoading(true);
+
+    // let dados = formDataUsuario;
+
+    if (dados.id_cliente === 0) {
+      try {
+        const resCliente = await apiGeral.createResource<any>(
+          "/clientejangoadd",
+          {
+            cpf: (dados.cpf ?? "").replace(/\D/g, ""),
+            nomeCompleto: dados.nomeCompleto,
+            sobreNome: dados.sobreNome,
+            telefone: (dados.telefone ?? "").replace(/\D/g, ""),
+            email: dados.email,
+          }
+        );
+
+        const cliente = resCliente.data;
+
+        if (cliente) {
+          dados = {
+            ...dados,
+            id_cliente: cliente.id_cliente,
+          };
+          // setFormDataUsuario({
+          //   ...formDataUsuario,
+          //   id_cliente: cliente.id_cliente,
+          // });
+        }
+      } catch (error) {
+        console.error("Network request failed:", error);
+        setErrors({
+          api: "Erro ao registrar usuário no Jango. Tente novamente mais tarde.",
+        });
+        setLoading(false);
+      }
+    }
+
+    try {
+      const endpoint = api.getBaseUrlSite();
+      const response = await apiAuth.addlogin({
+        ...dados,
+        login: dados.email,
+        endpoint: endpoint,
+        preCadastro: true,
+      });
+
+      if (!response.success) {
+        setErrors({
+          api: response.message || "Erro desconhecido ao registrar usuário.",
+        });
+      } else {
+        setFormDataUsuario({
+          ...response.data,
+        });
+
+        console.log("Usuário cadastrado com sucesso id :", response.data.id);
+
+        setInfoUsuario("Usuário cadastrado com sucesso!\n\n");
+      }
+    } catch (error) {
+      console.error("Network request failed:", error);
+      console.log(error);
+      setErrors({
+        api: "Erro ao registrar usuário. Tente novamente mais tarde." + error,
+      });
+      setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -160,6 +438,158 @@ export default function Index() {
             </View>
           </View>
 
+          {isPDV && (
+            <View style={styles.areaUsuario}>
+              <View style={styles.grupoInput}>
+                <Text style={styles.label}>CPF</Text>
+                <View style={styles.grupoInput}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="CPF..."
+                    keyboardType="numeric"
+                    value={formDataUsuario.cpf}
+                    onChangeText={(text) => {
+                      const formatted = formatCPF(text);
+                      handleChangeUsuario("cpf", formatted);
+                    }}
+                    onBlur={() => {
+                      if ((formDataUsuario.cpf?.length ?? 0) === 14) {
+                        handleBuscarUsuario();
+                      }
+                    }}
+                  ></TextInput>
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: 12,
+                    }}
+                    onPress={handleBuscarUsuario}
+                  >
+                    <Feather name="search" size={24} color="#212743" />
+                  </TouchableOpacity>
+                </View>
+                {infoUsuario && (
+                  <Text
+                    style={
+                      infoUsuario === "Usuário encontrado." ||
+                      infoUsuario === "Usuário cadastrado com sucesso!\n\n"
+                        ? styles.labelSucess
+                        : styles.labelError
+                    }
+                  >
+                    {infoUsuario}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.grupoInput}>
+                <Text style={styles.label}>Nome</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nome..."
+                  value={formDataUsuario.nomeCompleto}
+                  onChangeText={(text) =>
+                    (formDataUsuario.id ?? 0) > 0
+                      ? ""
+                      : handleChangeUsuario("nomeCompleto", text)
+                  }
+                ></TextInput>
+                {errors.nomeCompleto && (
+                  <Text style={styles.labelError}>{errors.nomeCompleto}</Text>
+                )}
+              </View>
+              <View style={styles.grupoInput}>
+                <Text style={styles.label}>Sobrenome</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Sobrenome..."
+                  value={formDataUsuario.sobreNome}
+                  onChangeText={(text) =>
+                    formDataUsuario.id
+                      ? ""
+                      : handleChangeUsuario("sobreNome", text)
+                  }
+                ></TextInput>
+                {errors.sobreNome && (
+                  <Text style={styles.labelError}>{errors.sobreNome}</Text>
+                )}
+              </View>
+              <View style={styles.grupoInput}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite seu Email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={formDataUsuario.email}
+                  onChangeText={(text) =>
+                    formDataUsuario.id ? "" : handleChangeUsuario("email", text)
+                  }
+                  onBlur={() => {
+                    if (!isEmail(formDataUsuario.email)) {
+                      formDataUsuario.id
+                        ? ""
+                        : handleChangeUsuario(
+                            "email",
+                            formatCPF(formDataUsuario.email)
+                          );
+                    }
+                  }}
+                />
+                {errors.email && (
+                  <Text style={styles.labelError}>{errors.email}</Text>
+                )}
+              </View>
+
+              <View style={styles.grupoInput}>
+                <Text style={styles.label}>Telefone</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Telefone..."
+                  keyboardType="numeric"
+                  value={formDataUsuario.telefone}
+                  onChangeText={(text) => {
+                    const formatted = formatPhone(text);
+                    handleChangeUsuario("telefone", formatted);
+                  }}
+                />
+                {errors.telefone && (
+                  <Text style={styles.labelError}>{errors.telefone}</Text>
+                )}
+              </View>
+
+              {formDataUsuario.id === 0 && (
+                <View
+                  style={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.newButton,
+                      {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                    ]}
+                    onPress={() => handleCadastrarUsuario(formDataUsuario)}
+                  >
+                    {loading && (
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.laranjado}
+                        style={{ marginRight: 8 }}
+                      />
+                    )}
+                    <Text style={styles.newButtonText}>Cadastrar Usuário</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.area}>
             {tipoIngressoDescricoes.map((descricao, index) => (
               <Accordion
@@ -183,7 +613,9 @@ export default function Index() {
           </View>
         </ScrollView>
       </View>
-      {modalVisible && <ModalResumoIngresso step={1} />}
+      {modalVisible && (
+        <ModalResumoIngresso step={1} UsuarioVenda={formDataUsuario} />
+      )}
     </LinearGradient>
   );
 }
@@ -216,6 +648,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flex: 1,
   },
+  areaUsuario: {
+    backgroundColor: "rgba(255,255,255, 0.21)",
+    marginTop: 7,
+    paddingRight: 5,
+    paddingLeft: 5,
+    paddingTop: 15,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    // paddingBottom: 25,
+    borderRadius: 20,
+    height: 550,
+    // flex: 1,
+  },
   areaTitulo: {
     fontSize: 22,
     // fontWeight: "bold",
@@ -245,6 +690,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     fontSize: 16,
+    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "100%") : "100%",
   },
   labelError: {
     color: colors.red,
@@ -301,5 +747,26 @@ const styles = StyleSheet.create({
     textAlign: "left",
     flexShrink: 1,
     flexWrap: "wrap",
+  },
+  grupoInput: {
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  labelSucess: {
+    color: colors.green,
+    marginTop: -18,
+    marginBottom: 18,
+  },
+  newButton: {
+    backgroundColor: colors.azul,
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 10,
+    width: Platform.OS === "web" ? 200 : 100,
+    alignItems: "center",
+  },
+  newButtonText: {
+    color: "white",
+    fontWeight: "bold",
   },
 });

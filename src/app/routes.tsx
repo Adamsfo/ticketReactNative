@@ -19,6 +19,7 @@ import TipoIngresso from "./(panel)/tipoIngresso/page";
 import Ingressos from "./(panel)/ingressos/page";
 import Conferencia from "./(panel)/conferencia/page";
 import Pagamento from "./(panel)/pagamento/page";
+import PagamentoPDV from "./(panel)/pagamentoPDV/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
 import MeusIngressos from "./(panel)/meusingressos/page";
 import MinhasCompras from "./(panel)/minhascompras/page";
@@ -53,7 +54,8 @@ const Drawer = createDrawerNavigator();
 function Routes() {
   const [isLoading, setIsLoading] = useState(true);
   const [params, setParams] = useState<string>("");
-  const { isAdministrador, isValidador, isCliente, isProdutor } = useAuth();
+  const { isAdministrador, isValidador, isCliente, isProdutor, isPDV } =
+    useAuth();
 
   const getUrlAsync = async () => {
     const url = await Linking.getInitialURL();
@@ -332,6 +334,48 @@ function Routes() {
         </>
       );
     }
+    // VALIDADOR vê só o menu "Validador"
+    if (isPDV) {
+      return (
+        <>
+          <Drawer.Screen
+            name="home"
+            component={Home}
+            options={{
+              title: "Home",
+              headerShown: false,
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "home" : "home-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="validador"
+            component={Validador}
+            options={{ headerShown: false, title: "Validador" }}
+          />
+          <Drawer.Screen
+            name="usuario"
+            component={Usuario}
+            options={{
+              headerShown: false,
+              title: "Usuários",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "person-circle" : "person-circle-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+        </>
+      );
+    }
     // CLIENTE vê só "Meus Ingressos" e "Minhas Compras"
     if (isCliente) {
       return (
@@ -547,6 +591,16 @@ function Routes() {
       <Drawer.Screen
         name="pagamento"
         component={Pagamento}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="pagamentopdv"
+        component={PagamentoPDV}
         options={{
           headerShown: false,
           drawerLabel: () => null,

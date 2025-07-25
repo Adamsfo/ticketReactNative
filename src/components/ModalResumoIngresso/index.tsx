@@ -40,12 +40,14 @@ interface ModalResumoIngressoProps {
   step: number;
   RegistroTransacao?: Transacao;
   IngressoTransacao?: IngressoTransacao[];
+  UsuarioVenda?: Usuario;
 }
 
 export default function ModalResumoIngresso({
   step,
   RegistroTransacao,
   IngressoTransacao,
+  UsuarioVenda,
 }: ModalResumoIngressoProps) {
   const route = useRoute();
   const { state, dispatch } = useCart();
@@ -55,7 +57,7 @@ export default function ModalResumoIngresso({
   const [visibleLogin, setVisibleLogin] = React.useState(false);
   const [visibleMsg, setVisibleMsg] = React.useState(false);
   const [msg, setMsg] = React.useState("");
-  const { user } = useAuth();
+  const { user, isPDV } = useAuth();
   const [loading, setLoading] = React.useState(false);
   const [aceiteCompra, setAceiteCompra] = React.useState(false);
   const [visibleCondicoesCompra, setVisibleCondicoesCompra] =
@@ -104,10 +106,16 @@ export default function ModalResumoIngresso({
         return;
       }
 
+      if (isPDV && !UsuarioVenda?.id) {
+        setMsg("Não existe cliente selecionado para a venda.");
+        setVisibleMsg(true);
+        return;
+      }
+
       setLoading(true);
 
       const response = await apiGeral.createResource<Transacao>("/transacao", {
-        idUsuario: user.id,
+        idUsuario: isPDV ? UsuarioVenda?.id : user.id,
         preco: calculatePreco(),
         taxaServico: calculateTaxa(),
         valorTotal: calculateValor(),
@@ -134,7 +142,7 @@ export default function ModalResumoIngresso({
             idEvento: item.eventoIngresso.idEvento,
             idEventoIngresso: item.eventoIngresso.id,
             idTipoIngresso: item.eventoIngresso.idTipoIngresso,
-            idUsuario: user?.id,
+            idUsuario: isPDV ? UsuarioVenda?.id : user?.id,
             idTransacao: idTransacao,
           });
           let ingresso = json.data as unknown as Ingresso;
@@ -204,6 +212,55 @@ export default function ModalResumoIngresso({
       }
 
       navigation.navigate("pagamento", {
+        idEvento: IngressoTransacao?.[0]?.Ingresso_Evento?.id ?? 0,
+        registroTransacao: RegistroTransacao,
+      });
+
+      setLoading(false);
+    } catch (error) {}
+  };
+
+  const handlePagamentoPDV = async () => {
+    try {
+      if (!user?.id) {
+        setVisibleLogin(true);
+        return;
+      }
+
+      if (!(IngressoTransacao ?? [])[0]) {
+        setMsg("Não existe ingresso para este evento.");
+        setVisibleMsg(true);
+        return;
+      }
+
+      // if (!aceiteCompra) {
+      //   setMsg("Aceitar condições de compra para continuar.");
+      //   setVisibleMsg(true);
+      //   return;
+      // }
+
+      // if (
+      //   IngressoTransacao &&
+      //   IngressoTransacao.some((ingresso) => !ingresso.Ingresso_nomeImpresso)
+      // ) {
+      //   setMsg("Necessário informar nome para todos os ingresso.");
+      //   setVisibleMsg(true);
+      //   return;
+      // }
+
+      setLoading(true);
+
+      //atualizar os ingressos
+      // for (let i = 0; i < (IngressoTransacao ?? []).length; i++) {
+      //   const item = (IngressoTransacao ?? [])[i];
+      //   console.log("item", item);
+      //   await apiGeral.updateResorce<Ingresso>("/ingressonome", {
+      //     id: item.idIngresso,
+      //     nomeImpresso: item.Ingresso_nomeImpresso,
+      //   });
+      // }
+
+      navigation.navigate("pagamentopdv", {
         idEvento: IngressoTransacao?.[0]?.Ingresso_Evento?.id ?? 0,
         registroTransacao: RegistroTransacao,
       });
@@ -404,7 +461,11 @@ export default function ModalResumoIngresso({
                   handleCriarTransacao();
                 }
                 if (step === 2) {
-                  handlePagamento();
+                  if (isPDV) {
+                    handlePagamentoPDV();
+                  } else {
+                    handlePagamento();
+                  }
                 }
               }}
               disabled={loading}

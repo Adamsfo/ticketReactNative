@@ -70,6 +70,7 @@ export default function ModalEventoIngresso({
     { value: "Ativo", label: "Ativo" },
     { value: "Oculto", label: "Oculto" },
     { value: "Finalizado", label: "Finalizado" },
+    { value: "PDV", label: "PDV" },
   ];
 
   const handleChange = (field: any, value: string | number) => {

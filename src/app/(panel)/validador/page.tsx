@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -45,6 +45,9 @@ export default function Index() {
   );
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const { idUsuario } = route.params as {
+    idUsuario: number;
+  };
 
   const getRegistroQrCode = async (params: QueryParams) => {
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
@@ -73,6 +76,27 @@ export default function Index() {
       setErrors({});
     }, [])
   );
+
+  const getUsuario = async (idUsuario: number) => {
+    setIngressos([]);
+    setIngressosSelecionados([]);
+    setErrors({});
+
+    const ret = await apiGeral.getResourceById<Usuario>("/usuario", idUsuario);
+    let usuario = ret as unknown as Usuario;
+
+    if (usuario) {
+      setCpf(usuario.cpf ?? "");
+      getIngressosUsuario();
+    }
+  };
+
+  useEffect(() => {
+    if (idUsuario) {
+      setqrcodeCPF("cpf");
+      getUsuario(idUsuario);
+    }
+  }, [idUsuario]);
 
   const getIngressosUsuario = async () => {
     setIngressos([]);
