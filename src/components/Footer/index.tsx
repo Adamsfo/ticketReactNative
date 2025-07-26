@@ -51,11 +51,11 @@ const Footer = () => {
         </TouchableOpacity>
       </View>
 
-      <Image
+      {/* <Image
         source={require("../../assets/logotanz.png")} // Substitua pelo caminho correto
         style={styles.logo}
         resizeMode="contain"
-      />
+      /> */}
       <View style={styles.logoSection}>
         <Text style={styles.slogan}>
           {visitasNoSite} Visitas na Plataforma.

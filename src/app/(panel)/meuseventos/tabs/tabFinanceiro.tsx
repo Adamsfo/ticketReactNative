@@ -28,6 +28,15 @@ import ModalVendasPagas from "./modalVendasPagas";
 
 const { width } = Dimensions.get("window");
 
+type DiaAgrupado = {
+  data: string;
+  preco: number;
+  valorRecebido: number;
+  valorTaxaProcessamento: number;
+  taxaServico?: number;
+  transacoes: any[];
+};
+
 export default function TabFinanceiro() {
   const route = useRoute();
   const endpointApi = "/dadostransacoespagas";
@@ -95,6 +104,97 @@ export default function TabFinanceiro() {
     setTransacoes(transcoes);
     setVisibleModalVendasPagas(true);
   };
+
+  // Agrupar as transações por gateway e tipo
+  function agruparPorGatewayETipo(dados: DiaAgrupado[]) {
+    const resultado: Record<
+      string,
+      Record<
+        string,
+        {
+          preco: number;
+          valorRecebido: number;
+          valorTaxaProcessamento: number;
+          taxaServico: number;
+          quantidade: number;
+        }
+      >
+    > = {};
+
+    dados.forEach((dia) => {
+      dia.transacoes.forEach((tx) => {
+        const gateway = tx.gatewayPagamento || "Desconhecido";
+        const tipo = tx.tipoPagamento || "Outro";
+
+        if (!resultado[gateway]) resultado[gateway] = {};
+        if (!resultado[gateway][tipo]) {
+          resultado[gateway][tipo] = {
+            preco: 0,
+            valorRecebido: 0,
+            valorTaxaProcessamento: 0,
+            taxaServico: 0,
+            quantidade: 0,
+          };
+        }
+
+        resultado[gateway][tipo].preco += Number(tx.preco);
+        resultado[gateway][tipo].taxaServico += Number(tx.taxaServico);
+        resultado[gateway][tipo].valorRecebido += Number(tx.valorRecebido);
+        resultado[gateway][tipo].valorTaxaProcessamento += Number(
+          tx.valorTaxaProcessamento
+        );
+
+        resultado[gateway][tipo].quantidade += 1;
+      });
+    });
+
+    return resultado;
+  }
+
+  const agrupado = agruparPorGatewayETipo(registros);
+
+  // Agrupar as transações por gateway e tipo
+  function agruparPorGateway(dados: DiaAgrupado[]) {
+    const resultado: Record<
+      string,
+      {
+        preco: number;
+        valorRecebido: number;
+        valorTaxaProcessamento: number;
+        taxaServico: number;
+        quantidade: number;
+      }
+    > = {};
+
+    dados.forEach((dia) => {
+      dia.transacoes.forEach((tx) => {
+        const gateway = tx.gatewayPagamento || "Desconhecido";
+
+        if (!resultado[gateway]) {
+          resultado[gateway] = {
+            preco: 0,
+            valorRecebido: 0,
+            valorTaxaProcessamento: 0,
+            taxaServico: 0,
+            quantidade: 0,
+          };
+        }
+
+        resultado[gateway].preco += Number(tx.preco);
+        resultado[gateway].taxaServico += Number(tx.taxaServico);
+        resultado[gateway].valorRecebido += Number(tx.valorRecebido);
+        resultado[gateway].valorTaxaProcessamento += Number(
+          tx.valorTaxaProcessamento
+        );
+
+        resultado[gateway].quantidade += 1;
+      });
+    });
+
+    return resultado;
+  }
+
+  const agrupadoGat = agruparPorGateway(registros);
 
   return (
     <View style={styles.container}>
@@ -188,6 +288,103 @@ export default function TabFinanceiro() {
               </Text>
             </Text>
           </View>
+        </View>
+
+        <Text style={{ fontWeight: "bold", fontSize: 18, marginTop: 20 }}>
+          Detalhado por forma pagamento
+        </Text>
+
+        <View>
+          {Object.entries(agrupado).map(([gateway, tipos]) => (
+            <View style={{ marginTop: 20 }} key={gateway}>
+              <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                {gateway}:
+              </Text>
+              <View style={{ marginLeft: 25 }}>
+                {Object.entries(tipos).map(([tipo, resumo]) => (
+                  <View
+                    style={{ marginTop: 5, flexDirection: "column" }}
+                    key={tipo}
+                  >
+                    <Text style={{ marginTop: 5, fontWeight: "bold" }}>
+                      💳 {tipo}{" "}
+                    </Text>
+
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Ingressos: {formatCurrency(resumo.preco.toFixed(2))}
+                    </Text>
+                    {resumo.valorTaxaProcessamento > 0 && (
+                      <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                        {"       "}
+                        Taxa Processamento:{" "}
+                        {formatCurrency(
+                          resumo.valorTaxaProcessamento.toFixed(2)
+                        )}
+                      </Text>
+                    )}
+
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Taxa Serviço:{" "}
+                      {formatCurrency(resumo.taxaServico.toFixed(2))}
+                    </Text>
+
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Recebido:{" "}
+                      {formatCurrency(resumo.valorRecebido.toFixed(2))}
+                    </Text>
+                    {/* <strong></strong> {tipo} —<strong> Total:</strong> R${" "}
+                    {resumo.preco.toFixed(2)} —<strong> Recebido:</strong> R${" "}
+                    {resumo.valorRecebido.toFixed(2)} —<strong> Taxa:</strong>{" "}
+                    R$ {resumo.valorTaxaProcessamento.toFixed(2)} —
+                    <strong> Qtd:</strong> {resumo.quantidade} */}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Text style={{ fontWeight: "bold", fontSize: 18, marginTop: 20 }}>
+          Resumido
+        </Text>
+
+        <View>
+          {Object.entries(agrupadoGat).map(([gateway]) => (
+            <View style={{ marginTop: 20 }} key={gateway}>
+              <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                {gateway}:
+              </Text>
+              <View style={{ marginLeft: 25 }}>
+                <View
+                  style={{ marginTop: 5, flexDirection: "column" }}
+                  key={gateway}
+                >
+                  <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                    {"       "}
+                    Ingressos:{" "}
+                    {formatCurrency(agrupadoGat[gateway].preco.toFixed(2))}
+                  </Text>
+                  <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                    {"       "}
+                    Taxa Serviço:{" "}
+                    {formatCurrency(
+                      agrupadoGat[gateway].taxaServico.toFixed(2)
+                    )}
+                  </Text>
+                  <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                    {"       "}
+                    Recebido:{" "}
+                    {formatCurrency(
+                      agrupadoGat[gateway].valorRecebido.toFixed(2)
+                    )}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
         </View>
       </ScrollView>
 

@@ -41,6 +41,7 @@ export default function Signup() {
   });
   const [modalMsg, setModalMsg] = useState(false);
   const [msg, setMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (field: keyof Usuario, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -356,13 +357,29 @@ export default function Signup() {
 
               <View>
                 <Text style={style.label}>Senha</Text>
-                <TextInput
-                  style={style.input}
-                  placeholder="Digite sua senha"
-                  secureTextEntry
-                  value={formData.senha}
-                  onChangeText={(text) => handleChange("senha", text)}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <TextInput
+                    style={style.input}
+                    placeholder="Digite sua senha"
+                    secureTextEntry={!showPassword}
+                    value={formData.senha}
+                    onChangeText={(text) => handleChange("senha", text)}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: 12,
+                    }}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={24}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+                </View>
                 {errors.senha && (
                   <Text style={style.labelError}>{errors.senha}</Text>
                 )}
@@ -370,13 +387,29 @@ export default function Signup() {
 
               <View>
                 <Text style={style.label}>Repetir Senha</Text>
-                <TextInput
-                  style={style.input}
-                  placeholder="Repetir senha"
-                  secureTextEntry
-                  value={formData.confirmaSenha}
-                  onChangeText={(text) => handleChange("confirmaSenha", text)}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <TextInput
+                    style={style.input}
+                    placeholder="Repetir senha"
+                    secureTextEntry={!showPassword}
+                    value={formData.confirmaSenha}
+                    onChangeText={(text) => handleChange("confirmaSenha", text)}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: 12,
+                    }}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={24}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+                </View>
                 {errors.confirmaSenha && (
                   <Text style={style.labelError}>{errors.confirmaSenha}</Text>
                 )}
@@ -481,6 +514,7 @@ const style = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     fontSize: 16,
+    width: "100%",
   },
   button: {
     backgroundColor: colors.laranjado,

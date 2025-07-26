@@ -227,8 +227,8 @@ export default function ModalUsuario({ id, visible, onClose }: ModalMsgProps) {
                 autoCapitalize="none"
                 onChangeText={(text) => {
                   handleChange("email", text);
-                  handleChange("login", text);
                 }}
+                onBlur={() => handleChange("login", formData.email)}
               />
               {errors.email && (
                 <Text style={styles.labelError}>{errors.email}</Text>

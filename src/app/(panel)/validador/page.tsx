@@ -22,7 +22,8 @@ import { useFocusEffect } from "expo-router";
 import { CheckCircle, XCircle } from "lucide-react-native";
 import { FlatList } from "react-native-gesture-handler";
 import { formatInTimeZone } from "date-fns-tz";
-import { parseISO } from "date-fns";
+import { parseISO, set } from "date-fns";
+import QRCodeScannerWeb from "@/src/components/QRCodeScannerWeb";
 
 type Props = {
   type: string;
@@ -54,6 +55,16 @@ export default function Index() {
     });
     const registrosData = response.data ?? [];
     setRegistro(registrosData[0]);
+
+    const json = await apiGeral.createResource("/validadorqrcode", {
+      ingresso: registrosData[0].id,
+    });
+
+    if (json.message) {
+      setErrors({ geral: json.message ?? "Ocorreu um erro desconhecido." });
+      setLoading(false);
+      return;
+    }
   };
 
   useFocusEffect(
@@ -133,25 +144,47 @@ export default function Index() {
     setqrcode(qrcode);
   };
 
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission] =
+    Platform.OS !== "web" ? useCameraPermissions() : [null, null];
+  const isPermissionGranted =
+    Platform.OS !== "web" ? Boolean(permission?.granted) : false;
 
-  const isPermissionGranted = Boolean(permission?.granted);
+  // const [permission, requestPermission] = useCameraPermissions();
+
+  // const isPermissionGranted = Boolean(permission?.granted);
 
   const handleValidaQrCode = () => {
     return (
       <View style={styles.areaDentro}>
         <View style={{ alignSelf: "center" }}>
-          {Platform.OS === "web" && (
-            <TouchableOpacity style={[styles.button, styles.buttonSave]}>
-              <Text style={{ color: colors.branco }}>
-                Utiliza aplicativo para escanear o QRCode
-              </Text>
-            </TouchableOpacity>
-          )}
+          {Platform.OS === "web" &&
+            // <TouchableOpacity style={[styles.button, styles.buttonSave]}>
+            //   <Text style={{ color: colors.branco }}>
+            //     Utiliza aplicativo para escanear o QRCode
+            //   </Text>
+            // </TouchableOpacity>
+            QRCodeScannerWeb &&
+            !scanned && (
+              <View style={{ width: "100%", alignItems: "center" }}>
+                <QRCodeScannerWeb
+                  onScanSuccess={(text) => {
+                    try {
+                      const dados = JSON.parse(text);
+                      setqrcode(dados.idqrcode);
+                      setScanned(true);
+                    } catch (err) {
+                      Alert.alert("Erro", "QR Code inválido");
+                    }
+                  }}
+                />
+              </View>
+            )}
           {Platform.OS !== "web" && !isPermissionGranted && (
             <TouchableOpacity
               style={[styles.button, styles.buttonSave, { width: 250 }]}
-              onPress={requestPermission}
+              onPress={() => {
+                if (requestPermission) requestPermission();
+              }}
             >
               <Text style={{ color: colors.branco }}>
                 Requer permissão camera
@@ -364,6 +397,13 @@ export default function Index() {
     );
   };
 
+  const handleClickFecharCard = () => {
+    setRegistro(null);
+    setqrcode(null);
+    setqrcodeCPF("qrcode");
+    setScanned(false);
+  };
+
   const handleIngressosUsuario = (item: Ingresso) => {
     const isSelecionado = ingressosSelecionados.includes(item.id);
 
@@ -441,7 +481,7 @@ export default function Index() {
             <View
               style={{
                 backgroundColor: colors.green,
-                width: "80%",
+                width: "95%",
                 height: 200,
                 alignItems: "center",
                 borderRadius: 20,
@@ -458,7 +498,7 @@ export default function Index() {
             <View
               style={{
                 backgroundColor: colors.red,
-                width: "80%",
+                width: "95%",
                 height: 200,
                 alignItems: "center",
                 borderRadius: 20,
@@ -477,9 +517,11 @@ export default function Index() {
         <TouchableOpacity
           style={[styles.button, styles.buttonSave, { marginTop: 20 }]}
           onPress={() => {
+            setqrcodeCPF("qrcode");
             setScanned(false);
             setRegistro(null);
             setqrcode(null);
+            handleClickFecharCard();
           }}
         >
           <Text style={{ color: colors.branco }}>Fechar</Text>

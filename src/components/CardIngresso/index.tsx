@@ -30,6 +30,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as Clipboard from "expo-clipboard";
 import ModalMsg from "../ModalMsg";
 import ModalAtribuirOutroUsuario from "../ModalAtribuirOutroUsuario";
+import ZoomableImage from "../ZoomableImage";
 
 type Props = {
   item: Ingresso;
@@ -168,7 +169,8 @@ export default function CardIngresso({ item, getRegistros }: Props) {
 
         <View style={{ alignItems: "center" }}>
           {item.qrCodeBase64?.startsWith("data:image") && (
-            <Image style={styles.qr} source={{ uri: item.qrCodeBase64 }} />
+            <ZoomableImage uri={item.qrCodeBase64} />
+            // <Image style={styles.qr} source={{ uri: item.qrCodeBase64 }} />
           )}
         </View>
 

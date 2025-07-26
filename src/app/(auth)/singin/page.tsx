@@ -19,6 +19,7 @@ import { useAuth } from "@/src/contexts_/AuthContext";
 import ModalVerificacao from "@/src/components/ModalVerificacao";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Usuario } from "@/src/types/geral";
+import { Feather, Ionicons } from "@expo/vector-icons";
 
 interface ModalMsgProps {
   onClose?: () => void;
@@ -34,6 +35,7 @@ export default function Login({ onClose }: ModalMsgProps) {
   const [msg, setMsg] = useState("");
   const { setAuth } = useAuth();
   const [usuarioAtivar, setUsuarioAtivar] = useState<Usuario | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin() {
     setError("");
@@ -181,13 +183,29 @@ export default function Login({ onClose }: ModalMsgProps) {
 
           <View>
             <Text style={style.label}>Senha</Text>
-            <TextInput
-              style={style.input}
-              placeholder="Digite sua senha"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TextInput
+                style={style.input}
+                placeholder="Digite sua senha"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: 12,
+                }}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color="#999"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {error !== "" && (
@@ -299,6 +317,7 @@ const style = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     fontSize: 16,
+    width: "100%",
   },
   button: {
     backgroundColor: colors.laranjado,

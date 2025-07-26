@@ -43,6 +43,7 @@
     "expo-status-bar": "~2.0.1",
     "expo-system-ui": "~4.0.7",
     "expo-web-browser": "~14.0.2",
+    "html5-qrcode": "^2.3.8",
     "keen-slider": "^6.8.6",
     "lucide-react-native": "^0.488.0",
     "mercadopago": "^2.3.0",
