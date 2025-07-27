@@ -379,10 +379,13 @@ export default function Index() {
         preCadastro: true,
       });
 
-      if (!response.success) {
+      console.log("Response from addlogin:", response);
+      if (response.data.message) {
         setErrors({
           api: response.message || "Erro desconhecido ao registrar usuário.",
         });
+        setInfoUsuario("Erro ao cadastrar usuário:" + response.data.message);
+        return;
       } else {
         setFormDataUsuario({
           ...response.data,
@@ -491,7 +494,7 @@ export default function Index() {
                   onChangeText={(text) =>
                     (formDataUsuario.id ?? 0) > 0
                       ? ""
-                      : handleChangeUsuario("nomeCompleto", text)
+                      : handleChangeUsuario("nomeCompleto", text.toUpperCase())
                   }
                 ></TextInput>
                 {errors.nomeCompleto && (
@@ -507,7 +510,7 @@ export default function Index() {
                   onChangeText={(text) =>
                     formDataUsuario.id
                       ? ""
-                      : handleChangeUsuario("sobreNome", text)
+                      : handleChangeUsuario("sobreNome", text.toUpperCase())
                   }
                 ></TextInput>
                 {errors.sobreNome && (

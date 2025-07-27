@@ -209,6 +209,7 @@ export default function Index() {
       const responseData = await response.json();
       console.log("responseData", responseData.data);
       setDadosDePagamento(responseData.data);
+      setConsultaPagamento(false);
 
       // setloading(false);
     } catch (error) {
@@ -238,6 +239,32 @@ export default function Index() {
 
       setDadosDePagamento(response.data);
       console.log("dados", dados);
+
+      if (dados.payment_message === "Pago") {
+        setConsultaPagamento(false);
+      }
+      if (dados.payment_message === "Cancelado/erro") {
+        setConsultaPagamento(false);
+      }
+    } catch (error) {
+      console.log("Erro ao verificar status do pagamento POS:", error);
+    }
+  };
+
+  const CancelaPagamentoPos = async () => {
+    try {
+      const response = await apiGeral.getResource("/cancelapagamentopos", {
+        filters: {
+          payment_uniqueid: payment_uniqueid,
+        },
+        pageSize: 10,
+      });
+
+      const dados: { payment_message: string } = Array.isArray(response?.data)
+        ? { payment_message: "" }
+        : response?.data ?? { payment_message: "" };
+
+      setDadosDePagamento(response.data);
 
       if (dados.payment_message === "Pago") {
         setConsultaPagamento(false);
@@ -466,6 +493,14 @@ export default function Index() {
               </View>
 
               {consultaPagamento && (
+                <View style={styles.confirmContainer}>
+                  <Text style={styles.confirmButtonText}>
+                    Aguarde enviando dados do pagamento...
+                  </Text>
+                </View>
+              )}
+
+              {consultaPagamento && (
                 <ActivityIndicator
                   size="large"
                   color={colors.azul}
@@ -483,17 +518,30 @@ export default function Index() {
               {metodoSelecionado && (
                 <View style={styles.confirmContainer}>
                   <TouchableOpacity
-                    style={styles.confirmButton}
+                    style={[
+                      styles.confirmButton,
+                      {
+                        backgroundColor: consultaPagamento
+                          ? colors.red
+                          : colors.azul,
+                      },
+                    ]}
                     onPress={() => {
-                      if (metodoSelecionado === "Dinheiro") {
-                        fetchPagamentoDinheiro();
+                      if (!consultaPagamento) {
+                        if (metodoSelecionado === "Dinheiro") {
+                          fetchPagamentoDinheiro();
+                        } else {
+                          fetchPagamentoPos();
+                        }
                       } else {
-                        fetchPagamentoPos();
+                        CancelaPagamentoPos();
                       }
                     }}
                   >
                     <Text style={styles.confirmButtonText}>
-                      Confirmar {metodoSelecionado}
+                      {consultaPagamento
+                        ? "Cancelar Pagamento"
+                        : "Confirmar " + metodoSelecionado}
                     </Text>
                   </TouchableOpacity>
                 </View>

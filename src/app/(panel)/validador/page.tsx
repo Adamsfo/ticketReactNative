@@ -96,7 +96,7 @@ export default function Index() {
 
     if (usuario) {
       setCpf(usuario.cpf ?? "");
-      getIngressosUsuario();
+      getIngressosUsuario(usuario.cpf ?? "");
     }
   };
 
@@ -107,18 +107,18 @@ export default function Index() {
     }
   }, [idUsuario]);
 
-  const getIngressosUsuario = async () => {
+  const getIngressosUsuario = async (pCPF: string) => {
     setIngressos([]);
     setIngressosSelecionados([]);
     setErrors({});
 
-    if (cpf === "") {
+    if (pCPF === "") {
       Alert.alert("Atenção", "Informe o CPF");
       return;
     }
 
     const ret = await apiGeral.getResource<Usuario>("/usuario", {
-      filters: { cpf },
+      filters: { cpf: pCPF },
     });
 
     const usuario = ret.data && ret.data.length > 0 ? ret.data[0] : undefined;
@@ -277,7 +277,7 @@ export default function Index() {
             ></TextInput>
             <TouchableOpacity
               style={[styles.button, styles.buttonSave, { marginBottom: 16 }]}
-              onPress={() => getIngressosUsuario()}
+              onPress={() => getIngressosUsuario(cpf)}
             >
               <Text style={{ color: colors.branco }}>Buscar</Text>
             </TouchableOpacity>
