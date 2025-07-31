@@ -113,7 +113,8 @@ export default function Index() {
                   onPress={() => {
                     navigation.navigate("evento", { id: item.id });
                   }}
-                  widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15}
+                  // widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15}
+                  widthCardItem={400}
                 />
               )}
             />
@@ -124,14 +125,7 @@ export default function Index() {
                 <Image
                   source={require("../../../assets/banners/BannerEditado2.png")}
                   style={styles.bannerBlur}
-                  // blurRadius={Platform.OS === "android" ? 2 : 10}
                 />
-                {/* <View style={styles.overlay}>
-                  <Image
-                    source={require("../../../assets/banners/BannerEditado2.png")}
-                    style={styles.bannerForeground}
-                  />
-                </View> */}
               </View>
               {/* <ImageCarousel images={imagensEvento} /> */}
               <Text style={styles.titulo}>Eventos</Text>
@@ -139,41 +133,6 @@ export default function Index() {
           }
           ListFooterComponent={<Footer></Footer>}
         />
-
-        {/* <FlatList
-          key={`grid-${width > 600 ? "3" : "1"}`}
-          data={registros}
-          style={styles.listaEventos}
-          keyExtractor={(item) => item.id.toString()}
-          // numColumns={numColumns}
-          numColumns={width > 600 ? 3 : 1}
-          ListHeaderComponent={
-            <>
-              <View style={styles.containerImagem}>
-                <Image
-                  source={require("../../../assets/apresentacao.png")}
-                  style={styles.imagem}
-                />
-              </View>
-              <Text style={styles.titulo}>Eventos</Text>
-            </>
-          }
-          renderItem={({ item }: { item: Evento }) => (
-            <CardEvento
-              data={item}
-              onPress={() => {
-                navigation.navigate("evento", { id: item.id });
-              }}
-              widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15} // Ajuste a largura do card com base na largura da FlatList
-            />
-          )}
-          contentContainerStyle={{ padding: 1 }}
-          showsVerticalScrollIndicator={false}
-          onLayout={(event) => {
-            const { width } = event.nativeEvent.layout;
-            setFlatListWidth(width);
-          }}
-        /> */}
       </View>
 
       <Modal visible={visibleMsg} transparent animationType="slide">

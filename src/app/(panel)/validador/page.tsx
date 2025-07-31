@@ -9,6 +9,7 @@ import {
   TextInput,
   Dimensions,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -24,6 +25,7 @@ import { FlatList } from "react-native-gesture-handler";
 import { formatInTimeZone } from "date-fns-tz";
 import { parseISO, set } from "date-fns";
 import QRCodeScannerWeb from "@/src/components/QRCodeScannerWeb";
+import ModalMsg from "@/src/components/ModalMsg";
 
 type Props = {
   type: string;
@@ -47,6 +49,8 @@ export default function Index() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState<boolean>(false);
   const idUsuario = (route.params as { idUsuario?: number })?.idUsuario ?? 0;
+  const [visibleMsg, setVisibleMsg] = useState<boolean>(false);
+  const [msg, setMsg] = useState<string>("");
 
   const getRegistroQrCode = async (params: QueryParams) => {
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
@@ -135,6 +139,32 @@ export default function Index() {
     let registrosData = response.data ?? [];
 
     setIngressos(registrosData);
+
+    registrosData.map((ingresso) => {
+      const hoje = new Date();
+      const dataHoje = new Date(
+        hoje.getFullYear(),
+        hoje.getMonth(),
+        hoje.getDate()
+      );
+
+      const validade = ingresso.dataValidade
+        ? new Date(ingresso.dataValidade)
+        : null;
+      const dataValidade = validade
+        ? new Date(
+            validade.getFullYear(),
+            validade.getMonth(),
+            validade.getDate()
+          )
+        : null;
+
+      if (idUsuario && idUsuario > 0 && ingresso.idUsuario === idUsuario) {
+        if (dataValidade && dataValidade > dataHoje) return;
+
+        toggleIngressoSelecionado(ingresso.id);
+      }
+    });
   };
 
   const handleBarCodeScanned = ({ type, data }: Props) => {
@@ -407,11 +437,32 @@ export default function Index() {
   const handleIngressosUsuario = (item: Ingresso) => {
     const isSelecionado = ingressosSelecionados.includes(item.id);
 
+    const hoje = new Date();
+    const dataHoje = new Date(
+      hoje.getFullYear(),
+      hoje.getMonth(),
+      hoje.getDate()
+    );
+
+    const validade = item.dataValidade ? new Date(item.dataValidade) : null;
+    const dataValidade = validade
+      ? new Date(
+          validade.getFullYear(),
+          validade.getMonth(),
+          validade.getDate()
+        )
+      : null;
+
     return (
       <View
         key={item.id}
         style={{
-          backgroundColor: isSelecionado ? colors.green : colors.cinza,
+          backgroundColor:
+            dataValidade && dataValidade > dataHoje
+              ? colors.red
+              : isSelecionado
+              ? colors.green
+              : colors.cinza,
           width:
             Platform.OS === "web" ? (width > 400 ? 400 : width - 40) : "100%",
           borderRadius: 20,
@@ -423,7 +474,14 @@ export default function Index() {
       >
         {/* Lado esquerdo: View "asdfa" */}
         <TouchableOpacity
-          onPress={() => toggleIngressoSelecionado(item.id)}
+          onPress={() => {
+            if (dataValidade && dataValidade > dataHoje) {
+              setMsg("Ingresso inválido");
+              setVisibleMsg(true);
+              return;
+            }
+            toggleIngressoSelecionado(item.id);
+          }}
           style={{
             backgroundColor: colors.branco, // só para exemplo visual
             padding: 10,
@@ -469,6 +527,9 @@ export default function Index() {
               : "Data não disponível"}
           </Text>
         </View>
+        <Modal visible={visibleMsg} transparent animationType="fade">
+          <ModalMsg msg={msg} onClose={() => setVisibleMsg(false)} />
+        </Modal>
       </View>
     );
   };

@@ -111,11 +111,15 @@ export default function Index() {
     if (item.type === "header") {
       return (
         <>
-          <View style={styles.containerImagem}>
-            <Image
-              source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
-              style={styles.imagem}
-            />
+          <View style={styles.dadosBasicosImagem}>
+            <View style={styles.containerImagem}>
+              <Image
+                source={{
+                  uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                }}
+                style={styles.imagem}
+              />
+            </View>
           </View>
 
           <View style={styles.dadosBasicos}>
@@ -159,12 +163,14 @@ export default function Index() {
       );
     } else if (item.type === "mapa") {
       return (
-        <View style={styles.dadosBasicos}>
-          <Text style={styles.titulo}>Mapa do Evento</Text>
+        <View style={styles.dadosBasicosImagem}>
+          <Text style={[styles.titulo, { paddingLeft: 25 }]}>
+            Mapa do Evento
+          </Text>
           <View style={styles.containerImagem}>
             <Image
               source={{ uri: api.getBaseApi() + "/uploads/" + formData.mapa }}
-              style={styles.imagem}
+              style={styles.imagemMapa}
             />
           </View>
         </View>
@@ -363,14 +369,19 @@ const styles = StyleSheet.create({
   },
   containerImagem: {
     alignItems: "center",
-    padding: 2,
+    // padding: 2,
   },
   imagem: {
-    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "60%") : "100%",
-    height: Platform.OS === "web" ? (width <= 1000 ? 265 : 550) : 265,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
+    width: "100%",
+    aspectRatio: 16 / 9,
+    resizeMode: "cover", // ou 'contain', dependendo do comportamento desejado
     borderRadius: 20,
-    // margin: 20,
+  },
+  imagemMapa: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    resizeMode: "cover", // ou 'contain', dependendo do comportamento desejado
+    borderRadius: 20,
   },
   dadosBasicos: {
     backgroundColor: "rgba(255,255,255, 0.21)",
@@ -380,6 +391,16 @@ const styles = StyleSheet.create({
     marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
     marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
     paddingBottom: 25,
+    borderRadius: 20,
+  },
+  dadosBasicosImagem: {
+    backgroundColor: "rgba(255,255,255, 0.21)",
+    marginTop: 7,
+    // paddingRight: 25,
+    // paddingLeft: 25,
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
+    // paddingBottom: 25,
     borderRadius: 20,
   },
   floatingButton: {

@@ -43,10 +43,14 @@ export default function CardEvento({
         <Text style={styles.title} numberOfLines={2}>
           {data.nome}
         </Text>
-        <Image
-          source={{ uri: api.getBaseApi() + "/uploads/" + data.Produtor_logo }}
-          style={styles.logo}
-        />
+        {data.Produtor_logo && (
+          <Image
+            source={{
+              uri: api.getBaseApi() + "/uploads/" + data.Produtor_logo,
+            }}
+            style={styles.logo}
+          />
+        )}
 
         <View style={styles.row}>
           {/* <Text style={styles.label}>Local:</Text> */}
@@ -101,7 +105,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: "relative",
     width: "100%",
-    height: 220,
+    height: 200,
   },
   image: {
     width: "100%",

@@ -91,7 +91,11 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                   paddingLeft: 5,
                 }}
               >
-                {data.ingressosConfirmados >= data.qtde ? "ESGOTADO" : ""}
+                {data.ingressosConfirmados >= data.qtde
+                  ? data.TipoIngresso_descricao.includes("Ingresso")
+                    ? "ESGOTADO"
+                    : "VENDIDO"
+                  : ""}
               </Text>
             </View>
             <View>
