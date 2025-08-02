@@ -638,6 +638,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: "row",
     justifyContent: "center",
+    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
+    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
   },
   areaStep: {
     justifyContent: "center",
