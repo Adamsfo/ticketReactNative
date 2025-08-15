@@ -39,6 +39,8 @@ import RedefinirSenha from "./(auth)/redefinirSenha/page";
 import { useAuth } from "../contexts_/AuthContext";
 import CupomPromocional from "./(panel)/cupomPromocional/page";
 import CupomPromocionalEdit from "./(panel)/cupomPromocional/pageEdit";
+import TermosUso from "./(panel)/termosUso/page";
+import PoliticaPrivacidade from "./(panel)/politicaPrivacidade/page";
 
 // Simule ou obtenha de algum contexto/autenticação
 // Aqui você pode obter esses valores de um contexto, props, Redux ou qualquer outro gerenciador de estado
@@ -611,6 +613,27 @@ function Routes() {
       <Drawer.Screen
         name="ingressostransacao"
         component={IngressoTransacao}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="termosuso"
+        component={TermosUso}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+
+      <Drawer.Screen
+        name="politicadeprivacidade"
+        component={PoliticaPrivacidade}
         options={{
           headerShown: false,
           drawerLabel: () => null,

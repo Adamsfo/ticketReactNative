@@ -515,7 +515,7 @@ export default function Index() {
                 />
               )}
 
-              {metodoSelecionado && (
+              {metodoSelecionado && dadosDePagamento?.payment_status != 4 && (
                 <View style={styles.confirmContainer}>
                   <TouchableOpacity
                     style={[

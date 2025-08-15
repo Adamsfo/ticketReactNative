@@ -325,23 +325,6 @@ export default function Index() {
               alignItems: "center",
               justifyContent: "center",
             }}
-            // ListEmptyComponent={
-            //   <Text style={styles.labelError}>
-            //     Não há ingressos disponíveis para o CPF informado.
-            //   </Text>
-            // }
-            // ListHeaderComponent={
-            //   <Text
-            //     style={{
-            //       color: colors.branco,
-            //       fontSize: 20,
-            //       fontWeight: "bold",
-            //       marginBottom: 10,
-            //     }}
-            //   >
-            //     Ingressos disponíveis
-            //   </Text>
-            // }
             ListFooterComponent={
               <Text
                 style={{

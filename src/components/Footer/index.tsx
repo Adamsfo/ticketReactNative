@@ -1,5 +1,6 @@
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import React from "react";
 import {
   View,
@@ -12,6 +13,7 @@ import {
 
 const Footer = () => {
   const { visitasNoSite } = useAuth();
+  const navigation = useNavigation() as any;
 
   return (
     <View style={styles.footerContainer}>
@@ -19,7 +21,7 @@ const Footer = () => {
         <Text style={styles.slogan}>Diversão, lazer e música!</Text>
       </View>
 
-      <View style={styles.linksSection}>
+      {/* <View style={styles.linksSection}>
         <TouchableOpacity onPress={() => Linking.openURL("#")}>
           <Text style={styles.linkText}>Eventos</Text>
         </TouchableOpacity>
@@ -31,9 +33,9 @@ const Footer = () => {
         >
           <Text style={styles.linkText}>Contato</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
-      <View style={styles.socialSection}>
+      {/* <View style={styles.socialSection}>
         <TouchableOpacity
           onPress={() => Linking.openURL("https://facebook.com")}
         >
@@ -49,7 +51,7 @@ const Footer = () => {
         >
           <Feather name="message-circle" size={24} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {/* <Image
         source={require("../../assets/logotanz.png")} // Substitua pelo caminho correto
@@ -60,6 +62,17 @@ const Footer = () => {
         <Text style={styles.slogan}>
           {visitasNoSite} Visitas na Plataforma.
         </Text>
+      </View>
+      <View style={styles.logoSection}>
+        <TouchableOpacity onPress={() => navigation.navigate("termosuso")}>
+          <Text style={styles.linkText}>Termos de Uso</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ marginLeft: 20 }}
+          onPress={() => navigation.navigate("politicadeprivacidade")}
+        >
+          <Text style={styles.linkText}>Política de Privacidade</Text>
+        </TouchableOpacity>
       </View>
       <Text style={styles.copy}>
         © {new Date().getFullYear()} Tanz Tecnologia Ltda. Todos os direitos

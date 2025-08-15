@@ -58,7 +58,8 @@ export default function CardIngresso({ item, getRegistros }: Props) {
           .image { width: 100%; max-height: 250px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; }
           .info { font-size: 12px; margin-bottom: 6px; }
           .label { font-size: 12px; font-weight: bold; }
-          .qrcode 
+          .qrcode { margin-left: -10px; text-align: center; }
+          .id { font-size: 10px; margin-top: 6px; }
         </style>
       </head>
       <body>
@@ -66,14 +67,20 @@ export default function CardIngresso({ item, getRegistros }: Props) {
           <img class="image" src="${api.getBaseApi()}/uploads/${
       item.Evento_imagem
     }" />
-          <div class="title">${item.Evento_nome}</div>
-          ${
-            item.tipo === "Cortesia" ? '<div class="ticket">Cortesia</div>' : ""
-          }
-          <div class="ticket">${item.TipoIngresso_descricao} ${
+                      <div class="title">${item.Evento_nome}</div>
+                      ${
+                        item.tipo === "Cortesia"
+                          ? '<div class="ticket">Cortesia</div>'
+                          : ""
+                      }
+                      <div class="ticket">${item.TipoIngresso_descricao} ${
       item.EventoIngresso_nome
     }</div>
-    <div class="ticket">${item.nomeImpresso}</div>
+                ${
+                  item.nomeImpresso
+                    ? `<div class="ticket">${item.nomeImpresso}</div>`
+                    : ""
+                }
           <div class="info"><span class="label">Status:</span> ${
             item.status
           }</div>
@@ -84,11 +91,14 @@ export default function CardIngresso({ item, getRegistros }: Props) {
           )}</div>
           <div class="info"><span class="label">Endereço:</span> ${
             item.Evento_endereco
-          }</div>        
+          }</div>       
+          <div class="id">
+            Identificação: ${item.id}
+          </div> 
           <div class="qrcode">
             <img src="${item.qrCodeBase64}" width="200" />
           </div>
-        </div>
+          
       </body>
     </html>
   `;
@@ -193,9 +203,16 @@ export default function CardIngresso({ item, getRegistros }: Props) {
 
               if (Platform.OS === "web") {
                 try {
-                  await Clipboard.setStringAsync(url);
-                  setMsg("O link foi copiado para a área de transferência.");
-                  setModalMsg(true);
+                  if (item.idEvento === 1) {
+                    setMsg(
+                      "O ingresso do Pesque Pague jango não pode ser compartilhado, necessário transferir para quem vai utilizar. Pois a comanda é aberta no momento da entrada e no CPF do proprietário do ingresso."
+                    );
+                    setModalMsg(true);
+                  } else {
+                    await Clipboard.setStringAsync(url);
+                    setMsg("O link foi copiado para a área de transferência.");
+                    setModalMsg(true);
+                  }
                 } catch (err) {
                   setMsg("Não foi possível copiar o link.");
                 }

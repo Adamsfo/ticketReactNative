@@ -12,7 +12,7 @@ import {
   Modal,
 } from "react-native";
 import colors from "@/src/constants/colors";
-import { router, useFocusEffect } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import { Usuario } from "@/src/types/geral";
@@ -24,6 +24,7 @@ import ModalMsg from "@/src/components/ModalMsg";
 import { api } from "@/src/lib/api";
 import ModalVerificacao from "@/src/components/ModalVerificacao";
 import { apiGeral } from "@/src/lib/geral";
+import { CheckCircle } from "lucide-react-native";
 
 export default function Signup() {
   const navigation = useNavigation() as any;
@@ -39,9 +40,11 @@ export default function Signup() {
     telefone: "",
     id_cliente: 0,
   });
+  const [modalVerificacao, setModalVerificacao] = useState(false);
   const [modalMsg, setModalMsg] = useState(false);
   const [msg, setMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [termoUso, setTermoUso] = useState(false);
 
   const handleChange = (field: keyof Usuario, value: string) => {
     setFormData({ ...formData, [field]: value });
@@ -61,6 +64,7 @@ export default function Signup() {
       });
       setErrors({});
       setMsg("");
+      setTermoUso(false);
     }, [])
   );
 
@@ -115,6 +119,12 @@ export default function Signup() {
   };
 
   async function handleSingUp() {
+    if (!termoUso) {
+      setMsg("Você deve aceitar os termos de uso e a política de privacidade.");
+      setModalMsg(true);
+      return;
+    }
+
     setErrors({});
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -177,7 +187,7 @@ export default function Signup() {
           ...response.data,
         });
         setMsg("Usuário cadastrado com sucesso!\n\n");
-        setModalMsg(true);
+        setModalVerificacao(true);
       }
     } catch (error) {
       console.error("Network request failed:", error);
@@ -415,6 +425,74 @@ export default function Signup() {
                 )}
               </View>
 
+              <View
+                style={{
+                  borderRadius: 20,
+                  marginBottom: 10,
+                  padding: 5,
+                  flexDirection: "row", // Coloca os elementos lado a lado
+                  alignItems: "center", // Alinha verticalmente
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => setTermoUso(!termoUso)}
+                  style={{
+                    padding: 6,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 10,
+                    borderRadius: 10,
+                    height: 40,
+                    width: 40,
+                    borderColor: colors.black,
+                    borderWidth: 1,
+                  }}
+                >
+                  {termoUso && <CheckCircle size={28} color={colors.green} />}
+                </TouchableOpacity>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      // color: colors.branco,
+                      fontSize: 16,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Declaro que li e concordo com os{" "}
+                    <Link
+                      href="/(auth)/signup/page"
+                      onPress={() => {
+                        navigation.navigate("termosuso");
+                      }}
+                      style={{ marginTop: 16, textAlign: "center" }}
+                    >
+                      <Text
+                        style={{ textAlign: "center", color: colors.laranjado }}
+                      >
+                        Termos de Uso
+                      </Text>
+                    </Link>
+                    {/* <Text style={{ color: colors.green }}>Termos de Uso</Text> */}
+                    <Text style={{ color: colors.black }}> e a </Text>
+                    <Link
+                      href="/(auth)/signup/page"
+                      onPress={() => {
+                        navigation.navigate("politicadeprivacidade");
+                      }}
+                      style={{ marginTop: 16, textAlign: "center" }}
+                    >
+                      <Text
+                        style={{ textAlign: "center", color: colors.laranjado }}
+                      >
+                        Política de Privacidade
+                      </Text>
+                    </Link>
+                    <Text style={{ color: colors.black }}>.</Text>
+                  </Text>
+                </View>
+              </View>
+
               {errors.api && (
                 <Text style={style.labelError}>
                   {errors.api}{" "}
@@ -445,14 +523,27 @@ export default function Signup() {
                 </Text>
               </Pressable>
 
-              <Modal visible={modalMsg} transparent animationType="fade">
+              <Modal
+                visible={modalVerificacao}
+                transparent
+                animationType="fade"
+              >
                 <ModalVerificacao
                   onClose={() => {
-                    setModalMsg(false);
+                    setModalVerificacao(false);
                     navigation.navigate("login");
                   }}
                   msg={msg}
                   user={formData}
+                />
+              </Modal>
+
+              <Modal visible={modalMsg} transparent animationType="fade">
+                <ModalMsg
+                  onClose={() => {
+                    setModalMsg(false);
+                  }}
+                  msg={msg}
                 />
               </Modal>
             </View>

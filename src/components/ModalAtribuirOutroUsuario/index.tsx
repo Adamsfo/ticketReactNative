@@ -170,7 +170,8 @@ export default function ModalAtribuirOutroUsuario({
               <Text style={styles.mensagem}>
                 Ao transferir este ingresso a outro usuário, ele deixará de
                 aparecer na sua lista, passando a ser de propriedade do novo
-                usuário, com um novo QR Code gerado.
+                usuário, com um novo QR Code gerado. Necessário ter cadastro no
+                sistema para transferir o ingresso.
               </Text>
               <View>
                 <Text style={styles.label}>Email</Text>
