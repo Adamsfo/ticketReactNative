@@ -215,8 +215,25 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
     );
     const registrosData = response.data ?? [];
 
-    console.log("Registros Ingressos:", registrosData);
-    setRegistrosEventoIngressos(registrosData);
+    let novosRegistros = await Promise.all(
+      registrosData.map(async (ingresso) => {
+        // Aqui você pode fazer algo com cada ingresso, se necessário
+        const ingressosConfirmados = await apiGeral.getResource<Ingresso>(
+          "/ingresso",
+          {
+            filters: {
+              idEventoIngresso: ingresso.id,
+              status: "Confirmado",
+            },
+          }
+        );
+        ingresso.ingressosConfirmados = ingressosConfirmados.data?.length ?? 0;
+
+        return ingresso;
+      })
+    );
+
+    setRegistrosEventoIngressos(novosRegistros);
   };
 
   const handleCadastrarUsuario = async () => {

@@ -114,7 +114,10 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             <FAB
               icon="account"
               label="Entrar"
-              onPress={() => navigation.navigate("login")}
+              onPress={() => {
+                navigation.navigate("login");
+                toggleMenu();
+              }}
               style={styles.fabItem}
             />
           )}
@@ -122,7 +125,10 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             <FAB
               icon="account-plus"
               label="Cadastre-se"
-              onPress={() => navigation.navigate("loginAdd")}
+              onPress={() => {
+                navigation.navigate("loginAdd");
+                toggleMenu();
+              }}
               style={styles.fabItem}
             />
           )}
