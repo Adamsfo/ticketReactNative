@@ -316,6 +316,7 @@ export interface TicketHistorico {
 export enum TipoVendidoCortesia {
   Vendido = "Vendido",
   Cortesia = "Cortesia",
+  PDV = "PDV",
 }
 
 export interface Ingresso {

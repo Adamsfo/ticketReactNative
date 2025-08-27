@@ -9,12 +9,14 @@ import TabCortesia from "./tabs/tabCortesia";
 import Footer from "@/src/components/Footer";
 import TabIngressos from "./tabs/tabIngressos";
 import TabFinanceiro from "./tabs/tabFinanceiro";
+import TabPDV from "./tabs/tabPDV";
 
 const tabs = [
   { key: "info", label: "Informações" },
   { key: "cortesia", label: "Cortesias" },
   { key: "ingressos", label: "Ingressos" },
   { key: "financeiro", label: "Financeiro" },
+  { key: "pdv", label: "PDV" },
 ];
 
 export default function MeusEventosEdit() {
@@ -30,6 +32,8 @@ export default function MeusEventosEdit() {
         return <TabIngressos />;
       case "financeiro":
         return <TabFinanceiro />;
+      case "pdv":
+        return <TabPDV />;
       default:
         return null;
     }
