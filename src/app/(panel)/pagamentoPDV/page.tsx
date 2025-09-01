@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -17,13 +17,14 @@ import BarMenu from "@/src/components/BarMenu";
 import {
   Evento,
   EventoIngresso,
+  Ingresso,
   IngressoTransacao,
   QueryParams,
   Transacao,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
-import { useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { api } from "@/src/lib/api";
 import StepIndicator from "@/src/components/StepIndicator";
 import formatCurrency from "@/src/components/FormatCurrency";
@@ -32,6 +33,11 @@ import { initMercadoPago } from "@mercadopago/sdk-react";
 import StatusPaymentCustomizadoPOS from "@/src/components/StatusPaymentCustomizadoPOS";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/src/contexts_/AuthContext";
+import { formatInTimeZone } from "date-fns-tz";
+import { parseISO } from "date-fns";
+import * as Print from "expo-print";
+import html2canvas from "html2canvas";
+import EscPosEncoder from "esc-pos-encoder";
 
 const { width } = Dimensions.get("window");
 
@@ -52,6 +58,10 @@ export default function Index() {
     IngressoTransacao[]
   >([]);
   const [metodoSelecionado, setMetodoSelecionado] = useState<string | null>();
+  // Ref para o iframe
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [htmlContent, setHtmlContent] = useState<string>("");
+  const navigation = useNavigation() as any;
 
   //Jango
   // initMercadoPago("APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23", {
@@ -87,7 +97,7 @@ export default function Index() {
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
       setFormData(data as Evento);
 
-      getIngressoTransacao({
+      await getIngressoTransacao({
         filters: { idTransacao: state.transacao?.id },
       });
     }
@@ -126,11 +136,13 @@ export default function Index() {
       setDadosDePagamento({});
       setConsultaPagamento(false);
       setMetodoSelecionado(null);
+      setHtmlContent("");
+      setRegistrosIngressoTransacao([]);
 
       if (idEvento > 0) {
         getRegistros(idEvento);
       }
-    }, [idEvento])
+    }, [idEvento, registroTransacao])
   );
 
   type IngressoAgrupado = IngressoTransacao & { qtde: number };
@@ -287,6 +299,111 @@ export default function Index() {
     return () => clearInterval(interval);
   }, [payment_uniqueid, consultaPagamento]);
 
+  const getIngresso = async (id: number) => {
+    const response = await apiGeral.getResource<Ingresso>("/ingresso", {
+      filters: { id },
+      pageSize: 200,
+    });
+    console.log("response", response);
+    const registrosData = response.data ?? [];
+    return registrosData[0];
+  };
+
+  const handlePrintIngressos = async () => {
+    if (!registroTransacao || !registrosIngressoTransacao.length) return;
+
+    let html = `
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; padding: 5px; }
+          .card { border: 1px solid #ddd; padding: 7px; border-radius: 8px; max-width: 300px; margin: 10px auto; page-break-inside: avoid; }
+          .title { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+          .ticket { font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+          .image { width: 100%; max-height: 250px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; }
+          .info { font-size: 12px; margin-bottom: 6px; }
+          .label { font-size: 12px; font-weight: bold; }
+          .qrcode { margin-left: -10px; text-align: center; }
+          .id { font-size: 10px; margin-top: 6px; }
+        </style>
+      </head>
+      <body>
+  `;
+
+    // Adiciona todos os ingressos
+    for (const item of registrosIngressoTransacao) {
+      const ingresso = await getIngresso(item.idIngresso);
+      html += `
+      <div class="card">
+        <img class="image" src="${api.getBaseApi()}/uploads/${
+        ingresso.Evento_imagem
+      }" />
+        <div class="title">${ingresso.Evento_nome}</div>
+        ${
+          ingresso.tipo === "Cortesia"
+            ? '<div class="ticket">Cortesia</div>'
+            : ""
+        }
+        <div class="ticket">${ingresso.TipoIngresso_descricao} ${
+        ingresso.EventoIngresso_nome
+      }</div>
+        ${
+          ingresso.nomeImpresso
+            ? `<div class="ticket">${ingresso.nomeImpresso}</div>`
+            : ""
+        }
+        <div class="info"><span class="label">Status:</span> ${
+          ingresso.status
+        }</div>
+        <div class="info"><span class="label">Data:</span> ${formatInTimeZone(
+          parseISO((ingresso.Evento_data_hora_inicio ?? "").toString()),
+          "America/Cuiaba",
+          "dd/MM/yyyy HH:mm"
+        )}</div>
+        <div class="info"><span class="label">Endereço:</span> ${
+          ingresso.Evento_endereco
+        }</div>
+        <div class="id">Identificação: ${ingresso.id}</div>
+        <div class="qrcode"><img src="${
+          ingresso.qrCodeBase64
+        }" width="200" /></div>
+      </div>
+    `;
+
+      html += `<hr />`;
+    }
+
+    html += `</body></html>`;
+
+    setHtmlContent(html);
+
+    // Imprimir iframe
+    setTimeout(() => {
+      if (iframeRef.current) {
+        iframeRef.current.contentWindow?.focus();
+        iframeRef.current.contentWindow?.print();
+      }
+    }, 500);
+
+    // if (Platform.OS === "web") {
+    //   const printWindow = window.open("", "_blank");
+    //   if (printWindow) {
+    //     printWindow.document.write(html);
+    //     printWindow.document.close();
+    //     printWindow.onload = () => {
+    //       printWindow.print();
+
+    //       // setTimeout(() => {
+    //       //   printWindow.close();
+    //       // }, 2000);
+    //     };
+    //   }
+    // } else {
+    //   await Print.printAsync({ html });
+    // }
+  };
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -300,9 +417,21 @@ export default function Index() {
           <StepIndicator currentStep={3} />
         </View>
         <Text style={styles.titulo}>Pagamento PDV</Text>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.buttonSave,
+            { alignSelf: "center", marginTop: 16 },
+          ]}
+          onPress={() =>
+            navigation.navigate("ingressos", { id: registroTransacao.idEvento })
+          }
+        >
+          <Text style={{ color: "white", fontWeight: "600" }}>Nova Venda</Text>
+        </TouchableOpacity>
 
         <FlatList
-          data={registroTransacao ? [registroTransacao] : []}
+          data={ingressosAgrupados}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={() => (
@@ -514,6 +643,67 @@ export default function Index() {
                   idUsuario={registroTransacao?.idUsuario}
                 />
               )}
+
+              {dadosDePagamento.payment_status === 4 && idEvento >= 1 && (
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    styles.buttonSave,
+                    { alignSelf: "center", marginTop: 16 },
+                  ]}
+                  onPress={() => handlePrintIngressos()}
+                >
+                  <Text style={{ color: "white", fontWeight: "600" }}>
+                    Imprimir Ingresso
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {Platform.OS === "web" && htmlContent ? (
+                <div
+                  style={{
+                    width: "100%",
+                    minHeight: 500, // altura mínima
+                    border: "none",
+                    marginTop: 20,
+                    position: "relative",
+                  }}
+                >
+                  <iframe
+                    ref={iframeRef}
+                    title="Ingressos"
+                    srcDoc={htmlContent}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                    }}
+                    onLoad={() => {
+                      if (iframeRef.current) {
+                        const doc =
+                          iframeRef.current.contentDocument ||
+                          iframeRef.current.contentWindow?.document;
+                        if (doc) {
+                          // pega a altura total do body interno
+                          const body = doc.body;
+                          const html = doc.documentElement;
+                          const height = Math.max(
+                            body.scrollHeight,
+                            body.offsetHeight,
+                            html.clientHeight,
+                            html.scrollHeight,
+                            html.offsetHeight
+                          );
+                          iframeRef.current.style.height = height + "px";
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              ) : null}
 
               {metodoSelecionado && dadosDePagamento?.payment_status != 4 && (
                 <View style={styles.confirmContainer}>
@@ -743,5 +933,14 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  button: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  buttonSave: {
+    backgroundColor: colors.azul,
   },
 });

@@ -53,6 +53,7 @@ export default function Index() {
   const [msg, setMsg] = useState<string>("");
 
   const getRegistroQrCode = async (params: QueryParams) => {
+    setErrors({});
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
       ...params,
       pageSize: 200,
@@ -60,14 +61,19 @@ export default function Index() {
     const registrosData = response.data ?? [];
     setRegistro(registrosData[0]);
 
-    const json = await apiGeral.createResource("/validadorqrcode", {
-      ingresso: registrosData[0].id,
-    });
+    if (registrosData[0]) {
+      const json = await apiGeral.createResource("/validadorqrcode", {
+        ingresso: registrosData[0].id,
+      });
 
-    if (json.message) {
-      setErrors({ geral: json.message ?? "Ocorreu um erro desconhecido." });
+      if (json.message) {
+        setErrors({ geral: json.message ?? "Ocorreu um erro desconhecido." });
+        setLoading(false);
+        return;
+      }
+    } else {
+      setErrors({ geral: "Ingresso não encontrado." });
       setLoading(false);
-      return;
     }
   };
 
@@ -239,6 +245,35 @@ export default function Index() {
             onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
           />
         )}
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignContent: "center",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 25,
+          }}
+        >
+          {errors.geral && (
+            <Text style={[styles.labelError, { fontSize: 18 }]}>
+              {errors.geral}
+            </Text>
+          )}
+
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSave, { marginTop: 20 }]}
+            onPress={() => {
+              setqrcodeCPF("qrcode");
+              setScanned(false);
+              setRegistro(null);
+              setqrcode(null);
+              handleClickFecharCard();
+            }}
+          >
+            <Text style={{ color: colors.branco }}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
 
         {registro && handleRegistroQrCode()}
       </View>

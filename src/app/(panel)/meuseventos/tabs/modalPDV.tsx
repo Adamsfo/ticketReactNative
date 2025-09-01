@@ -457,8 +457,20 @@ export default function ModalPDV({ idEvento, onClose }: ModalMsgProps) {
                   onChangeText={(text) =>
                     (formData.id ?? 0) > 0
                       ? ""
-                      : handleChange("nomeCompleto", text)
+                      : handleChange("nomeCompleto", text.toUpperCase())
                   }
+                  onBlur={() => {
+                    if (formData.id && formData.id > 0) return;
+
+                    const partes = (formData.nomeCompleto || "")
+                      .trim()
+                      .split(" ");
+                    const primeiroNome = partes.shift() || "";
+                    const sobrenome = partes.join(" ");
+
+                    formData.nomeCompleto = primeiroNome;
+                    handleChange("sobreNome", sobrenome);
+                  }}
                 ></TextInput>
                 {errors.nomeCompleto && (
                   <Text style={styles.labelError}>{errors.nomeCompleto}</Text>
@@ -471,7 +483,9 @@ export default function ModalPDV({ idEvento, onClose }: ModalMsgProps) {
                   placeholder="Sobrenome..."
                   value={formData.sobreNome}
                   onChangeText={(text) =>
-                    formData.id ? "" : handleChange("sobreNome", text)
+                    formData.id
+                      ? ""
+                      : handleChange("sobreNome", text.toUpperCase())
                   }
                 ></TextInput>
                 {errors.sobreNome && (

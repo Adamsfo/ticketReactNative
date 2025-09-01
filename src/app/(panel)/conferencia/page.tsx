@@ -89,6 +89,8 @@ export default function Index() {
 
   useFocusEffect(
     useCallback(() => {
+      setRegistrosTransacao(undefined);
+      setRegistrosIngressoTransacao([]);
       if (idTransacao > 0) {
         setCupomDesconto("");
         setInfoCupomDesconto(null);
@@ -248,7 +250,7 @@ export default function Index() {
     //   }
     // }
 
-    getIngressoTransacao({
+    await getIngressoTransacao({
       filters: { idTransacao: state.transacao?.id },
     });
   };

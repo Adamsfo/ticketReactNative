@@ -366,6 +366,7 @@ export interface Transacao {
   taxaServicoDesconto?: number;
   valorTaxaProcessamento?: number;
   valorRecebido?: number;
+  idEvento?: number;
 }
 
 export interface IngressoTransacao {

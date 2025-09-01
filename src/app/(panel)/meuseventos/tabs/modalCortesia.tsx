@@ -329,16 +329,16 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
     } else if (!isValidCPF(formData.cpf)) {
       newErrors.cpf = "CPF inválido.";
     }
-    if (!formData.email) newErrors.email = "O email é obrigatório.";
+    // if (!formData.email) newErrors.email = "O email é obrigatório.";
     if (!formData.telefone) newErrors.telefone = "O telefone é obrigatório.";
     if (!formData.sobreNome) newErrors.sobreNome = "A sobrenome é obrigatória.";
     if (!formData.nomeCompleto)
       newErrors.nomeCompleto = "Nome Completo é obrigatório.";
-    if (formData.email) {
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = "Por favor, insira um email válido.";
-      }
-    }
+    // if (formData.email) {
+    //   if (!emailRegex.test(formData.email)) {
+    //     newErrors.email = "Por favor, insira um email válido.";
+    //   }
+    // }
 
     return newErrors;
   };
@@ -457,8 +457,20 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
                   onChangeText={(text) =>
                     (formData.id ?? 0) > 0
                       ? ""
-                      : handleChange("nomeCompleto", text)
+                      : handleChange("nomeCompleto", text.toUpperCase())
                   }
+                  onBlur={() => {
+                    if (formData.id && formData.id > 0) return;
+
+                    const partes = (formData.nomeCompleto || "")
+                      .trim()
+                      .split(" ");
+                    const primeiroNome = partes.shift() || "";
+                    const sobrenome = partes.join(" ");
+
+                    formData.nomeCompleto = primeiroNome;
+                    handleChange("sobreNome", sobrenome);
+                  }}
                 ></TextInput>
                 {errors.nomeCompleto && (
                   <Text style={styles.labelError}>{errors.nomeCompleto}</Text>
@@ -471,7 +483,9 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
                   placeholder="Sobrenome..."
                   value={formData.sobreNome}
                   onChangeText={(text) =>
-                    formData.id ? "" : handleChange("sobreNome", text)
+                    formData.id
+                      ? ""
+                      : handleChange("sobreNome", text.toUpperCase())
                   }
                 ></TextInput>
                 {errors.sobreNome && (

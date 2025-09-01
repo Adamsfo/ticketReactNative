@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
 import { useNavigation } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 
 // Função util para formatar o valor em R$
 function formatCurrency(valor: string | number | undefined) {
@@ -66,6 +67,10 @@ export default function StatusPaymentCustomizadoPOS({
   idUsuario,
 }: MeuStatusCustomizadoProps) {
   const navigation = useNavigation<any>();
+  const route = useRoute();
+  const { idEvento } = route.params as {
+    idEvento: number;
+  };
 
   if (!data) {
     return (
@@ -104,7 +109,7 @@ export default function StatusPaymentCustomizadoPOS({
         </Text>
       </View>
 
-      {data.payment_status === 4 && (
+      {data.payment_status === 4 && idEvento === 1 && (
         <TouchableOpacity
           style={[
             styles.button,

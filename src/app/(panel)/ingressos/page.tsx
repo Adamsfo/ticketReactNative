@@ -42,7 +42,7 @@ const { width } = Dimensions.get("window");
 export default function Index() {
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
-  const { isPDV } = useAuth();
+  const { isPDV, user } = useAuth();
   const route = useRoute();
   const { state, dispatch } = useCart();
   const navigation = useNavigation() as any;
@@ -121,6 +121,11 @@ export default function Index() {
     setRegistrosEventoIngressos(novosRegistros);
   };
 
+  useEffect(() => {
+    zerarIngressos();
+    dispatch({ type: "REMOVE_TRANSACAO" });
+  }, [id]);
+
   useFocusEffect(
     useCallback(() => {
       zerarIngressos();
@@ -139,6 +144,9 @@ export default function Index() {
       if (id > 0) {
         getRegistros(id);
         // getRegistrosIngressos({ filters: { idEvento: id } });
+      }
+      if (id > 1 && isPDV && user) {
+        setFormDataUsuario(user);
       }
     }, [id])
   );
@@ -441,7 +449,7 @@ export default function Index() {
             </View>
           </View>
 
-          {isPDV && (
+          {isPDV && id === 1 && (
             <View style={styles.areaUsuario}>
               <View style={styles.grupoInput}>
                 <Text style={styles.label}>CPF</Text>

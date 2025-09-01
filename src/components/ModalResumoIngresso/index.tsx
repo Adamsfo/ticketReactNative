@@ -439,8 +439,8 @@ export default function ModalResumoIngresso({
             <TouchableOpacity
               style={[styles.button, styles.buttonClose]}
               onPress={() =>
-                navigation.navigate("evento", {
-                  id: id,
+                navigation.navigate("ingressos", {
+                  id: RegistroTransacao?.idEvento,
                 })
               }
             >
