@@ -15,7 +15,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import { Ingresso, Produtor, QueryParams, Transacao } from "@/src/types/geral";
+import {
+  Evento,
+  Ingresso,
+  Produtor,
+  QueryParams,
+  Transacao,
+} from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
@@ -31,7 +37,7 @@ import {
 import { Badge } from "@/src/components/Badge";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { api } from "@/src/lib/api";
-import { format, parseISO } from "date-fns";
+import { addDays, format, isAfter, parseISO, subHours } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import CardIngresso from "@/src/components/CardIngresso";
 import formatCurrency from "@/src/components/FormatCurrency";
@@ -58,8 +64,9 @@ export default function Index() {
     { label: "Código" },
     { label: "Data" },
     { label: "Valor" },
+    { label: "Status" },
     { label: "Cancelar Compra", isButton: true },
-    { label: "Ver Ingressos", isButton: true },
+    // { label: "Ver Ingressos", isButton: true },
   ];
 
   const getRegistros = async (params: QueryParams) => {
@@ -103,8 +110,67 @@ export default function Index() {
     }
   };
 
-  const handleClickCancelarCompra = (id: number) => {
-    setIdCancelar(id);
+  const getEvento = async (id: number) => {
+    if (id > 0) {
+      const response = await apiGeral.getResourceById<Evento>("/evento", id);
+
+      let data = response as unknown as Evento;
+      data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
+      data.data_hora_fim = new Date(data.data_hora_fim.toString());
+      // getRegistrosIngressos({ filters: { idEvento: id } });
+      return data;
+    }
+  };
+
+  const handleClickCancelarCompra = async (item: Transacao) => {
+    if (item.status === "Cancelado") {
+      setMsg("Compra já está cancelada.");
+      setModalMsg(true);
+      return;
+    }
+
+    if (!item.idEvento) {
+      setMsg("Evento não encontrado para esta transação.");
+      setModalMsg(true);
+      return;
+    }
+    const evento = await getEvento(item.idEvento);
+
+    if (item.dataTransacao && evento && evento.data_hora_inicio) {
+      const dataCompra = parseISO(item.dataTransacao.toString());
+      const dataEvento = parseISO(evento.data_hora_inicio.toString());
+      const dataAtual = new Date();
+
+      // regra 1: até 7 dias após a compra
+      const prazoCancelamento = addDays(dataCompra, 7);
+      if (isAfter(dataAtual, prazoCancelamento)) {
+        setMsg(
+          "Compra não pode ser cancelada, pois já passou o prazo de 7 dias."
+        );
+        setModalMsg(true);
+        return;
+      }
+
+      // regra 2: até 48h antes do evento
+      if (evento.id != 1) {
+        if (isAfter(dataAtual, dataEvento)) {
+          setMsg("Compra não pode ser cancelada, pois o evento já ocorreu.");
+          setModalMsg(true);
+          return;
+        }
+
+        const limiteEvento = subHours(dataEvento, 48);
+        if (isAfter(dataAtual, limiteEvento)) {
+          setMsg(
+            "Compra não pode ser cancelada, pois faltam menos de 48h para o evento."
+          );
+          setModalMsg(true);
+          return;
+        }
+      }
+    }
+
+    setIdCancelar(item.id);
     setModalMsgSimNao(true);
   };
 
@@ -183,11 +249,16 @@ export default function Index() {
                     },
                     {
                       label: data[3].label,
+                      content: item.status,
+                      id: item.id,
+                    },
+                    {
+                      label: data[4].label,
                       content: formatCurrency(item.valorTotal.toString()),
                       id: item.id,
-                      iconName: "trash-2",
+                      iconName: "x-circle",
                       isButton: true,
-                      onPress: () => handleClickCancelarCompra(item.id),
+                      onPress: () => handleClickCancelarCompra(item),
                     },
                     // {
                     //   label: data[4].label,

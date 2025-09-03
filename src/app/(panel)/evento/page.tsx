@@ -105,6 +105,7 @@ export default function Index() {
     { key: "descricao", type: "descricao" },
     { key: "mapa", type: "mapa" },
     { key: "produtor", type: "produtor" },
+    { key: "cancelamento", type: "cancelamento" },
   ];
 
   const renderItem = ({ item }: { item: { key: string; type: string } }) => {
@@ -315,6 +316,26 @@ export default function Index() {
           )}
         </View>
       );
+    } else if (item.type === "cancelamento") {
+      return (
+        <View style={[styles.dadosBasicos, { marginBottom: 50 }]}>
+          <Text style={[styles.titulo, { marginBottom: 0 }]}>
+            Política de Cancelamento
+          </Text>
+          <Text style={[styles.subtitulo, { marginBottom: 0 }]}>
+            {`${
+              formData.id != 1
+                ? "* Cancelamentos de pedidos serão aceitos até 7 dias após a compra, desde que a solicitação seja enviada até 48 horas antes do início do evento.\n"
+                : "* Cancelamentos de pedidos serão aceitos até 7 dias após a compra.\n"
+            }`}
+            * O cancelamento é definitivo. Após confirmado, a compra não pode
+            ser reativada. {"\n"}* Não é possível cancelar somente um ingresso
+            de um pedido com vários; todos serão cancelados juntos.
+            {"\n"}* Assim que o cancelamento é efetivado, o processo de
+            devolução do dinheiro é iniciado.
+          </Text>
+        </View>
+      );
     }
     return null;
   };
@@ -429,5 +450,11 @@ const styles = StyleSheet.create({
     height: 45,
     resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
     marginTop: 10,
+  },
+  subtitulo: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 5,
+    marginBottom: 3,
   },
 });
