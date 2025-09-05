@@ -453,7 +453,6 @@ const styles = StyleSheet.create({
   },
   subtitulo: {
     fontSize: 18,
-    fontWeight: "600",
     marginTop: 5,
     marginBottom: 3,
   },
