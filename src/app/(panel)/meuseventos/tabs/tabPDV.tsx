@@ -19,11 +19,12 @@ import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import CustomGridTitle from "@/src/components/CustomGridTitle";
 import CustomGrid from "@/src/components/CustomGrid";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, set } from "date-fns";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { useRoute } from "@react-navigation/native";
 import ModalPDV from "./modalPDV";
+import ModalMsg from "@/src/components/ModalMsg";
 
 const { width } = Dimensions.get("window");
 
@@ -38,6 +39,8 @@ export default function TabPDV() {
   const [visibleModalPDV, setVisibleModalPDV] = useState(false);
   const [search, setSearch] = useState("");
   const { user } = useAuth();
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msg, setMsg] = useState("");
 
   const data = [
     { label: "Código" },
@@ -46,6 +49,7 @@ export default function TabPDV() {
     { label: "Nome Usuário" },
     { label: "Nome Impresso" },
     { label: "Status" },
+    { label: "Reenviar via WhatsApp", isButton: true },
   ];
 
   const getRegistros = async () => {
@@ -85,6 +89,16 @@ export default function TabPDV() {
   useEffect(() => {
     getRegistros();
   }, [search]);
+
+  const reenviarIngressoWhatsApp = async (id: number) => {
+    console.log("Reenviar ingresso via WhatsApp ID:", id);
+    const ret = await apiGeral.createResource("/enviaingressowhatsapp", {
+      idIngresso: id,
+    });
+
+    setMsg("Ingresso reenviado com sucesso no WhatsApp " + ret.data.telefone);
+    setModalMsg(true);
+  };
 
   return (
     <View style={styles.container}>
@@ -155,6 +169,13 @@ export default function TabPDV() {
                   content: item.status ?? "",
                   id: item.id,
                 },
+                {
+                  id: item.id,
+                  label: data[6].label,
+                  iconName: "message-circle",
+                  isButton: true,
+                  onPress: () => reenviarIngressoWhatsApp(item.id),
+                },
               ]}
             />
           ))}
@@ -167,6 +188,14 @@ export default function TabPDV() {
             setVisibleModalPDV(false);
             getRegistros();
           }}
+        />
+      </Modal>
+      <Modal visible={modalMsg} transparent animationType="fade">
+        <ModalMsg
+          onClose={() => {
+            setModalMsg(false);
+          }}
+          msg={msg}
         />
       </Modal>
     </View>

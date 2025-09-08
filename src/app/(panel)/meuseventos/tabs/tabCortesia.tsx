@@ -23,6 +23,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { useRoute } from "@react-navigation/native";
 import ModalCortesia from "./modalCortesia";
+import ModalMsg from "@/src/components/ModalMsg";
 
 const { width } = Dimensions.get("window");
 
@@ -36,6 +37,8 @@ export default function TabCortesia() {
   const navigation = useNavigation() as any;
   const [visibleModalCortesia, setVisibleModalCortesia] = useState(false);
   const { user } = useAuth();
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msg, setMsg] = useState("");
 
   const data = [
     { label: "Código" },
@@ -44,6 +47,7 @@ export default function TabCortesia() {
     { label: "Nome Usuário" },
     { label: "Nome Impresso" },
     { label: "Status" },
+    { label: "Reenviar via WhatsApp", isButton: true },
   ];
 
   const getRegistros = async () => {
@@ -77,6 +81,15 @@ export default function TabCortesia() {
 
   const handleModalNovo = () => {
     setVisibleModalCortesia(true);
+  };
+
+  const reenviarIngressoWhatsApp = async (id: number) => {
+    console.log("Reenviar ingresso via WhatsApp ID:", id);
+    const ret = await apiGeral.createResource("/enviaingressowhatsapp", {
+      idIngresso: id,
+    });
+    setMsg("Ingresso reenviado com sucesso no WhatsApp " + user?.telefone);
+    setModalMsg(true);
   };
 
   return (
@@ -138,6 +151,13 @@ export default function TabCortesia() {
                   content: item.status ?? "",
                   id: item.id,
                 },
+                {
+                  id: item.id,
+                  label: data[6].label,
+                  iconName: "message-circle",
+                  isButton: true,
+                  onPress: () => reenviarIngressoWhatsApp(item.id),
+                },
               ]}
             />
           ))}
@@ -150,6 +170,14 @@ export default function TabCortesia() {
             setVisibleModalCortesia(false);
             getRegistros();
           }}
+        />
+      </Modal>
+      <Modal visible={modalMsg} transparent animationType="fade">
+        <ModalMsg
+          onClose={() => {
+            setModalMsg(false);
+          }}
+          msg={msg}
         />
       </Modal>
     </View>

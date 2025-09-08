@@ -38,7 +38,7 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({ label, children }) => {
 const styles = StyleSheet.create({
   tooltip: {
     position: "absolute",
-    top: -30,
+    top: -44,
     left: 0,
     backgroundColor: "#333",
     padding: 5,
