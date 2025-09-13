@@ -54,7 +54,7 @@ export default function TabCortesia() {
     const response = await apiGeral.getResource<Ingresso>(endpointApi, {
       filters: { idEvento: id, tipo: "Cortesia" },
       order: "desc",
-      pageSize: 100,
+      pageSize: 1000,
     });
     const registrosData = response.data ?? [];
 
@@ -161,6 +161,9 @@ export default function TabCortesia() {
               ]}
             />
           ))}
+          <Text style={{ marginTop: 10 }}>
+            Total de Ingressos: {registros.length}
+          </Text>
         </View>
       </ScrollView>
       <Modal visible={visibleModalCortesia} transparent animationType="fade">

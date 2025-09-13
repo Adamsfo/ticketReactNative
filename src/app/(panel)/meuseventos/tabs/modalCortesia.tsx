@@ -225,6 +225,7 @@ export default function ModalCortesia({ idEvento, onClose }: ModalMsgProps) {
               idEventoIngresso: ingresso.id,
               status: "Confirmado",
             },
+            pageSize: 10000,
           }
         );
         ingresso.ingressosConfirmados = ingressosConfirmados.data?.length ?? 0;

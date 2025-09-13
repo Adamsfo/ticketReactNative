@@ -124,7 +124,7 @@ export default function TabFinanceiro() {
     dados.forEach((dia) => {
       dia.transacoes.forEach((tx) => {
         const gateway = tx.gatewayPagamento || "Desconhecido";
-        const tipo = tx.tipoPagamento || "Outro";
+        const tipo = tx.tipoPagamento || "Todos";
 
         if (!resultado[gateway]) resultado[gateway] = {};
         if (!resultado[gateway][tipo]) {
@@ -144,7 +144,7 @@ export default function TabFinanceiro() {
           tx.valorTaxaProcessamento
         );
 
-        resultado[gateway][tipo].quantidade += 1;
+        resultado[gateway][tipo].quantidade += tx.qtdeIngressos || 1;
       });
     });
 
@@ -187,7 +187,7 @@ export default function TabFinanceiro() {
           tx.valorTaxaProcessamento
         );
 
-        resultado[gateway].quantidade += 1;
+        resultado[gateway].quantidade += tx.qtdeIngressos || 1;
       });
     });
 
@@ -276,7 +276,7 @@ export default function TabFinanceiro() {
               </Text>
             </Text>
             <Text style={{ marginTop: 15, fontWeight: "bold" }}>
-              Total Taxa Processamento:{" "}
+              Total Taxa Bancária:{" "}
               <Text style={{ marginTop: 15, fontWeight: "600" }}>
                 {formatCurrency(totalGeral.valorTaxaProcessamento.toFixed(2))}
               </Text>
@@ -309,10 +309,14 @@ export default function TabFinanceiro() {
                     <Text style={{ marginTop: 5, fontWeight: "bold" }}>
                       💳 {tipo}{" "}
                     </Text>
-
                     <Text style={{ marginTop: 5, fontWeight: "600" }}>
                       {"       "}
-                      Ingressos: {formatCurrency(resumo.preco.toFixed(2))}
+                      Qtde de Ingressos: {resumo.quantidade.toString()}
+                    </Text>
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Valor dos Ingressos:{" "}
+                      {formatCurrency(resumo.preco.toFixed(2))}
                     </Text>
                     {resumo.valorTaxaProcessamento > 0 && (
                       <Text style={{ marginTop: 5, fontWeight: "600" }}>
@@ -362,9 +366,21 @@ export default function TabFinanceiro() {
                   style={{ marginTop: 5, flexDirection: "column" }}
                   key={gateway}
                 >
+                  {gateway === "MercadoPago" && (
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Total Cobrado:{" "}
+                      {formatCurrency(
+                        (
+                          agrupadoGat[gateway].valorRecebido +
+                          agrupadoGat[gateway].valorTaxaProcessamento
+                        ).toFixed(2)
+                      )}
+                    </Text>
+                  )}
                   <Text style={{ marginTop: 5, fontWeight: "600" }}>
                     {"       "}
-                    Ingressos:{" "}
+                    Valor dos Ingressos:{" "}
                     {formatCurrency(agrupadoGat[gateway].preco.toFixed(2))}
                   </Text>
                   <Text style={{ marginTop: 5, fontWeight: "600" }}>
@@ -374,6 +390,15 @@ export default function TabFinanceiro() {
                       agrupadoGat[gateway].taxaServico.toFixed(2)
                     )}
                   </Text>
+                  {gateway === "MercadoPago" && (
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Taxa Bancária:{" "}
+                      {formatCurrency(
+                        agrupadoGat[gateway].valorTaxaProcessamento.toFixed(2)
+                      )}
+                    </Text>
+                  )}
                   <Text style={{ marginTop: 5, fontWeight: "600" }}>
                     {"       "}
                     Recebido:{" "}
@@ -381,6 +406,18 @@ export default function TabFinanceiro() {
                       agrupadoGat[gateway].valorRecebido.toFixed(2)
                     )}
                   </Text>
+                  {gateway === "MercadoPago" && (
+                    <Text style={{ marginTop: 5, fontWeight: "600" }}>
+                      {"       "}
+                      Receita Produtor:{" "}
+                      {formatCurrency(
+                        (
+                          agrupadoGat[gateway].valorRecebido -
+                          agrupadoGat[gateway].taxaServico
+                        ).toFixed(2)
+                      )}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>

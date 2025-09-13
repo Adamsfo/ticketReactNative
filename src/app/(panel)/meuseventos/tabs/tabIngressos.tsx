@@ -210,6 +210,20 @@ export default function TabIngressos() {
               </View>
             )
           )}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+            }}
+          >
+            <Text style={{ fontWeight: "bold" }}>Total Geral</Text>
+            <Text style={{ fontWeight: "bold" }}>
+              {Object.values(resumoPorSetorDisponivel).reduce(
+                (a, b) => a + b,
+                0
+              )}
+            </Text>
+          </View>
         </View>
       </ScrollView>
       <Modal visible={visibleModalCortesia} transparent animationType="fade">

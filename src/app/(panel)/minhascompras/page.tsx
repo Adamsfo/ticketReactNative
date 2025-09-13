@@ -62,6 +62,7 @@ export default function Index() {
 
   const data = [
     { label: "Código" },
+    { label: "Evento" },
     { label: "Data" },
     { label: "Valor" },
     { label: "Status" },
@@ -138,7 +139,7 @@ export default function Index() {
 
     if (item.dataTransacao && evento && evento.data_hora_inicio) {
       const dataCompra = parseISO(item.dataTransacao.toString());
-      const dataEvento = parseISO(evento.data_hora_inicio.toString());
+      const dataEvento = evento.data_hora_inicio;
       const dataAtual = new Date();
 
       // regra 1: até 7 dias após a compra
@@ -153,17 +154,17 @@ export default function Index() {
 
       // regra 2: até 48h antes do evento
       if (evento.id != 1) {
-        if (isAfter(dataAtual, dataEvento)) {
-          setMsg("Compra não pode ser cancelada, pois o evento já ocorreu.");
-          setModalMsg(true);
-          return;
-        }
-
         const limiteEvento = subHours(dataEvento, 48);
         if (isAfter(dataAtual, limiteEvento)) {
           setMsg(
             "Compra não pode ser cancelada, pois faltam menos de 48h para o evento."
           );
+          setModalMsg(true);
+          return;
+        }
+
+        if (isAfter(dataAtual, dataEvento)) {
+          setMsg("Compra não pode ser cancelada, pois o evento já ocorreu.");
           setModalMsg(true);
           return;
         }
@@ -236,6 +237,11 @@ export default function Index() {
                     },
                     {
                       label: data[1].label,
+                      content: item.Evento_nome,
+                      id: item.id,
+                    },
+                    {
+                      label: data[2].label,
                       content: format(
                         parseISO(item.dataTransacao.toString()),
                         "dd/MM/yyyy HH:mm:ss"
@@ -243,17 +249,17 @@ export default function Index() {
                       id: item.id,
                     },
                     {
-                      label: data[2].label,
+                      label: data[3].label,
                       content: formatCurrency(item.valorTotal.toString()),
                       id: item.id,
                     },
                     {
-                      label: data[3].label,
+                      label: data[4].label,
                       content: item.status,
                       id: item.id,
                     },
                     {
-                      label: data[4].label,
+                      label: data[5].label,
                       content: formatCurrency(item.valorTotal.toString()),
                       id: item.id,
                       iconName: "x-circle",

@@ -4,6 +4,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import formatCurrency from "../FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
+import { useAuth } from "@/src/contexts_/AuthContext";
 
 interface CounterTicketProps {
   data: any;
@@ -12,6 +13,7 @@ interface CounterTicketProps {
 const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
   // const [count, setCount] = useState(0);
   const { state, dispatch } = useCart();
+  const { isPDV } = useAuth();
 
   const addItemToCart = (qtde: number) => {
     if (qtde < 0) {
@@ -102,8 +104,21 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
               <Text
                 style={{ fontWeight: "normal", paddingLeft: 5, fontSize: 18 }}
               >
-                {formatCurrency(data.preco)} (+ Taxa{" "}
-                {formatCurrency(data.taxaServico || 0)})
+                {isPDV && (
+                  <Text
+                    style={{ fontWeight: "bold", paddingLeft: 5, fontSize: 18 }}
+                  >
+                    {formatCurrency(data.valor)}
+                  </Text>
+                )}
+                {!isPDV && (
+                  <Text
+                    style={{ fontWeight: "bold", paddingLeft: 5, fontSize: 18 }}
+                  >
+                    {formatCurrency(data.preco)} (+ Taxa{" "}
+                    {formatCurrency(data.taxaServico || 0)})
+                  </Text>
+                )}
               </Text>
             </View>
             <Text style={{ paddingLeft: 5, fontSize: 14, color: colors.zinc }}>

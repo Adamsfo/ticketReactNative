@@ -110,6 +110,7 @@ export default function Index() {
               idEventoIngresso: ingresso.id,
               status: "Confirmado",
             },
+            pageSize: 10000,
           }
         );
         ingresso.ingressosConfirmados = ingressosConfirmados.data?.length ?? 0;
@@ -118,6 +119,7 @@ export default function Index() {
       })
     );
 
+    console.log("novosRegistros", novosRegistros);
     setRegistrosEventoIngressos(novosRegistros);
   };
 
@@ -129,6 +131,7 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       zerarIngressos();
+      dispatch({ type: "REMOVE_TRANSACAO" });
       setFormDataUsuario({
         id: 0,
         login: "",

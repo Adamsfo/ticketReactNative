@@ -57,7 +57,7 @@ export default function TabPDV() {
       filters: { idEvento: id, tipo: "PDV" },
       search: search,
       order: "desc",
-      pageSize: 100,
+      pageSize: 1000,
     });
     const registrosData = response.data ?? [];
 
@@ -179,6 +179,9 @@ export default function TabPDV() {
               ]}
             />
           ))}
+          <Text style={{ marginTop: 10 }}>
+            Total de Ingressos: {registros.length}
+          </Text>
         </View>
       </ScrollView>
       <Modal visible={visibleModalPDV} transparent animationType="fade">

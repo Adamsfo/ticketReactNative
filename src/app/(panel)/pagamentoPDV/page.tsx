@@ -9,6 +9,7 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -38,6 +39,7 @@ import { parseISO } from "date-fns";
 import * as Print from "expo-print";
 import html2canvas from "html2canvas";
 import EscPosEncoder from "esc-pos-encoder";
+import ModalMsg from "@/src/components/ModalMsg";
 
 const { width } = Dimensions.get("window");
 
@@ -45,7 +47,7 @@ export default function Index() {
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
-  const { state } = useCart();
+  const { state, dispatch } = useCart();
   const { user } = useAuth();
   const [consultaPagamento, setConsultaPagamento] = useState(false);
   const [payment_uniqueid, setPaymentUniqueId] = useState("");
@@ -62,6 +64,8 @@ export default function Index() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [htmlContent, setHtmlContent] = useState<string>("");
   const navigation = useNavigation() as any;
+  const [msg, setMsg] = useState<string>("");
+  const [visibleMsg, setVisibleMsg] = useState<boolean>(false);
 
   //Jango
   // initMercadoPago("APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23", {
@@ -223,11 +227,30 @@ export default function Index() {
       setDadosDePagamento(responseData.data);
       setConsultaPagamento(false);
 
+      if (registroTransacao.idEvento === 4) {
+        for (const item of registrosIngressoTransacao) {
+          const ingresso = await getIngresso(item.idIngresso);
+          await apiGeral.createResource("/validadorqrcode", {
+            ingresso: ingresso.id,
+          });
+        }
+      }
+
       // setloading(false);
     } catch (error) {
       console.error("Erro ao gerar Dinheiro:", error);
       // setloading(false);
     }
+  };
+
+  const getIngresso = async (id: number) => {
+    const response = await apiGeral.getResource<Ingresso>("/ingresso", {
+      filters: { id },
+      pageSize: 200,
+    });
+    console.log("response", response);
+    const registrosData = response.data ?? [];
+    return registrosData[0];
   };
 
   const verificarStatusPagamentoPos = async () => {
@@ -254,6 +277,14 @@ export default function Index() {
 
       if (dados.payment_message === "Pago") {
         setConsultaPagamento(false);
+        if (registroTransacao.idEvento === 4) {
+          for (const item of registrosIngressoTransacao) {
+            const ingresso = await getIngresso(item.idIngresso);
+            await apiGeral.createResource("/validadorqrcode", {
+              ingresso: ingresso.id,
+            });
+          }
+        }
       }
       if (dados.payment_message === "Cancelado/erro") {
         setConsultaPagamento(false);
@@ -294,20 +325,10 @@ export default function Index() {
 
     const interval = setInterval(() => {
       verificarStatusPagamentoPos();
-    }, 5000);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [payment_uniqueid, consultaPagamento]);
-
-  const getIngresso = async (id: number) => {
-    const response = await apiGeral.getResource<Ingresso>("/ingresso", {
-      filters: { id },
-      pageSize: 200,
-    });
-    console.log("response", response);
-    const registrosData = response.data ?? [];
-    return registrosData[0];
-  };
 
   const handlePrintIngressos = async () => {
     if (!registroTransacao || !registrosIngressoTransacao.length) return;
@@ -404,6 +425,19 @@ export default function Index() {
     // }
   };
 
+  const validarIngressos = async () => {
+    if (!registroTransacao || !registrosIngressoTransacao.length) return;
+
+    setMsg("Ingressos validados com sucesso!");
+    setVisibleMsg(true);
+  };
+
+  const zerarIngressos = async () => {
+    state.items.map(async (ingresso) => {
+      await dispatch({ type: "REMOVE_ITEM", id: ingresso.id });
+    });
+  };
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -423,9 +457,18 @@ export default function Index() {
             styles.buttonSave,
             { alignSelf: "center", marginTop: 16 },
           ]}
-          onPress={() =>
-            navigation.navigate("ingressos", { id: registroTransacao.idEvento })
-          }
+          onPress={async () => {
+            if (consultaPagamento) {
+              setMsg("Aguarde o término do pagamento atual.");
+              setVisibleMsg(true);
+              return;
+            }
+            await zerarIngressos();
+            dispatch({ type: "REMOVE_TRANSACAO" });
+            navigation.navigate("ingressos", {
+              id: registroTransacao.idEvento,
+            });
+          }}
         >
           <Text style={{ color: "white", fontWeight: "600" }}>Nova Venda</Text>
         </TouchableOpacity>
@@ -566,7 +609,13 @@ export default function Index() {
               </View>
             </View>
           )}
-          renderItem={() => (
+          renderItem={({ item: data }) => (
+            // <Text>{data.Ingresso_EventoIngresso?.nome}</Text>
+            <View>
+              {/* <Text>{data.Ingresso_EventoIngresso?.nome}</Text> */}
+            </View>
+          )}
+          ListFooterComponent={() => (
             <>
               <Text style={styles.sectionTitle}>
                 Escolha o método de pagamento
@@ -643,6 +692,21 @@ export default function Index() {
                   idUsuario={registroTransacao?.idUsuario}
                 />
               )}
+
+              {/* {dadosDePagamento.payment_status === 4 && idEvento >= 1 && (
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    styles.buttonSave,
+                    { alignSelf: "center", marginTop: 16 },
+                  ]}
+                  onPress={() => validarIngressos()}
+                >
+                  <Text style={{ color: "white", fontWeight: "600" }}>
+                    Validar Ingressos
+                  </Text>
+                </TouchableOpacity>
+              )} */}
 
               {dadosDePagamento.payment_status === 4 && idEvento >= 1 && (
                 <TouchableOpacity
@@ -739,6 +803,9 @@ export default function Index() {
             </>
           )}
         />
+        <Modal visible={visibleMsg} transparent animationType="fade">
+          <ModalMsg msg={msg} onClose={() => setVisibleMsg(false)} />
+        </Modal>
       </View>
       {/* {modalVisible && <ModalResumoIngresso step={2} />} */}
     </LinearGradient>

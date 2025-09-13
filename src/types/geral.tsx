@@ -367,6 +367,7 @@ export interface Transacao {
   valorTaxaProcessamento?: number;
   valorRecebido?: number;
   idEvento?: number;
+  Evento_nome?: string;
 }
 
 export interface IngressoTransacao {
