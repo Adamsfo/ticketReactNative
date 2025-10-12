@@ -32,46 +32,66 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
   const [loading, setLoading] = useState(false);
 
   const enviarCodigo = async () => {
-    if (selectedOption) {
+    if (!selectedOption) return;
+
+    try {
       setLoading(true);
+      let result: any;
+
+      // Envia o código de ativação via API interna
       if (selectedOption === "email") {
-        const result = await apiAuth.enviaCodigoAtivacao(
+        result = await apiAuth.enviaCodigoAtivacao(
           selectedOption === "email" ? user?.email ?? "" : user?.telefone ?? "",
           selectedOption
         );
-      }
-      if (selectedOption === "whatsapp") {
-        const result = await apiAuth.enviaCodigoAtivacao(
+      } else if (selectedOption === "whatsapp") {
+        result = await apiAuth.enviaCodigoAtivacao(
           selectedOption === "whatsapp"
             ? user?.email ?? ""
             : user?.telefone ?? "",
           selectedOption
         );
 
+        // === CONFIGURAÇÃO Z-API ===
+        const instanceId = "3E893A152BA131DB903DFA5FB5498E95";
+        const token = "9A4CDF91FE88589BDD9BA3FC";
+        const clientToken = "F891e8c3d58d84a7eac82cf030ef273faS";
+
+        const message = `🔐 Seu código de verificação no Jango Ingressos é: ${result.data.code}.
+Não compartilhe com ninguém.`;
+
         const options = {
           method: "POST",
           headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-            Authorization: "d597037283078574746e95b4e78ddd52",
+            "Client-Token": clientToken,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            number: formatPhoneToE164(user?.telefone ?? ""),
-            message: `Seu código de verificação no Jango Ingressos é: ${result.data.code}. Não compartilhe com ninguém.`,
+            phone: formatPhoneToE164(user?.telefone ?? ""),
+            message,
           }),
         };
 
-        fetch(
-          "https://v5.chatpro.com.br/chatpro-4p8b76i8oq/api/v1/send_message",
+        const response = await fetch(
+          `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
           options
-        )
-          .then((res) => res.json())
-          .then((res) => console.log(res))
-          .catch((err) =>
-            setError("Erro ao enviar mensagem via WhatsApp: " + err)
+        );
+
+        const data = await response.json();
+        console.log("📤 Retorno Z-API:", data);
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Erro ao enviar mensagem via WhatsApp"
           );
+        }
       }
+
       setStep(2);
+    } catch (err: any) {
+      console.error(err);
+      setError("Erro ao enviar mensagem: " + err.message);
+    } finally {
       setLoading(false);
     }
   };
