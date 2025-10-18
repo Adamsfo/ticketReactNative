@@ -93,6 +93,7 @@ export default function Index() {
       setFormData(data as Evento);
     }
   };
+
   const getRegistrosIngressos = async (params: QueryParams) => {
     const response = await apiGeral.getResource<EventoIngresso>(
       endpointApiIngressos,
@@ -100,27 +101,27 @@ export default function Index() {
     );
     const registrosData = response.data ?? [];
 
-    let novosRegistros = await Promise.all(
-      registrosData.map(async (ingresso) => {
-        // Aqui você pode fazer algo com cada ingresso, se necessário
-        const ingressosConfirmados = await apiGeral.getResource<Ingresso>(
-          "/ingresso",
-          {
-            filters: {
-              idEventoIngresso: ingresso.id,
-              status: "Confirmado",
-            },
-            pageSize: 10000,
-          }
-        );
-        ingresso.ingressosConfirmados = ingressosConfirmados.data?.length ?? 0;
+    // let novosRegistros = await Promise.all(
+    //   registrosData.map(async (ingresso) => {
+    //     // Aqui você pode fazer algo com cada ingresso, se necessário
+    //     const ingressosConfirmados = await apiGeral.getResource<Ingresso>(
+    //       "/ingresso",
+    //       {
+    //         filters: {
+    //           idEventoIngresso: ingresso.id,
+    //           status: "Confirmado",
+    //         },
+    //         pageSize: 10000,
+    //       }
+    //     );
+    //     ingresso.ingressosConfirmados = ingressosConfirmados.data?.length ?? 0;
 
-        return ingresso;
-      })
-    );
+    //     return ingresso;
+    //   })
+    // );
 
-    console.log("novosRegistros", novosRegistros);
-    setRegistrosEventoIngressos(novosRegistros);
+    // console.log("registrosData", registrosData);
+    setRegistrosEventoIngressos(registrosData);
   };
 
   useEffect(() => {

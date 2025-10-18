@@ -236,6 +236,10 @@ export default function Index() {
         }
       }
 
+      if (registroTransacao.idEvento === 1) {
+        handleAbrirConta();
+      }
+
       // setloading(false);
     } catch (error) {
       console.error("Erro ao gerar Dinheiro:", error);
@@ -284,6 +288,9 @@ export default function Index() {
               ingresso: ingresso.id,
             });
           }
+        }
+        if (registroTransacao.idEvento === 1) {
+          handleAbrirConta();
         }
       }
       if (dados.payment_message === "Cancelado/erro") {
@@ -436,6 +443,30 @@ export default function Index() {
     state.items.map(async (ingresso) => {
       await dispatch({ type: "REMOVE_ITEM", id: ingresso.id });
     });
+  };
+
+  const handleAbrirConta = async () => {
+    try {
+      let ingressosSelecionados = [];
+
+      for (const item of registrosIngressoTransacao) {
+        ingressosSelecionados.push(item.idIngresso);
+      }
+
+      if (ingressosSelecionados.length === 0) {
+        return;
+      }
+
+      const json = await apiGeral.createResource("/validadorjango", {
+        ingressos: ingressosSelecionados,
+      });
+
+      setMsg("Conta aberta e ingressos utilizados com sucesso!");
+      setVisibleMsg(true);
+    } catch (error) {
+      setMsg("Erro ao abrir conta.");
+      setVisibleMsg(true);
+    }
   };
 
   return (

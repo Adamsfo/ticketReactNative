@@ -184,6 +184,11 @@ export default function CardIngresso({ item, getRegistros }: Props) {
           )}
         </View>
 
+        {/* <Image
+          source={require("../../assets/MoveVip.png")}
+          style={styles.imageParceiro}
+        /> */}
+
         <View style={[styles.row]}>
           <TouchableOpacity
             style={styles.button}
@@ -357,4 +362,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   qr: { width: 200, height: 200, marginBottom: 10 },
+  imageParceiro: {
+    width: "60%",
+    height: 80,
+    resizeMode: "cover",
+    alignContent: "center",
+    alignSelf: "center",
+    marginBottom: 10,
+    borderRadius: 8,
+  },
 });

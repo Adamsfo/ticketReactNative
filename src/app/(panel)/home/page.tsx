@@ -23,6 +23,7 @@ import ImageCarousel from "@/src/components/ImagemCarousel";
 import { api } from "@/src/lib/api";
 import KeenSliderNavigation from "@/src/components/CarouselWeb";
 import Footer from "@/src/components/Footer";
+import CardParceiro from "@/src/components/CardParceiro";
 
 const { width } = Dimensions.get("window");
 
@@ -76,6 +77,27 @@ export default function Index() {
     return precoMin;
   };
 
+  const registrosParceiros = [
+    // {
+    //   id: 1,
+    //   imagem: require("../../../assets/MoveVip.png"),
+    //   link: "https://www.instagram.com/movevipbrasil?igsh=Z2wzNHFoYzJ5dG8w",
+    //   nome: "MoveVip",
+    // },
+    {
+      id: 2,
+      imagem: require("../../../assets/JangoAventura.png"),
+      link: "https://jangoaventura.com.br/",
+      nome: "Jango Aventura",
+    },
+  ];
+
+  // 🔹 Define número de colunas responsivamente
+  const numColumns = width > 600 ? 3 : 1;
+
+  // 🔹 Define a largura exata de cada card, igual para eventos e parceiros
+  const cardWidth = 400;
+
   return (
     <LinearGradient
       colors={[colors.white, colors.laranjado]}
@@ -100,24 +122,47 @@ export default function Index() {
           showsVerticalScrollIndicator={false}
           // contentContainerStyle={{ padding: 1 }}
           renderItem={() => (
-            <FlatList
-              data={registros}
-              keyExtractor={(item) => item.id.toString()}
-              numColumns={width > 600 ? 3 : 1}
-              style={styles.listaEventos}
-              showsVerticalScrollIndicator={false}
-              // contentContainerStyle={{ padding:  }}
-              renderItem={({ item }) => (
-                <CardEvento
-                  data={item}
-                  onPress={() => {
-                    navigation.navigate("evento", { id: item.id });
-                  }}
-                  // widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15}
-                  widthCardItem={400}
-                />
-              )}
-            />
+            <>
+              <FlatList
+                data={registros}
+                keyExtractor={(item) => item.id.toString()}
+                numColumns={numColumns}
+                style={styles.listaEventos}
+                showsVerticalScrollIndicator={false}
+                columnWrapperStyle={
+                  numColumns > 1 ? { justifyContent: "center" } : undefined
+                }
+                renderItem={({ item }) => (
+                  <CardEvento
+                    data={item}
+                    onPress={() => {
+                      navigation.navigate("evento", { id: item.id });
+                    }}
+                    // widthCardItem={flatListWidth / (width > 600 ? 3 : 1) - 15}
+                    widthCardItem={cardWidth}
+                  />
+                )}
+              />
+              <Text style={styles.titulo}>Parceiros</Text>
+              <FlatList
+                data={registrosParceiros}
+                keyExtractor={(item) => item.id.toString()}
+                numColumns={numColumns}
+                style={styles.listaEventos}
+                showsVerticalScrollIndicator={false}
+                columnWrapperStyle={
+                  numColumns > 1 ? { justifyContent: "center" } : undefined
+                }
+                renderItem={({ item }) => (
+                  <CardParceiro
+                    imagem={item.imagem}
+                    widthCardItem={cardWidth}
+                    nome={item.nome}
+                    link={item.link}
+                  />
+                )}
+              />
+            </>
           )}
           ListHeaderComponent={
             <View style={{ height: Platform.OS === "web" ? 460 : 310 }}>
