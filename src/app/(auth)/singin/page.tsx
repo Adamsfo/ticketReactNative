@@ -20,6 +20,8 @@ import ModalVerificacao from "@/src/components/ModalVerificacao";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Usuario } from "@/src/types/geral";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import ModalVerificacaoLogin from "@/src/components/ModalVerificacaoLogin";
+import { apiGeral } from "@/src/lib/geral";
 
 interface ModalMsgProps {
   onClose?: () => void;
@@ -32,9 +34,13 @@ export default function Login({ onClose }: ModalMsgProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [modalMsg, setModalMsg] = useState(false);
+  const [modalLoginCodigo, setModalLoginCodigo] = useState(false);
   const [msg, setMsg] = useState("");
   const { setAuth } = useAuth();
   const [usuarioAtivar, setUsuarioAtivar] = useState<Usuario | null>(null);
+  const [usuarioLoginCodigo, setUsuarioLoginCodigo] = useState<Usuario | null>(
+    null
+  );
   const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin() {
@@ -42,6 +48,7 @@ export default function Login({ onClose }: ModalMsgProps) {
     setLoading(true);
 
     const result = await apiAuth.login({ login: email, senha: password });
+    console.log("result login:", result);
 
     if (result.success) {
       let _token;
@@ -56,6 +63,13 @@ export default function Login({ onClose }: ModalMsgProps) {
         filters: { token: _token },
       });
       const vUser: Usuario = vUserResponse.data[0];
+      console.log("vUser login:", vUser);
+
+      if (!vUser) {
+        setError("Usuário não encontrado.");
+        setLoading(false);
+        return;
+      }
 
       if (vUser && !vUser.ativo) {
         setUsuarioAtivar(vUser);
@@ -150,6 +164,37 @@ export default function Login({ onClose }: ModalMsgProps) {
     return regex.test(value);
   };
 
+  const handleEnviarCodigoParaLogin = async () => {
+    let user: Usuario | null = null;
+
+    if (!isEmail(email)) {
+      user = await getUsuarioPorLogin(formatCPF(email));
+    } else {
+      user = await getUsuarioPorLogin(email);
+    }
+
+    if (!user) {
+      setError("Por favor, insira um email ou CPF válido.");
+      setLoading(false);
+      return;
+    }
+    setError("");
+    setLoading(true);
+    setModalLoginCodigo(true);
+  };
+
+  const getUsuarioPorLogin = async (login: string) => {
+    const loginType = isEmail(login) ? "email" : "cpf";
+    const response = await apiGeral.getResource<Usuario>(
+      "/usuarioemailtelefone",
+      { filters: { [loginType]: login } }
+    );
+
+    setUsuarioLoginCodigo(response?.data?.[0] || null);
+
+    return response?.data?.[0] || null;
+  };
+
   return (
     <View style={{ backgroundColor: colors.zinc, flex: 1 }}>
       <StatusBarPage style="dark" />
@@ -176,6 +221,9 @@ export default function Login({ onClose }: ModalMsgProps) {
               onBlur={() => {
                 if (!isEmail(email)) {
                   setEmail(formatCPF(email));
+                  getUsuarioPorLogin(formatCPF(email));
+                } else {
+                  getUsuarioPorLogin(email);
                 }
               }}
             />
@@ -208,37 +256,22 @@ export default function Login({ onClose }: ModalMsgProps) {
             </View>
           </View>
 
-          {error !== "" && (
-            <View style={{ marginBottom: 18 }}>
-              <Text style={style.labelError}>{error}</Text>
-
-              {error.includes("Credenciais inválidas") && (
-                <TouchableOpacity
-                  style={{
-                    width: 150,
-                    height: 20,
-                    backgroundColor: colors.laranjado,
-                    alignItems: "center",
-                    borderRadius: 8,
-                    marginTop: 8,
-                  }}
-                  onPress={() =>
-                    navigation.navigate("recuperarsenha", {
-                      email: email,
-                    })
-                  }
-                >
-                  <Text style={style.buttonText}>Recuperar senha</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
           <Pressable style={style.button} onPress={handleLogin}>
             <Text style={style.buttonText}>
-              {loading ? "Carregando..." : "Entrar"}
+              {loading ? "Carregando..." : "Entrar com senha"}
             </Text>
           </Pressable>
+
+          <Pressable
+            style={[style.button, { marginTop: 12 }]}
+            onPress={() => handleEnviarCodigoParaLogin()}
+          >
+            <Text style={style.buttonText}>
+              {loading ? "Carregando..." : "Receber código para entrar"}
+            </Text>
+          </Pressable>
+
+          <Text style={style.labelError}>{error}</Text>
 
           <Link
             href="/(auth)/signup/page"
@@ -253,6 +286,31 @@ export default function Login({ onClose }: ModalMsgProps) {
             </Text>
           </Link>
 
+          {/* {error !== "" && ( */}
+
+          <View style={{ marginBottom: 18, alignItems: "center" }}>
+            {/* {error.includes("Credenciais inválidas") && ( */}
+            <TouchableOpacity
+              style={{
+                width: 150,
+                height: 20,
+                backgroundColor: colors.laranjado,
+                alignItems: "center",
+                borderRadius: 8,
+                marginTop: 8,
+              }}
+              onPress={() =>
+                navigation.navigate("recuperarsenha", {
+                  email: email,
+                })
+              }
+            >
+              <Text style={style.buttonText}>Recuperar senha</Text>
+            </TouchableOpacity>
+            {/* )} */}
+          </View>
+          {/* )} */}
+
           {usuarioAtivar && (
             <Modal visible={modalMsg} transparent animationType="fade">
               <ModalVerificacao
@@ -262,6 +320,19 @@ export default function Login({ onClose }: ModalMsgProps) {
                 }}
                 msg={msg}
                 user={usuarioAtivar}
+              />
+            </Modal>
+          )}
+
+          {usuarioLoginCodigo && (
+            <Modal visible={modalLoginCodigo} transparent animationType="fade">
+              <ModalVerificacaoLogin
+                onClose={() => {
+                  setModalLoginCodigo(false);
+                  setLoading(false);
+                  navigation.navigate("home");
+                }}
+                user={usuarioLoginCodigo}
               />
             </Modal>
           )}
@@ -336,7 +407,7 @@ const style = StyleSheet.create({
   },
   labelError: {
     color: colors.red,
-    marginTop: -12,
     marginBottom: 18,
+    textAlign: "center",
   },
 });

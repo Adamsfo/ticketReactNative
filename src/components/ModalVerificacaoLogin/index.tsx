@@ -15,14 +15,16 @@ import { apiAuth } from "@/src/lib/auth";
 import { Usuario } from "@/src/types/geral";
 import { ActivityIndicator } from "react-native-paper";
 import { useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "@/src/contexts_/AuthContext";
+import { useNavigation } from "@react-navigation/native";
 
 interface Props {
   onClose: () => void;
-  msg?: string;
   user: Usuario;
 }
 
-export default function ModalVerificacao({ onClose, msg, user }: Props) {
+export default function ModalVerificacaoLogin({ onClose, user }: Props) {
   const [selectedOption, setSelectedOption] = useState<
     "email" | "sms" | "whatsapp"
   >("email");
@@ -30,7 +32,8 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [info, setInfor] = useState("");
+  const { setAuth } = useAuth();
+  const navigation = useNavigation() as any;
 
   const enviarCodigo = async () => {
     if (!selectedOption) return;
@@ -41,14 +44,13 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
 
       // Envia o código de ativação via API interna
       if (selectedOption === "email") {
-        setInfor(user?.email ?? "");
-        result = await apiAuth.enviaCodigoAtivacao(
+        result = await apiAuth.geraCodigoLogin(
           user?.email ?? "",
-          selectedOption
+          selectedOption,
+          true
         );
       } else if (selectedOption === "whatsapp") {
-        setInfor(user?.telefone ?? "");
-        result = await apiAuth.enviaCodigoAtivacao(
+        result = await apiAuth.geraCodigoLogin(
           user?.telefone ?? "",
           selectedOption
         );
@@ -58,7 +60,7 @@ export default function ModalVerificacao({ onClose, msg, user }: Props) {
         const token = "9A4CDF91FE88589BDD9BA3FC";
         const clientToken = "F891e8c3d58d84a7eac82cf030ef273faS";
 
-        const message = `🔐 Seu código de verificação no Jango Ingressos é: ${result.data.code}.
+        const message = `🔐 Seu código para entrar no Jango Ingressos é: ${result.data.code}.
 Não compartilhe com ninguém.`;
 
         const options = {
@@ -111,20 +113,56 @@ Não compartilhe com ninguém.`;
   }
 
   const onVerify = async (code: string) => {
-    console.log("Verificando código:", code, "para info:", info);
-    const result = await apiAuth.varificaAtivarConta(info, code, user?.id ?? 0);
-    const data = result.data;
-    if (data.error) {
-      setError(data.error);
+    console.log("code", code);
+
+    const result = await apiAuth.loginCodigo(
+      selectedOption === "email" ? user?.email ?? "" : user?.telefone ?? "",
+      code,
+      user?.id ?? 0
+    );
+
+    const error = result.data?.error as string;
+
+    if (result.success) {
+      const _token = result.data.data as string;
+
+      if (_token) {
+        if (Platform.OS === "web") {
+          localStorage.setItem("token", _token);
+        } else {
+          await AsyncStorage.setItem("token", _token);
+        }
+
+        const vUserResponse = await apiAuth.getUsuario({
+          filters: { token: _token },
+        });
+        const vUser: Usuario = vUserResponse.data[0];
+
+        if (vUser) {
+          if (vUser.ativo) {
+            await AsyncStorage.setItem("usuario", JSON.stringify(vUser));
+            await Promise.resolve(setAuth(vUser as unknown as Usuario));
+          }
+          navigation.navigate("home");
+          onClose();
+        } else {
+          setAuth({} as Usuario);
+        }
+      } else {
+        setError(error || "Código inválido");
+        setAuth({} as Usuario);
+        await AsyncStorage.removeItem("usuario");
+      }
     } else {
-      onClose();
+      setError(result.message || "Erro desconhecido");
+      setLoading(false);
     }
   };
 
   const enviarMsgWhatsapp = async () => {
     const numero = "5565993074619";
     const mensagem =
-      "Olá! Não estou recebendo o código de ativação! Por favor, me ajude. email: " +
+      "Olá! Não estou recebendo o código para login! Por favor, me ajude. email: " +
       user?.email;
 
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
@@ -147,7 +185,7 @@ Não compartilhe com ninguém.`;
           <View style={styles.container}>
             <View style={styles.header}>
               <View />
-              <Text style={styles.title}>Ativar Conta</Text>
+              <Text style={styles.title}>Login com código</Text>
               <TouchableOpacity onPress={onClose}>
                 <Feather name="x" size={28} color="#212743" />
               </TouchableOpacity>
@@ -157,8 +195,9 @@ Não compartilhe com ninguém.`;
               {step === 1 ? (
                 <>
                   <Text style={styles.subtitle}>
-                    {msg +
-                      "Selecione um método para envio do código para ativar conta:"}
+                    {
+                      "Selecione um método para envio do código para entrar na conta:"
+                    }
                   </Text>
                   <View style={styles.buttonGroup}>
                     {/* {["email", "sms", "whatsapp"].map((type) => ( */}
@@ -231,7 +270,7 @@ Não compartilhe com ninguém.`;
                     onPress={() => onVerify(code)}
                     disabled={code.length !== 4}
                   >
-                    <Text style={styles.sendText}>Verificar</Text>
+                    <Text style={styles.sendText}>Entrar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity onPress={enviarCodigo}>

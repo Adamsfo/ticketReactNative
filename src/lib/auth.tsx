@@ -36,7 +36,7 @@ class ApiAuth {
 
   //Usuario
   public async getUsuario(params?: QueryParams): Promise<ApiResponse> {
-    return api.request<Usuario[]>("/usuario", "GET", null, params);
+    return await api.request<Usuario[]>("/usuario", "GET", null, params);
   }
 
   // Método get Usuario por token
@@ -63,9 +63,18 @@ class ApiAuth {
 
   public async enviaCodigoAtivacao(
     info: string,
-    tipo: string
+    tipo: string,
+    login: boolean = false
   ): Promise<ApiResponse> {
-    return api.request("/enviacodigoativacao", "POST", { info, tipo });
+    return api.request("/enviacodigoativacao", "POST", { info, tipo, login });
+  }
+
+  public async geraCodigoLogin(
+    info: string,
+    tipo: string,
+    login: boolean = false
+  ): Promise<ApiResponse> {
+    return api.request("/geracodigologin", "POST", { info, tipo, login });
   }
 
   public async varificaAtivarConta(
@@ -74,6 +83,14 @@ class ApiAuth {
     id: number
   ): Promise<ApiResponse> {
     return api.request("/verificaativaconta", "POST", { info, codigo, id });
+  }
+
+  public async loginCodigo(
+    info: string,
+    codigo: string,
+    id: number
+  ): Promise<ApiResponse> {
+    return api.request("/loginemailcodigo", "POST", { info, codigo, id });
   }
 }
 
