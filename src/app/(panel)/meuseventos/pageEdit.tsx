@@ -10,6 +10,8 @@ import Footer from "@/src/components/Footer";
 import TabIngressos from "./tabs/tabIngressos";
 import TabFinanceiro from "./tabs/tabFinanceiro";
 import TabPDV from "./tabs/tabPDV";
+import TabPedidosJango from "./tabs/tabPedidosJango";
+import { useRoute } from "@react-navigation/native";
 
 const tabs = [
   { key: "info", label: "Informações" },
@@ -17,10 +19,19 @@ const tabs = [
   { key: "ingressos", label: "Ingressos" },
   { key: "financeiro", label: "Financeiro" },
   { key: "pdv", label: "PDV" },
+  { key: "PedidosJango", label: "Pedidos Jango" },
 ];
 
 export default function MeusEventosEdit() {
+  const route = useRoute();
+  const { id } = route.params as { id: number };
+
   const [activeTab, setActiveTab] = useState("info");
+
+  const filteredTabs = tabs.filter((tab) => {
+    if (tab.key === "PedidosJango" && id !== 1) return false;
+    return true;
+  });
 
   const renderTab = () => {
     switch (activeTab) {
@@ -34,6 +45,8 @@ export default function MeusEventosEdit() {
         return <TabFinanceiro />;
       case "pdv":
         return <TabPDV />;
+      case "PedidosJango":
+        return id === 1 ? <TabPedidosJango /> : null;
       default:
         return null;
     }
@@ -64,7 +77,7 @@ export default function MeusEventosEdit() {
             marginTop: Platform.OS === "web" ? 40 : 80,
           }}
         >
-          {tabs.map((tab) => (
+          {filteredTabs.map((tab) => (
             <TouchableOpacity
               key={tab.key}
               onPress={() => setActiveTab(tab.key)}
