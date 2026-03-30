@@ -19,6 +19,8 @@ import {
   Produtor,
   QueryParams,
   Status,
+  TipoEvento,
+  EventoSuite,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -48,9 +50,13 @@ export default function MeusEventosInfo() {
   const endpointApi = "/evento";
   const navigation = useNavigation() as any;
   const endpointApiIngressos = "/eventoingresso";
+  const endpointApiSuites = "/eventosuite";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
     EventoIngresso[]
+  >([]);
+  const [registrosEventoSuites, setRegistrosEventoSuites] = useState<
+    EventoSuite[]
   >([]);
   const [modalEventoIngressoVisible, setModalEventoIngressoVisible] =
     useState(false);
@@ -85,10 +91,26 @@ export default function MeusEventosInfo() {
     { label: "Alterar", content: "" },
   ];
 
+  const dataEventoSuites = [
+    { label: "Nome", content: "" },
+    { label: "Descrição", content: "" },
+    { label: "Valor", content: "" },
+    { label: "Quantidade Mínima", content: "" },
+    { label: "Quantidade Máxima", content: "" },
+    { label: "Status", content: "" },
+    { label: "Cupom", content: "" },
+    { label: "Alterar", content: "" },
+  ];
+
   const itensStatus = [
     { value: "Ativo", label: "Ativo" },
     { value: "Oculto", label: "Oculto" },
     { value: "Finalizado", label: "Finalizado" },
+  ];
+
+  const tipoEvento = [
+    { value: "Ingresso", label: "Ingresso" },
+    { value: "Pousada", label: "Pousada" },
   ];
 
   const handleChange = (field: any, value: string | number | Date) => {
@@ -98,11 +120,21 @@ export default function MeusEventosInfo() {
   const getRegistrosIngressos = async (params: QueryParams) => {
     const response = await apiGeral.getResource<EventoIngresso>(
       endpointApiIngressos,
-      { ...params, pageSize: 200 }
+      { ...params, pageSize: 200 },
     );
     const registrosData = response.data ?? [];
 
     setRegistrosEventoIngressos(registrosData);
+  };
+
+  const getRegistrosSuites = async (params: QueryParams) => {
+    const response = await apiGeral.getResource<EventoSuite>(
+      endpointApiSuites,
+      { ...params, pageSize: 200 },
+    );
+    const registrosData = response.data ?? [];
+
+    setRegistrosEventoSuites(registrosData);
   };
 
   const handleSave = async () => {
@@ -150,6 +182,7 @@ export default function MeusEventosInfo() {
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
       getRegistrosIngressos({ filters: { idEvento: id } });
+      getRegistrosSuites({ filters: { idEvento: id } });
       // setFormData(data as Evento);
       formData.id = data.id;
       formData.nome = data.nome;
@@ -164,6 +197,7 @@ export default function MeusEventosInfo() {
       formData.latitude = data.latitude;
       formData.longitude = data.longitude;
       formData.descricao = data.descricao;
+      formData.tipo = data.tipo;
     } else {
       formData.id = 0;
       formData.nome = "";
@@ -175,6 +209,7 @@ export default function MeusEventosInfo() {
       formData.idUsuario = 0;
       formData.idProdutor = 0;
       formData.mapa = "";
+      formData.tipo = tipoEvento[0].value as TipoEvento;
     }
   };
 
@@ -184,13 +219,14 @@ export default function MeusEventosInfo() {
 
       const fetchData = async () => {
         setRegistrosEventoIngressos([]);
+        setRegistrosEventoSuites([]);
         await getRegistros(id);
       };
 
       if (id > 0) {
         fetchData();
       }
-    }, [id])
+    }, [id]),
   );
 
   const handleModalEdit = (id: number) => {
@@ -253,6 +289,15 @@ export default function MeusEventosInfo() {
             items={itensStatus}
             currentValue={formData.status ?? ""}
             onValueChange={(text) => handleChange("status", text)}
+          ></Select>
+        </View>
+
+        <View style={{ marginBottom: 16 }}>
+          <Text style={styles.label}>Tipo do Evento</Text>
+          <Select
+            items={tipoEvento}
+            currentValue={formData.tipo ?? ""}
+            onValueChange={(text) => handleChange("tipo", text)}
           ></Select>
         </View>
 
@@ -351,6 +396,74 @@ export default function MeusEventosInfo() {
           />
         </View>
 
+        {id > 0 && formData.tipo === "Pousada" && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={styles.label}>Suites</Text>
+            {Platform.OS === "web" && (
+              <CustomGridTitle data={dataEventoSuites} />
+            )}
+            {registrosEventoSuites.map((item: EventoSuite, index: number) => (
+              <CustomGrid
+                key={index}
+                onItemPress={handleModalEdit}
+                data={[
+                  {
+                    label: dataEventoSuites[0].label,
+                    content: item.nome,
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[1].label,
+                    content: item.descricao || "",
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[2].label,
+                    content: formatCurrency(item.valor),
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[3].label,
+                    content: item.qtdeMinimaPessoas?.toString() || "",
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[4].label,
+                    content: item.qtdeMaximaPessoas?.toString() || "",
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[5].label,
+                    content: item.status,
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[6].label,
+                    content: item.CupomPromocional_nome || "",
+                    id: item.id,
+                  },
+                  {
+                    label: dataEventoSuites[7].label,
+                    // content: formatCurrency(item.valorTotal.toString()),
+                    id: item.id,
+                    iconName: "check-square",
+                    isButton: true,
+                    onPress: handleModalEdit,
+                  },
+                ]}
+              />
+            ))}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+              <TouchableOpacity
+                style={[styles.buttonNovoItem]}
+                onPress={handleModalNovo}
+              >
+                <Text style={styles.buttonText}>Novo</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {id > 0 && (
           <View style={{ marginBottom: 16 }}>
             <Text style={styles.label}>Ingressos</Text>
@@ -413,7 +526,7 @@ export default function MeusEventosInfo() {
                     },
                   ]}
                 />
-              )
+              ),
             )}
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <TouchableOpacity

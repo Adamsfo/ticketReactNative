@@ -115,8 +115,9 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                   <Text
                     style={{ fontWeight: "bold", paddingLeft: 5, fontSize: 18 }}
                   >
-                    {formatCurrency(data.preco)} (+ Taxa{" "}
-                    {formatCurrency(data.taxaServico || 0)})
+                    {/* {formatCurrency(data.preco)} (+ Taxa{" "}
+                    {formatCurrency(data.taxaServico || 0)}) */}
+                    {formatCurrency(data.valor || 0)}
                   </Text>
                 )}
               </Text>
@@ -147,7 +148,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                 onPress={() =>
                   addItemToCart(
                     (state.items.find((item) => item.id === data.id)?.qtde ||
-                      0) - 1
+                      0) - 1,
                   )
                 }
               >
@@ -166,7 +167,7 @@ const CounterTicket: React.FC<CounterTicketProps> = ({ data }) => {
                   if (data.ingressosConfirmados < data.qtde) {
                     addItemToCart(
                       (state.items.find((item) => item.id === data.id)?.qtde ||
-                        0) + 1
+                        0) + 1,
                     );
                   }
                 }}

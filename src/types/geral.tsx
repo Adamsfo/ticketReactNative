@@ -63,6 +63,11 @@ export enum Status {
   Finalizado = "Finalizado",
 }
 
+export enum TipoEvento {
+  Ingresso = "Ingresso",
+  Pousada = "Pousada",
+}
+
 export interface Evento {
   id: number;
   nome: string;
@@ -79,12 +84,28 @@ export interface Evento {
   status?: Status;
   MenorValor?: number;
   Produtor_logo?: string;
+  tipo?: TipoEvento;
 }
 
 export enum StatusEventoIngresso {
   Disponivel = "Ativo",
   Oculto = "Oculto",
   Finalizado = "Finalizado",
+}
+
+export interface EventoSuite {
+  id: number;
+  nome: string;
+  descricao?: string;
+  idEvento: number;
+  preco: number;
+  taxaServico: number;
+  valor: number;
+  qtdeMinimaPessoas?: number;
+  qtdeMaximaPessoas?: number;
+  status: Status;
+  idCupomPromocional?: number;
+  CupomPromocional_nome?: string;
 }
 
 export interface EventoIngresso {

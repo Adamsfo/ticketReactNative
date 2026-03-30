@@ -35,7 +35,7 @@ class Api {
       .map(([key, value]) => {
         if (typeof value === "object") {
           return `${encodeURIComponent(key)}=${encodeURIComponent(
-            JSON.stringify(value)
+            JSON.stringify(value),
           )}`;
         }
         return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
@@ -56,7 +56,7 @@ class Api {
     endpoint: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
     body?: any,
-    params?: QueryParams
+    params?: QueryParams,
   ): Promise<ApiResponse<T>> {
     try {
       const token =

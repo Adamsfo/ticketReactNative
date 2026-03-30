@@ -17,6 +17,7 @@ import Produtor from "./(panel)/produtor/page";
 import Usuario from "./(panel)/usuario/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
 import Ingressos from "./(panel)/ingressos/page";
+import Pousada from "./(panel)/pousada/page";
 import Conferencia from "./(panel)/conferencia/page";
 import Pagamento from "./(panel)/pagamento/page";
 import PagamentoPDV from "./(panel)/pagamentoPDV/page";
@@ -563,6 +564,16 @@ function Routes() {
       <Drawer.Screen
         name="ingressos"
         component={Ingressos}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="pousada"
+        component={Pousada}
         options={{
           headerShown: false,
           drawerLabel: () => null,

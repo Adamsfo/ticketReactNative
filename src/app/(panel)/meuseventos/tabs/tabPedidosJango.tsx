@@ -51,7 +51,9 @@ export default function TabPedidosJango() {
     { label: "Código" },
     { label: "Usuário" },
     { label: "Data" },
-    { label: "Valor" },
+    { label: "Valor Pedido" },
+    { label: "Valor Entregue" },
+    { label: "Total" },
   ];
 
   const getRegistros = async () => {
@@ -70,7 +72,9 @@ export default function TabPedidosJango() {
         id: item.ID,
         usuario: item.USUARIO,
         data: item.DATA.replace("T00:00:00.000Z", ""),
-        valor: item.SUM,
+        valorPedido: item.VALORPEDIDO,
+        valorEntregue: item.VALORENTREGUE,
+        total: item.TOTAL,
       };
     });
 
@@ -93,7 +97,7 @@ export default function TabPedidosJango() {
   useFocusEffect(
     useCallback(() => {
       getRegistros();
-    }, [visibleModal, dataInicio, dataFinal])
+    }, [visibleModal, dataInicio, dataFinal]),
   );
 
   return (
@@ -156,7 +160,17 @@ export default function TabPedidosJango() {
                 },
                 {
                   label: data[3].label,
-                  content: formatCurrency(item.valor.toFixed(2)),
+                  content: formatCurrency(item.valorPedido.toFixed(2)),
+                  id: item.id,
+                },
+                {
+                  label: data[4].label,
+                  content: formatCurrency(item.valorEntregue.toFixed(2)),
+                  id: item.id,
+                },
+                {
+                  label: data[5].label,
+                  content: formatCurrency(item.total.toFixed(2)),
                   id: item.id,
                 },
               ]}

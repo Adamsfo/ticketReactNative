@@ -37,6 +37,7 @@ export default function Index() {
     { label: "Fim" },
     { label: "Status" },
     { label: "Detalhes do Evento", isButton: true },
+    { label: "Tipo" },
   ];
 
   const getRegistros = async () => {
@@ -46,7 +47,7 @@ export default function Index() {
         {
           filters: { idUsuario: user?.id },
           pageSize: 1,
-        }
+        },
       );
 
       const produtor = responseProdutor.data?.[0];
@@ -73,7 +74,7 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       getRegistros();
-    }, [visibleModal])
+    }, [visibleModal]),
   );
 
   const handleModalEdit = (id: number) => {
@@ -117,11 +118,12 @@ export default function Index() {
                     content: item.nome,
                     id: item.id,
                   },
+
                   {
                     label: data[1].label,
                     content: format(
                       parseISO(item.data_hora_inicio.toString()),
-                      "dd/MM/yyyy HH:mm:ss"
+                      "dd/MM/yyyy HH:mm:ss",
                     ),
                     id: item.id,
                   },
@@ -129,13 +131,18 @@ export default function Index() {
                     label: data[2].label,
                     content: format(
                       parseISO(item.data_hora_fim.toString()),
-                      "dd/MM/yyyy HH:mm:ss"
+                      "dd/MM/yyyy HH:mm:ss",
                     ),
                     id: item.id,
                   },
                   {
-                    label: data[2].label,
+                    label: data[3].label,
                     content: item.status ?? "",
+                    id: item.id,
+                  },
+                  {
+                    label: data[5].label,
+                    content: item.tipo,
                     id: item.id,
                   },
                   {

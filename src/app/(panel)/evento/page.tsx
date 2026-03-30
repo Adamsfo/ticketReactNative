@@ -73,7 +73,7 @@ export default function Index() {
       setFormData(data as Evento);
       const respProdutor = await apiGeral.getResourceById<Produtor>(
         "/produtor",
-        data.idProdutor
+        data.idProdutor,
       );
       setProdutor(respProdutor as Produtor);
     } else {
@@ -97,7 +97,7 @@ export default function Index() {
         await getRegistros(id);
       };
       fetchData();
-    }, [id])
+    }, [id]),
   );
 
   const data = [
@@ -140,13 +140,13 @@ export default function Index() {
                 {format(
                   parseISO(formData.data_hora_inicio.toISOString()),
                   "'Inicio 'dd 'de' MMMM 'de' yyyy 'às' HH:mm 'hs'",
-                  { locale: ptBR }
+                  { locale: ptBR },
                 )}{" "}
                 até{" "}
                 {format(
                   parseISO(formData.data_hora_fim.toISOString()),
                   "dd 'de' MMMM 'de' yyyy 'às' HH:mm 'hs'",
-                  { locale: ptBR }
+                  { locale: ptBR },
                 )}
               </Text>
             </View>
@@ -360,7 +360,12 @@ export default function Index() {
 
       <TouchableOpacity
         style={styles.floatingButton}
-        onPress={() => navigation.navigate("ingressos", { id: id })}
+        onPress={() =>
+          navigation.navigate(
+            formData.tipo === "Ingresso" ? "ingressos" : "pousada",
+            { id: id },
+          )
+        }
       >
         <Text style={styles.floatingButtonText}>
           {isPDV ? "Vender Ingressos" : "Comprar Ingressos"}
