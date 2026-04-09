@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
@@ -66,6 +67,10 @@ export default function Index() {
   const navigation = useNavigation() as any;
   const [msg, setMsg] = useState<string>("");
   const [visibleMsg, setVisibleMsg] = useState<boolean>(false);
+  const [modalConfirmVisible, setModalConfirmVisible] = useState(false);
+  const [valorEditavel, setValorEditavel] = useState<string>("0");
+
+  let [transacaoAtual, setTransacaoAtual] = useState(registroTransacao);
 
   //Jango
   // initMercadoPago("APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23", {
@@ -93,7 +98,7 @@ export default function Index() {
     if (idEvento > 0) {
       const response = await apiGeral.getResourceById<Evento>(
         endpointApi,
-        idEvento
+        idEvento,
       );
 
       let data = response as unknown as Evento;
@@ -113,13 +118,25 @@ export default function Index() {
       {
         ...params,
         pageSize: 200,
-      }
+      },
     );
     const registrosData = response.data ?? [];
-    console.log("witsh", width);
+    // console.log("witsh", width);
 
-    console.log("registrosData", registrosData);
+    // console.log("registrosData", registrosData);
     setRegistrosIngressoTransacao(registrosData);
+  };
+
+  const getTransacao = async () => {
+    const response = await apiGeral.getResource<Transacao>("/transacao", {
+      filters: { id: state.transacao?.id },
+      pageSize: 200,
+    });
+    const registrosData = response.data ?? [];
+    console.log("transacao", registrosData[0]);
+
+    setTransacaoAtual(registrosData[0] as Transacao);
+    return registrosData[0] as Transacao;
   };
 
   // const getRegistrosIngressos = async (params: QueryParams) => {
@@ -134,7 +151,7 @@ export default function Index() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("useFocusEffect", idEvento);
+      // console.log("useFocusEffect", idEvento);
       // ✅ Resetando variáveis ao abrir a tela
       setPaymentUniqueId("");
       setDadosDePagamento({});
@@ -146,13 +163,14 @@ export default function Index() {
       if (idEvento > 0) {
         getRegistros(idEvento);
       }
-    }, [idEvento, registroTransacao])
+      setTransacaoAtual(registroTransacao);
+    }, [idEvento, registroTransacao]),
   );
 
   type IngressoAgrupado = IngressoTransacao & { qtde: number };
 
   const agruparIngressos = (
-    ingressos: IngressoTransacao[]
+    ingressos: IngressoTransacao[],
   ): IngressoAgrupado[] => {
     const mapa = new Map<string, IngressoAgrupado>();
 
@@ -182,7 +200,7 @@ export default function Index() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          valorTotal: Number(registroTransacao?.valorTotal),
+          valorTotal: Number(valorEditavel),
           // email: email,
           descricao: "Venda de Ingressos",
           idTransacao: registroTransacao?.id,
@@ -191,8 +209,8 @@ export default function Index() {
             metodoSelecionado === "pix"
               ? 3
               : metodoSelecionado === "crédito"
-              ? 2
-              : 1,
+                ? 2
+                : 1,
         }), // Adicione o ID do usuário aqui
       });
 
@@ -219,25 +237,29 @@ export default function Index() {
         body: JSON.stringify({
           idTransacao: registroTransacao?.id,
           idUsuarioPDV: user?.id,
+          valorTotal: Number(valorEditavel),
         }), // Adicione o ID do usuário aqui
       });
 
       const responseData = await response.json();
-      console.log("responseData", responseData.data);
+      // console.log("responseData", responseData.data);
       setDadosDePagamento(responseData.data);
       setConsultaPagamento(false);
+      let transacaoA = await getTransacao();
 
-      if (registroTransacao.idEvento === 4) {
-        for (const item of registrosIngressoTransacao) {
-          const ingresso = await getIngresso(item.idIngresso);
-          await apiGeral.createResource("/validadorqrcode", {
-            ingresso: ingresso.id,
-          });
+      if ((transacaoA?.valorRecebido ?? 0) >= (transacaoA?.valorTotal ?? 0)) {
+        if (registroTransacao.idEvento === 4) {
+          for (const item of registrosIngressoTransacao) {
+            const ingresso = await getIngresso(item.idIngresso);
+            await apiGeral.createResource("/validadorqrcode", {
+              ingresso: ingresso.id,
+            });
+          }
         }
-      }
 
-      if (registroTransacao.idEvento === 1) {
-        handleAbrirConta();
+        if (registroTransacao.idEvento === 1) {
+          handleAbrirConta();
+        }
       }
 
       // setloading(false);
@@ -252,7 +274,7 @@ export default function Index() {
       filters: { id },
       pageSize: 200,
     });
-    console.log("response", response);
+    // console.log("response", response);
     const registrosData = response.data ?? [];
     return registrosData[0];
   };
@@ -274,13 +296,15 @@ export default function Index() {
 
       const dados: { payment_message: string } = Array.isArray(response?.data)
         ? { payment_message: "" }
-        : response?.data ?? { payment_message: "" };
+        : (response?.data ?? { payment_message: "" });
 
       setDadosDePagamento(response.data);
-      console.log("dados", dados);
+      // console.log("dados", dados);
 
+      // console.log("dadosDePagamento", dadosDePagamento);
       if (dados.payment_message === "Pago") {
         setConsultaPagamento(false);
+        await getTransacao();
         if (registroTransacao.idEvento === 4) {
           for (const item of registrosIngressoTransacao) {
             const ingresso = await getIngresso(item.idIngresso);
@@ -293,8 +317,12 @@ export default function Index() {
           handleAbrirConta();
         }
       }
-      if (dados.payment_message === "Cancelado/erro") {
+      if (
+        dados.payment_message === "Cancelado/erro" ||
+        dados.payment_message === "Parcial"
+      ) {
         setConsultaPagamento(false);
+        getTransacao();
       }
     } catch (error) {
       console.log("Erro ao verificar status do pagamento POS:", error);
@@ -312,7 +340,7 @@ export default function Index() {
 
       const dados: { payment_message: string } = Array.isArray(response?.data)
         ? { payment_message: "" }
-        : response?.data ?? { payment_message: "" };
+        : (response?.data ?? { payment_message: "" });
 
       setDadosDePagamento(response.data);
 
@@ -365,8 +393,8 @@ export default function Index() {
       html += `
       <div class="card">
         <img class="image" src="${api.getBaseApi()}/uploads/${
-        ingresso.Evento_imagem
-      }" />
+          ingresso.Evento_imagem
+        }" />
         <div class="title">${ingresso.Evento_nome}</div>
         ${
           ingresso.tipo === "Cortesia"
@@ -374,8 +402,8 @@ export default function Index() {
             : ""
         }
         <div class="ticket">${ingresso.TipoIngresso_descricao} ${
-        ingresso.EventoIngresso_nome
-      }</div>
+          ingresso.EventoIngresso_nome
+        }</div>
         ${
           ingresso.nomeImpresso
             ? `<div class="ticket">${ingresso.nomeImpresso}</div>`
@@ -387,7 +415,7 @@ export default function Index() {
         <div class="info"><span class="label">Data:</span> ${formatInTimeZone(
           parseISO((ingresso.Evento_data_hora_inicio ?? "").toString()),
           "America/Cuiaba",
-          "dd/MM/yyyy HH:mm"
+          "dd/MM/yyyy HH:mm",
         )}</div>
         <div class="info"><span class="label">Endereço:</span> ${
           ingresso.Evento_endereco
@@ -578,7 +606,7 @@ export default function Index() {
                               >
                                 Desconto:{" "}
                                 {formatCurrency(
-                                  (item.precoDesconto * item.qtde).toFixed(2)
+                                  (item.precoDesconto * item.qtde).toFixed(2),
                                 )}
                               </Text>
                             ) : null}
@@ -588,7 +616,7 @@ export default function Index() {
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
                               {formatCurrency(
-                                (item.preco * item.qtde).toFixed(2)
+                                (item.preco * item.qtde).toFixed(2),
                               )}
                             </Text>
                           </View>
@@ -622,7 +650,7 @@ export default function Index() {
                         >
                           Desconto:{" "}
                           {formatCurrency(
-                            registroTransacao?.taxaServicoDesconto ?? 0
+                            registroTransacao?.taxaServicoDesconto ?? 0,
                           )}
                         </Text>
                       )}
@@ -634,6 +662,18 @@ export default function Index() {
                     Total incluindo taxas:{" "}
                     <Text style={{ fontWeight: "bold" }}>
                       {formatCurrency(registroTransacao?.valorTotal ?? 0)}
+                    </Text>
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      color: colors.greenEscuro,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Valor Recebido:{" "}
+                    <Text style={{ fontWeight: "bold" }}>
+                      {formatCurrency(transacaoAtual?.valorRecebido ?? 0)}
                     </Text>
                   </Text>
                 </View>
@@ -717,13 +757,6 @@ export default function Index() {
                 />
               )}
 
-              {dadosDePagamento.payment_status && (
-                <StatusPaymentCustomizadoPOS
-                  data={dadosDePagamento}
-                  idUsuario={registroTransacao?.idUsuario}
-                />
-              )}
-
               {/* {dadosDePagamento.payment_status === 4 && idEvento >= 1 && (
                 <TouchableOpacity
                   style={[
@@ -738,6 +771,50 @@ export default function Index() {
                   </Text>
                 </TouchableOpacity>
               )} */}
+
+              {metodoSelecionado &&
+                // dadosDePagamento?.payment_status != 4 &&
+                transacaoAtual.status != "Pago" && (
+                  <View style={styles.confirmContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.confirmButton,
+                        {
+                          backgroundColor: consultaPagamento
+                            ? colors.red
+                            : colors.azul,
+                        },
+                      ]}
+                      onPress={() => {
+                        if (!consultaPagamento) {
+                          setDadosDePagamento({});
+                          setValorEditavel(
+                            String(
+                              (registroTransacao?.valorTotal ?? 0) -
+                                (transacaoAtual?.valorRecebido ?? 0),
+                            ),
+                          );
+                          setModalConfirmVisible(true);
+                        } else {
+                          CancelaPagamentoPos();
+                        }
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>
+                        {consultaPagamento
+                          ? "Cancelar Pagamento"
+                          : "Confirmar " + metodoSelecionado}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+              {dadosDePagamento.payment_status && (
+                <StatusPaymentCustomizadoPOS
+                  data={dadosDePagamento}
+                  idUsuario={registroTransacao?.idUsuario}
+                />
+              )}
 
               {dadosDePagamento.payment_status === 4 && idEvento >= 1 && (
                 <TouchableOpacity
@@ -790,7 +867,7 @@ export default function Index() {
                             body.offsetHeight,
                             html.clientHeight,
                             html.scrollHeight,
-                            html.offsetHeight
+                            html.offsetHeight,
                           );
                           iframeRef.current.style.height = height + "px";
                         }
@@ -799,43 +876,129 @@ export default function Index() {
                   />
                 </div>
               ) : null}
-
-              {metodoSelecionado && dadosDePagamento?.payment_status != 4 && (
-                <View style={styles.confirmContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.confirmButton,
-                      {
-                        backgroundColor: consultaPagamento
-                          ? colors.red
-                          : colors.azul,
-                      },
-                    ]}
-                    onPress={() => {
-                      if (!consultaPagamento) {
-                        if (metodoSelecionado === "Dinheiro") {
-                          fetchPagamentoDinheiro();
-                        } else {
-                          fetchPagamentoPos();
-                        }
-                      } else {
-                        CancelaPagamentoPos();
-                      }
-                    }}
-                  >
-                    <Text style={styles.confirmButtonText}>
-                      {consultaPagamento
-                        ? "Cancelar Pagamento"
-                        : "Confirmar " + metodoSelecionado}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
             </>
           )}
         />
         <Modal visible={visibleMsg} transparent animationType="fade">
           <ModalMsg msg={msg} onClose={() => setVisibleMsg(false)} />
+        </Modal>
+
+        <Modal visible={modalConfirmVisible} transparent animationType="fade">
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "#fff",
+                padding: 20,
+                borderRadius: 12,
+                width: "85%",
+              }}
+            >
+              <Text
+                style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}
+              >
+                Confirmar pagamento
+              </Text>
+
+              {/* <Text style={{ marginBottom: 5 }}>Valor:</Text> */}
+              {/* 
+              <TextInput
+                value={valorEditavel.toString()}
+                onChangeText={(text) => {
+                  const numeric = text.replace(",", ".");
+                  setValorEditavel(String(numeric));
+                }}
+                keyboardType="numeric"
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: 18,
+                  marginBottom: 15,
+                }}
+              /> */}
+
+              <View>
+                <Text style={styles.label}>Valor</Text>
+                <TextInput
+                  style={styles.input}
+                  multiline={Platform.OS === "web" ? false : true}
+                  placeholder="Exemplo: 60,00"
+                  keyboardType="numeric"
+                  value={formatCurrency(valorEditavel)}
+                  onChangeText={(text) => {
+                    const cleaned = text
+                      .replace(/R\$\s?/g, "")
+                      .replace(/\./g, "")
+                      .replace(",", ".");
+
+                    setValorEditavel(cleaned);
+                  }}
+                ></TextInput>
+              </View>
+
+              <Text style={{ marginBottom: 15 }}>
+                Método:{" "}
+                <Text style={{ fontWeight: "bold" }}>{metodoSelecionado}</Text>
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#ccc",
+                    padding: 12,
+                    borderRadius: 8,
+                    flex: 1,
+                    marginRight: 5,
+                  }}
+                  onPress={() => setModalConfirmVisible(false)}
+                >
+                  <Text style={{ textAlign: "center" }}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: colors.azul,
+                    padding: 12,
+                    borderRadius: 8,
+                    flex: 1,
+                    marginLeft: 5,
+                  }}
+                  onPress={async () => {
+                    if (!valorEditavel || Number(valorEditavel) <= 0) {
+                      setMsg("Informe um valor válido");
+                      setVisibleMsg(true);
+                      return;
+                    }
+
+                    setModalConfirmVisible(false);
+
+                    if (metodoSelecionado === "Dinheiro") {
+                      await fetchPagamentoDinheiro();
+                    } else {
+                      await fetchPagamentoPos();
+                    }
+                  }}
+                >
+                  <Text style={{ color: "#fff", textAlign: "center" }}>
+                    Confirmar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
       </View>
       {/* {modalVisible && <ModalResumoIngresso step={2} />} */}

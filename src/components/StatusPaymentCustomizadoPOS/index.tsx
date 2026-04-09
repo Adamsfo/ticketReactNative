@@ -109,24 +109,26 @@ export default function StatusPaymentCustomizadoPOS({
         </Text>
       </View>
 
-      {data.payment_status === 4 && idEvento === 1 && (
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.buttonSave,
-            { alignSelf: "center", marginTop: 16 },
-          ]}
-          onPress={() =>
-            navigation.navigate("validador", {
-              idUsuario: idUsuario,
-            })
-          }
-        >
-          <Text style={{ color: "white", fontWeight: "600" }}>
-            Validador Jango
-          </Text>
-        </TouchableOpacity>
-      )}
+      {data.payment_status === 4 &&
+        idEvento === 1 &&
+        data.payment_message !== "Parcial" && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.buttonSave,
+              { alignSelf: "center", marginTop: 16 },
+            ]}
+            onPress={() =>
+              navigation.navigate("validador", {
+                idUsuario: idUsuario,
+              })
+            }
+          >
+            <Text style={{ color: "white", fontWeight: "600" }}>
+              Validador Jango
+            </Text>
+          </TouchableOpacity>
+        )}
     </View>
   );
 }
