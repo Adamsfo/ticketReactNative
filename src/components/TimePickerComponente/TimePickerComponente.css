@@ -1,12 +1,14 @@
 /* Evita zoom no iOS */
 .custom-timepicker {
   font-size: 16px !important; /* mínimo necessário para evitar zoom */
-  padding: 10px;
+  padding: 10px 4px;
   height: 45px;
   width: 100%;
+  min-width: 5.5ch;
   border-radius: 6px;
   border: 1px solid #ccc;
   box-sizing: border-box;
+  text-align: center;
 }
 
 .react-datepicker__triangle {

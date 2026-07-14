@@ -1,53 +1,105 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Text,
   StyleSheet,
   Platform,
   Dimensions,
+  useWindowDimensions,
   View,
   ScrollView,
   TouchableOpacity,
   Image,
   TextInput,
   ActivityIndicator,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
-import {
-  Evento,
-  EventoIngresso,
-  EventoSuite,
-  Ingresso,
-  Produtor,
-  QueryParams,
-  Usuario,
-} from "@/src/types/geral";
+import { Evento, EventoSuite, QueryParams, Usuario } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
 import { useNavigation } from "@react-navigation/native";
-import Accordion from "@/src/components/Accordion";
-import CounterTicket from "@/src/components/CounterTicket";
 import { api } from "@/src/lib/api";
-import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
-import StepIndicator from "@/src/components/StepIndicator";
+import ModalResumoPousada, {
+  ItemCarrinhoHospedagem,
+} from "@/src/components/ModalResumoPousada";
+import StepIndicatorHospedagem from "@/src/components/StepIndicatorHospedagem";
 import { useCart } from "@/src/contexts_/CartContext";
 import { useAuth } from "@/src/contexts_/AuthContext";
+import { useHospedagem } from "@/src/contexts_/HospedagemContext";
 import { apiAuth } from "@/src/lib/auth";
 import { Feather } from "@expo/vector-icons";
 import formatCurrency from "@/src/components/FormatCurrency";
+import DatePickerComponente from "@/src/components/DatePickerComponente";
+import TimePickerComponente from "@/src/components/TimePickerComponente";
+import ModalMsg from "@/src/components/ModalMsg";
+import {
+  getCotacao,
+  getDisponibilidade,
+} from "@/src/lib/reservaSuite";
+import {
+  calcularNoitesHotelaria,
+  calcularSubtotalSuitePousada,
+  VALOR_ADICIONAL_ADULTO_EXTRA,
+  VALOR_ADICIONAL_CRIANCA_EXTRA,
+} from "@/src/lib/reservaSuitePricing";
 
 const { width } = Dimensions.get("window");
 
+/** Espaço superior ao alinhar a lista de suítes (não cobrir título pelo topo do ScrollView). */
+const SCROLL_OFFSET_SUITES = 16;
+
+const CHECKIN_TIME_MIN = (() => {
+  const d = new Date();
+  d.setHours(14, 0, 0, 0);
+  return d;
+})();
+const CHECKIN_TIME_MAX = (() => {
+  const d = new Date();
+  d.setHours(19, 0, 0, 0);
+  return d;
+})();
+const CHECKOUT_TIME_MIN = (() => {
+  const d = new Date();
+  d.setHours(8, 0, 0, 0);
+  return d;
+})();
+const CHECKOUT_TIME_MAX = (() => {
+  const d = new Date();
+  d.setHours(13, 0, 0, 0);
+  return d;
+})();
+
+function minutosDesdeMeiaNoite(time: Date): number {
+  return time.getHours() * 60 + time.getMinutes();
+}
+
+function horarioDentroDoIntervalo(time: Date, min: Date, max: Date): boolean {
+  const atual = minutosDesdeMeiaNoite(time);
+  const minimo = minutosDesdeMeiaNoite(min);
+  const maximo = minutosDesdeMeiaNoite(max);
+  return atual >= minimo && atual <= maximo;
+}
+
+function getLimitesSuite(suite: EventoSuite) {
+  const min = suite.qtdeMinimaPessoas ?? 1;
+  const max = suite.qtdeMaximaPessoas ?? min;
+  return { min, max };
+}
+
 export default function Index() {
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobileSuiteLayout = screenWidth < 768;
   const endpointApi = "/evento";
-  const endpointApiIngressos = "/eventoingresso";
-  const endpointApiSuites = "/eventosuite";
   const { isPDV, user } = useAuth();
   const route = useRoute();
   const { state, dispatch } = useCart();
+  const { dispatch: dispatchHospedagem } = useHospedagem();
   const navigation = useNavigation() as any;
   const { id } = route.params as { id: number };
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -77,14 +129,45 @@ export default function Index() {
     id_cliente: 0,
   });
 
-  const [registrosEventoIngressos, setRegistrosEventoIngressos] = useState<
-    EventoIngresso[]
-  >([]);
   const [registrosEventoSuites, setRegistrosEventoSuites] = useState<
     EventoSuite[]
   >([]);
-  const [modalVisible, setModalVisible] = useState(true);
-  const data = [{ label: "Nome", content: "Nome" }];
+  const [disponibilidadeBuscada, setDisponibilidadeBuscada] = useState(false);
+  const [buscandoDisponibilidade, setBuscandoDisponibilidade] = useState(false);
+  const [carrinho, setCarrinho] = useState<ItemCarrinhoHospedagem[]>([]);
+  const [suiteEmEdicao, setSuiteEmEdicao] = useState<EventoSuite | null>(null);
+  const [adultosItem, setAdultosItem] = useState(1);
+  const [criancasItem, setCriancasItem] = useState(0);
+  const [adicionandoItem, setAdicionandoItem] = useState(false);
+  const [msgApi, setMsgApi] = useState("");
+  const [visibleMsg, setVisibleMsg] = useState(false);
+  const [filtroErrors, setFiltroErrors] = useState<{ [key: string]: string }>(
+    {},
+  );
+  const scrollViewRef = useRef<ScrollView>(null);
+  const suitesListRef = useRef<View>(null);
+  const scrollOffsetYRef = useRef(0);
+  const pendenteScrollSuitesRef = useRef(false);
+
+  const defaultCheckinTime = () => {
+    const d = new Date();
+    d.setHours(14, 0, 0, 0);
+    return d;
+  };
+  const defaultCheckoutTime = () => {
+    const d = new Date();
+    d.setHours(13, 0, 0, 0);
+    return d;
+  };
+
+  const [checkinDate, setCheckinDate] = useState(new Date());
+  const [checkinTime, setCheckinTime] = useState(defaultCheckinTime);
+  const [checkoutDate, setCheckoutDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
+  const [checkoutTime, setCheckoutTime] = useState(defaultCheckoutTime);
 
   const getRegistros = async (id: number) => {
     if (id > 0) {
@@ -93,34 +176,195 @@ export default function Index() {
       let data = response as unknown as Evento;
       data.data_hora_inicio = new Date(data.data_hora_inicio.toString());
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
-      getRegistrosIngressos({
-        filters: { idEvento: id, status: isPDV ? "PDV" : "Ativo" },
-      });
-      getRegistrosSuites({
-        filters: { idEvento: id, status: isPDV ? "PDV" : "Ativo" },
-      });
       setFormData(data as Evento);
     }
   };
 
-  const getRegistrosIngressos = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<EventoIngresso>(
-      endpointApiIngressos,
-      { ...params, pageSize: 200 },
-    );
-    const registrosData = response.data ?? [];
-
-    setRegistrosEventoIngressos(registrosData);
+  const combineDateTime = (date: Date, time: Date) => {
+    const d = new Date(date);
+    d.setHours(time.getHours(), time.getMinutes(), 0, 0);
+    return d;
   };
 
-  const getRegistrosSuites = async (params: QueryParams) => {
-    const response = await apiGeral.getResource<EventoSuite>(
-      endpointApiSuites,
-      { ...params, pageSize: 200 },
-    );
-    const registrosData = response.data ?? [];
+  const getCheckinIso = () => combineDateTime(checkinDate, checkinTime).toISOString();
+  const getCheckoutIso = () =>
+    combineDateTime(checkoutDate, checkoutTime).toISOString();
 
-    setRegistrosEventoSuites(registrosData);
+  const validarFiltros = () => {
+    const newErrors: { [key: string]: string } = {};
+    const checkin = combineDateTime(checkinDate, checkinTime);
+    const checkout = combineDateTime(checkoutDate, checkoutTime);
+
+    if (!checkinDate || !checkoutDate) {
+      newErrors.datas = "Check-in e check-out são obrigatórios.";
+    }
+    if (checkout <= checkin) {
+      newErrors.datas = "Check-out deve ser posterior ao check-in.";
+    }
+    if (!horarioDentroDoIntervalo(checkinTime, CHECKIN_TIME_MIN, CHECKIN_TIME_MAX)) {
+      newErrors.checkinHorario =
+        "O horário de check-in deve estar entre 14:00 e 19:00.";
+    }
+    if (!horarioDentroDoIntervalo(checkoutTime, CHECKOUT_TIME_MIN, CHECKOUT_TIME_MAX)) {
+      newErrors.checkoutHorario =
+        "O horário de check-out deve estar entre 08:00 e 13:00.";
+    }
+    setFiltroErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleBuscarDisponibilidade = async () => {
+    setFiltroErrors({});
+    setCarrinho([]);
+    setSuiteEmEdicao(null);
+    pendenteScrollSuitesRef.current = false;
+    if (!validarFiltros()) return;
+
+    setBuscandoDisponibilidade(true);
+    setDisponibilidadeBuscada(false);
+    try {
+      const response = await getDisponibilidade({
+        idEvento: id,
+        checkin: getCheckinIso(),
+        checkout: getCheckoutIso(),
+      });
+      if (!response.success || !response.data) {
+        setMsgApi(response.message || "Erro ao buscar disponibilidade.");
+        setVisibleMsg(true);
+        setRegistrosEventoSuites([]);
+        return;
+      }
+      const suites = (response.data.suites ?? []) as EventoSuite[];
+      setRegistrosEventoSuites(suites);
+      setDisponibilidadeBuscada(true);
+      if (suites.length > 0) {
+        pendenteScrollSuitesRef.current = true;
+      }
+    } catch {
+      setMsgApi("Erro ao buscar disponibilidade.");
+      setVisibleMsg(true);
+    } finally {
+      setBuscandoDisponibilidade(false);
+    }
+  };
+
+  const scrollParaListaSuites = useCallback(() => {
+    const scrollView = scrollViewRef.current;
+    const target = suitesListRef.current;
+    if (!scrollView || !target) return;
+
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const el = document.getElementById("pousada-suites-anchor");
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+
+    target.measureInWindow((_tx, targetY) => {
+      scrollView.measureInWindow((_sx, scrollViewY) => {
+        const y =
+          targetY - scrollViewY + scrollOffsetYRef.current - SCROLL_OFFSET_SUITES;
+        scrollView.scrollTo({
+          y: Math.max(0, y),
+          animated: true,
+        });
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!pendenteScrollSuitesRef.current) return;
+    if (!disponibilidadeBuscada || registrosEventoSuites.length === 0) return;
+
+    pendenteScrollSuitesRef.current = false;
+
+    const timer = setTimeout(() => {
+      scrollParaListaSuites();
+    }, Platform.OS === "web" ? 80 : 120);
+
+    return () => clearTimeout(timer);
+  }, [disponibilidadeBuscada, registrosEventoSuites, scrollParaListaSuites]);
+
+  const handleAbrirAdicionarSuite = (suite: EventoSuite) => {
+    const { min } = getLimitesSuite(suite);
+    setSuiteEmEdicao(suite);
+    setAdultosItem(min);
+    setCriancasItem(0);
+  };
+
+  const handleAdicionarAoCarrinho = async () => {
+    if (!suiteEmEdicao) return;
+    const { min, max } = getLimitesSuite(suiteEmEdicao);
+    const total = adultosItem + criancasItem;
+    if (total < min) {
+      setMsgApi(`Esta suíte requer no mínimo ${min} hóspede(s).`);
+      setVisibleMsg(true);
+      return;
+    }
+    if (total > max) {
+      setMsgApi(`Esta suíte permite no máximo ${max} hóspede(s).`);
+      setVisibleMsg(true);
+      return;
+    }
+    if (carrinho.some((i) => i.idEventoSuite === suiteEmEdicao.id)) {
+      setMsgApi("Esta suíte já está no carrinho.");
+      setVisibleMsg(true);
+      return;
+    }
+
+    setAdicionandoItem(true);
+    try {
+      const response = await getCotacao({
+        idEventoSuite: suiteEmEdicao.id,
+        checkin: getCheckinIso(),
+        checkout: getCheckoutIso(),
+        adultos: adultosItem,
+        criancas: criancasItem,
+      });
+      if (!response.success || !response.data) {
+        setMsgApi(response.message || "Erro ao calcular cotação.");
+        setVisibleMsg(true);
+        return;
+      }
+      setCarrinho((prev) => [
+        ...prev,
+        {
+          idEventoSuite: suiteEmEdicao.id,
+          nomeSuite: suiteEmEdicao.nome,
+          adultos: adultosItem,
+          criancas: criancasItem,
+          cotacao: response.data!,
+        },
+      ]);
+      setSuiteEmEdicao(null);
+    } catch {
+      setMsgApi("Erro ao calcular cotação.");
+      setVisibleMsg(true);
+    } finally {
+      setAdicionandoItem(false);
+    }
+  };
+
+  const handleRemoverDoCarrinho = (idEventoSuite: number) => {
+    setCarrinho((prev) => prev.filter((i) => i.idEventoSuite !== idEventoSuite));
+  };
+
+  const handleIrConferencia = () => {
+    if (carrinho.length === 0) return;
+
+    dispatchHospedagem({
+      type: "SET_RESERVA",
+      payload: {
+        idEvento: id,
+        checkin: getCheckinIso(),
+        checkout: getCheckoutIso(),
+        itens: carrinho,
+        usuarioVendaPdvId: isPDV ? formDataUsuario.id : null,
+      },
+    });
+
+    navigation.navigate("conferenciaHospedagem", { idEvento: id });
   };
 
   useEffect(() => {
@@ -132,6 +376,11 @@ export default function Index() {
     useCallback(() => {
       zerarIngressos();
       dispatch({ type: "REMOVE_TRANSACAO" });
+      dispatchHospedagem({ type: "CLEAR" });
+      setDisponibilidadeBuscada(false);
+      setRegistrosEventoSuites([]);
+      setCarrinho([]);
+      setSuiteEmEdicao(null);
       setFormDataUsuario({
         id: 0,
         login: "",
@@ -153,19 +402,6 @@ export default function Index() {
       }
     }, [id]),
   );
-
-  // Filtrar os diferentes TipoIngresso_descricao
-  const tipoIngressoDescricoes = Array.from(
-    new Set(
-      registrosEventoIngressos.map(
-        (ingresso) => ingresso.TipoIngresso_descricao,
-      ),
-    ),
-  );
-
-  const handleCloseModal = () => {
-    setModalVisible(false);
-  };
 
   const zerarIngressos = () => {
     state.items.map((ingresso) => {
@@ -418,14 +654,6 @@ export default function Index() {
     }
   };
 
-  const calculateValor = (valorInicial: number = 0) => {
-    return state.items
-      .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.valor;
-      }, valorInicial)
-      .toFixed(2);
-  };
-
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -436,13 +664,18 @@ export default function Index() {
 
       <View style={styles.container}>
         <View style={styles.areaStep}>
-          <StepIndicator currentStep={1} />
+          <StepIndicatorHospedagem currentStep={1} />
         </View>
         <Text style={styles.titulo}>Pousada</Text>
 
         <ScrollView
+          ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+            scrollOffsetYRef.current = event.nativeEvent.contentOffset.y;
+          }}
           style={{
             borderRadius: 8,
             flexGrow: 1,
@@ -612,79 +845,439 @@ export default function Index() {
             </View>
           )}
 
-          <View style={styles.area}>
-            {registrosEventoSuites.map((suite) => (
-              <View key={suite.id} style={styles.areaIngressos}>
-                {/* ===== HEADER DA SUÍTE ===== */}
-                <Text style={[styles.tituloEvento, { textAlign: "center" }]}>
-                  Suíte {suite.nome}
-                </Text>
-
-                {/* ===== IMAGEM + DESCRIÇÃO ===== */}
-                <View style={styles.areaSuiteInfo}>
-                  <Image
-                    source={{
-                      uri: api.getBaseApi() + "/uploads/" + formData.imagem,
-                    }}
-                    style={styles.imagemSuite}
+          <View style={styles.areaFiltros}>
+            <Text style={[styles.tituloEvento, { marginBottom: 8 }]}>
+              Período da estadia
+            </Text>
+            <View style={styles.filtroRow}>
+              <Text style={styles.labelData}>Check-in</Text>
+              <View style={styles.filtroDateTime}>
+                <View style={styles.filtroDateField}>
+                  <DatePickerComponente
+                    value={checkinDate}
+                    onChange={setCheckinDate}
                   />
-
-                  <View style={styles.areaDescricaoSuite}>
-                    {/* <Text style={styles.tituloDescricao}>Descrição</Text> */}
-                    <Text style={styles.descricaoSuite}>
-                      {suite.descricao || "Descrição não informada"}
-                    </Text>
-                    <Text style={styles.descricaoSuite}>
-                      {"Minimo de " + suite.qtdeMinimaPessoas + " pessoas"}
-                    </Text>
-                    <Text style={styles.descricaoSuite}>
-                      {"Máximo de " + suite.qtdeMaximaPessoas + " pessoas"}
-                    </Text>
-                  </View>
                 </View>
-
-                {/* ===== INGRESSOS DA SUÍTE ===== */}
-                {tipoIngressoDescricoes.map((descricao, index) => {
-                  const ingressosDaSuite = registrosEventoIngressos.filter(
-                    (ingresso) => ingresso.TipoIngresso_descricao === descricao,
-                  );
-
-                  if (ingressosDaSuite.length === 0) return null;
-
-                  return (
-                    <Accordion
-                      key={`${suite.id}-${descricao}-${index}`}
-                      index={index}
-                      title={
-                        Number(calculateValor(0)) > 0
-                          ? "Total Suite: " +
-                            formatCurrency(calculateValor(Number(suite.valor)))
-                          : ""
-                      }
-                    >
-                      {ingressosDaSuite.map((ingresso) => (
-                        <View
-                          key={ingresso.id}
-                          style={{ flexDirection: "column" }}
-                        >
-                          <CounterTicket data={ingresso} />
-                        </View>
-                      ))}
-                    </Accordion>
-                  );
-                })}
-
-                <View style={{ height: 50 }} />
+                <View style={styles.filtroTimeField}>
+                  <TimePickerComponente
+                    value={checkinTime}
+                    onChange={setCheckinTime}
+                    minTime={CHECKIN_TIME_MIN}
+                    maxTime={CHECKIN_TIME_MAX}
+                  />
+                </View>
               </View>
-            ))}
+            </View>
+            <View style={styles.filtroRow}>
+              <Text style={styles.labelData}>Check-out</Text>
+              <View style={styles.filtroDateTime}>
+                <View style={styles.filtroDateField}>
+                  <DatePickerComponente
+                    value={checkoutDate}
+                    onChange={setCheckoutDate}
+                  />
+                </View>
+                <View style={styles.filtroTimeField}>
+                  <TimePickerComponente
+                    value={checkoutTime}
+                    onChange={setCheckoutTime}
+                    minTime={CHECKOUT_TIME_MIN}
+                    maxTime={CHECKOUT_TIME_MAX}
+                  />
+                </View>
+              </View>
+            </View>
+            {filtroErrors.datas && (
+              <Text style={styles.labelError}>{filtroErrors.datas}</Text>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.newButton,
+                { alignSelf: "center", marginBottom: 12 },
+              ]}
+              onPress={handleBuscarDisponibilidade}
+              disabled={buscandoDisponibilidade}
+            >
+              {buscandoDisponibilidade ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.newButtonText}>Buscar disponibilidade</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-            <View style={{ height: 100 }} />
+          <View style={styles.areaInfoHospedes}>
+            <Text style={styles.infoHospedesTitulo}>
+              ⚠️ Informações importantes
+            </Text>
+            <Text style={styles.infoHospedesItem}>
+              • Informe a quantidade REAL de adultos e crianças que irão se
+              hospedar.
+            </Text>
+            <Text style={styles.infoHospedesItem}>
+              • Cada hóspede receberá uma pulseira individual de acesso.
+            </Text>
+            <Text style={styles.infoHospedesItem}>
+              • Serão emitidas pulseiras apenas para as pessoas informadas na
+              reserva.
+            </Text>
+            <Text style={[styles.infoHospedesItem, { marginBottom: 0 }]}>
+              • Caso a quantidade de hóspedes seja diferente no check-in, será
+              necessária a regularização da reserva conforme a tabela vigente,
+              sujeita à disponibilidade.
+            </Text>
+          </View>
+
+          <View style={styles.area}>
+            {disponibilidadeBuscada && registrosEventoSuites.length === 0 && (
+              <Text style={[styles.descricaoSuite, { textAlign: "center" }]}>
+                Nenhuma suíte disponível para o período informado.
+              </Text>
+            )}
+            {carrinho.length > 0 && (
+              <View style={styles.areaCarrinho}>
+                <Text style={[styles.tituloEvento, { marginBottom: 6 }]}>
+                  Carrinho ({carrinho.length} suíte
+                  {carrinho.length > 1 ? "s" : ""})
+                </Text>
+                {carrinho.map((item) => (
+                  <View key={item.idEventoSuite} style={styles.itemCarrinho}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.descricaoSuite}>{item.nomeSuite}</Text>
+                      <Text style={styles.descricaoSuite}>
+                        {item.adultos} adulto(s)
+                        {item.criancas > 0
+                          ? `, ${item.criancas} criança(s)`
+                          : ""}{" "}
+                        — {formatCurrency(item.cotacao.totais.valorTotal)}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemoverDoCarrinho(item.idEventoSuite)}
+                    >
+                      <Feather name="trash-2" size={22} color={colors.red} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {disponibilidadeBuscada && registrosEventoSuites.length > 0 && (
+              <View
+                ref={suitesListRef}
+                collapsable={false}
+                nativeID="pousada-suites-anchor"
+                style={
+                  Platform.OS === "web"
+                    ? ({ scrollMarginTop: SCROLL_OFFSET_SUITES } as object)
+                    : undefined
+                }
+              >
+                {registrosEventoSuites.map((suite, index) => {
+                  const noCarrinho = carrinho.some(
+                    (i) => i.idEventoSuite === suite.id,
+                  );
+                  const emEdicao = suiteEmEdicao?.id === suite.id;
+                  return (
+                  <View
+                    key={suite.id}
+                    style={[
+                      styles.areaIngressos,
+                      (emEdicao || noCarrinho) && styles.suiteSelecionada,
+                      index < registrosEventoSuites.length - 1 &&
+                        styles.areaIngressosSpacing,
+                    ]}
+                  >
+                    <Text style={[styles.tituloEvento, { textAlign: "center" }]}>
+                      Suíte {suite.nome}
+                      {noCarrinho ? " ✓" : ""}
+                    </Text>
+                    <View
+                      style={[
+                        styles.areaSuiteInfo,
+                        isMobileSuiteLayout && styles.areaSuiteInfoMobile,
+                      ]}
+                    >
+                      <View
+                        style={
+                          isMobileSuiteLayout
+                            ? styles.imagemSuiteContainerMobile
+                            : styles.imagemSuiteContainerDesktop
+                        }
+                      >
+                        <Image
+                          source={{
+                            uri:
+                              api.getBaseApi() + "/uploads/" + formData.imagem,
+                          }}
+                          style={[
+                            styles.imagemSuite,
+                            isMobileSuiteLayout && styles.imagemSuiteMobile,
+                          ]}
+                        />
+                      </View>
+                      <View
+                        style={[
+                          styles.areaDescricaoSuite,
+                          isMobileSuiteLayout && styles.areaDescricaoSuiteMobile,
+                        ]}
+                      >
+                        <Text style={styles.descricaoSuite}>
+                          {suite.descricao || "Descrição não informada"}
+                        </Text>
+                        {(() => {
+                          const { min, max } = getLimitesSuite(suite);
+                          return (
+                            <View style={styles.regrasPousada}>
+                              <Text style={styles.regrasPousadaTitulo}>
+                                Regras de ocupação
+                              </Text>
+                              <Text style={styles.descricaoSuite}>
+                                Capacidade: {min} a {max} hóspedes
+                              </Text>
+                              <Text style={styles.descricaoSuite}>
+                                Inclui até {min} hóspedes
+                              </Text>
+                              <Text style={styles.descricaoSuite}>
+                                Adulto extra:{" "}
+                                {formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)}
+                              </Text>
+                              <Text style={styles.descricaoSuite}>
+                                Criança extra:{" "}
+                                {formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)}
+                              </Text>
+                            </View>
+                          );
+                        })()}
+                        {(suite as EventoSuite & {
+                          cotacao?: { valorTotal?: number };
+                        }).cotacao?.valorTotal != null && (
+                          <Text
+                            style={[styles.descricaoSuite, { fontWeight: "bold" }]}
+                          >
+                            A partir de{" "}
+                            {formatCurrency(
+                              (
+                                suite as EventoSuite & {
+                                  cotacao: { valorTotal: number };
+                                }
+                              ).cotacao.valorTotal,
+                            )}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {emEdicao && !noCarrinho && (() => {
+                      const { min, max } = getLimitesSuite(suite);
+                      const totalHospedes = adultosItem + criancasItem;
+                      const podeIncrementar = totalHospedes < max;
+                      const podeDecrementarAdulto =
+                        adultosItem > 0 && totalHospedes - 1 >= min;
+                      const podeDecrementarCrianca =
+                        criancasItem > 0 && totalHospedes - 1 >= min;
+                      const corDesabilitado = colors.cinza;
+                      const noites =
+                        (suite as EventoSuite & { noites?: number }).noites ??
+                        calcularNoitesHotelaria(
+                          combineDateTime(checkinDate, checkinTime),
+                          combineDateTime(checkoutDate, checkoutTime),
+                        );
+                      const subtotal = calcularSubtotalSuitePousada(
+                        suite,
+                        adultosItem,
+                        criancasItem,
+                        noites,
+                      );
+
+                      return (
+                      <View style={styles.areaCotacao}>
+                        <View style={styles.filtroRow}>
+                          <Text style={styles.label}>Adultos</Text>
+                          <View style={styles.counterRow}>
+                            <TouchableOpacity
+                              disabled={!podeDecrementarAdulto}
+                              onPress={() => {
+                                if (podeDecrementarAdulto) {
+                                  setAdultosItem(adultosItem - 1);
+                                }
+                              }}
+                            >
+                              <Feather
+                                name="minus-circle"
+                                size={28}
+                                color={
+                                  podeDecrementarAdulto
+                                    ? colors.azul
+                                    : corDesabilitado
+                                }
+                              />
+                            </TouchableOpacity>
+                            <Text style={styles.counterValue}>{adultosItem}</Text>
+                            <TouchableOpacity
+                              disabled={!podeIncrementar}
+                              onPress={() => {
+                                if (podeIncrementar) {
+                                  setAdultosItem(adultosItem + 1);
+                                }
+                              }}
+                            >
+                              <Feather
+                                name="plus-circle"
+                                size={28}
+                                color={
+                                  podeIncrementar ? colors.azul : corDesabilitado
+                                }
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        <View style={styles.filtroRow}>
+                          <Text style={styles.label}>Crianças</Text>
+                          <View style={styles.counterRow}>
+                            <TouchableOpacity
+                              disabled={!podeDecrementarCrianca}
+                              onPress={() => {
+                                if (podeDecrementarCrianca) {
+                                  setCriancasItem(criancasItem - 1);
+                                }
+                              }}
+                            >
+                              <Feather
+                                name="minus-circle"
+                                size={28}
+                                color={
+                                  podeDecrementarCrianca
+                                    ? colors.azul
+                                    : corDesabilitado
+                                }
+                              />
+                            </TouchableOpacity>
+                            <Text style={styles.counterValue}>{criancasItem}</Text>
+                            <TouchableOpacity
+                              disabled={!podeIncrementar}
+                              onPress={() => {
+                                if (podeIncrementar) {
+                                  setCriancasItem(criancasItem + 1);
+                                }
+                              }}
+                            >
+                              <Feather
+                                name="plus-circle"
+                                size={28}
+                                color={
+                                  podeIncrementar ? colors.azul : corDesabilitado
+                                }
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        <Text style={[styles.descricaoSuite, { textAlign: "center" }]}>
+                          {totalHospedes} de {max} hóspedes
+                        </Text>
+                        {subtotal ? (
+                          <View style={styles.subtotalSuiteCard}>
+                            <Text style={styles.subtotalSuiteTitulo}>
+                              Subtotal desta suíte
+                            </Text>
+                            {subtotal.temExtras ? (
+                              <>
+                                <Text style={styles.subtotalSuiteLinha}>
+                                  {noites > 1
+                                    ? `Valor base (${noites} diárias): `
+                                    : "Valor base: "}
+                                  {formatCurrency(subtotal.suitePreco)}
+                                </Text>
+                                {subtotal.adultosExtras > 0 ? (
+                                  <Text style={styles.subtotalSuiteLinha}>
+                                    {noites > 1
+                                      ? `Adultos extras: ${subtotal.adultosExtras} × ${noites} diárias × ${formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)} = ${formatCurrency(subtotal.extraAdultoValor)}`
+                                      : `Adultos extras: ${subtotal.adultosExtras} × ${formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)} = ${formatCurrency(subtotal.extraAdultoValor)}`}
+                                  </Text>
+                                ) : null}
+                                {subtotal.criancasExtras > 0 ? (
+                                  <Text style={styles.subtotalSuiteLinha}>
+                                    {noites > 1
+                                      ? `Crianças extras: ${subtotal.criancasExtras} × ${noites} diárias × ${formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)} = ${formatCurrency(subtotal.extraCriancaValor)}`
+                                      : `Crianças extras: ${subtotal.criancasExtras} × ${formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)} = ${formatCurrency(subtotal.extraCriancaValor)}`}
+                                  </Text>
+                                ) : null}
+                                <Text style={styles.subtotalSuiteValorFinal}>
+                                  {formatCurrency(subtotal.valorTotal)}
+                                </Text>
+                              </>
+                            ) : (
+                              <Text style={styles.subtotalSuiteValorFinal}>
+                                Total desta suíte:{" "}
+                                {formatCurrency(subtotal.valorTotal)}
+                              </Text>
+                            )}
+                          </View>
+                        ) : null}
+                        <TouchableOpacity
+                          style={[styles.newButton, { alignSelf: "center" }]}
+                          onPress={handleAdicionarAoCarrinho}
+                          disabled={adicionandoItem}
+                        >
+                          {adicionandoItem ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Text style={styles.newButtonText}>
+                              Adicionar ao carrinho
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setSuiteEmEdicao(null)}
+                          style={{ alignSelf: "center", marginTop: 6 }}
+                        >
+                          <Text style={styles.descricaoSuite}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
+                      );
+                    })()}
+
+                    {!noCarrinho && !emEdicao && (
+                      <TouchableOpacity
+                        style={[styles.newButton, { alignSelf: "center" }]}
+                        onPress={() => handleAbrirAdicionarSuite(suite)}
+                      >
+                        <Text style={styles.newButtonText}>Escolher hóspedes</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <View style={{ height: 16 }} />
+                  </View>
+                );
+              })}
+              </View>
+            )}
+
+            <View style={{ height: carrinho.length > 0 ? 120 : 40 }} />
           </View>
         </ScrollView>
       </View>
-      {modalVisible && (
-        <ModalResumoIngresso step={1} UsuarioVenda={formDataUsuario} />
+      {carrinho.length > 0 && (
+        <ModalResumoPousada
+          itens={carrinho}
+          onProximo={handleIrConferencia}
+          UsuarioVenda={formDataUsuario}
+        />
       )}
+      <Modal
+        visible={visibleMsg}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVisibleMsg(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1 }}
+          activeOpacity={1}
+          onPress={() => setVisibleMsg(false)}
+        >
+          <ModalMsg onClose={() => setVisibleMsg(false)} msg={msgApi} />
+        </TouchableOpacity>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -719,15 +1312,10 @@ const styles = StyleSheet.create({
   },
   areaIngressos: {
     backgroundColor: "rgba(255,255,255, 0.21)",
-    // marginTop: 7,
-    // paddingRight: 5,
-    // paddingLeft: 5,
-    // paddingTop: 15,
-    // marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    // marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    // paddingBottom: 25,
     borderRadius: 20,
-    // flex: 1,
+  },
+  areaIngressosSpacing: {
+    marginBottom: 22,
   },
   areaUsuario: {
     backgroundColor: "rgba(255,255,255, 0.21)",
@@ -757,9 +1345,10 @@ const styles = StyleSheet.create({
   labelData: {
     // fontSize: 16,
     color: colors.zinc,
-    marginBottom: 4,
-    width: 140,
-    textAlign: "right",
+    marginBottom: width <= 1000 ? 0 : 4,
+    width: width <= 1000 ? 72 : 140,
+    textAlign: width <= 1000 ? "left" : "right",
+    flexShrink: 0,
     // flexBasis: "45%",
   },
   input: {
@@ -855,21 +1444,55 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     gap: 12,
   },
-  // imagemSuite: {
-  //   width: 140,
-  //   height: 100,
-  //   borderRadius: 8,
-  // },
+  areaSuiteInfoMobile: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+    width: "100%",
+    gap: 0,
+  },
   imagemSuite: {
-    // width: "100%", // 100% para web, largura da tela para mobile
     borderRadius: 20,
     height: 150,
     width: 220,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
+    resizeMode: "cover",
+  },
+  imagemSuiteContainerDesktop: {
+    flexShrink: 0,
+  },
+  imagemSuiteContainerMobile: {
+    width: "100%",
+    height: 200,
+    flexGrow: 0,
+    flexShrink: 0,
+    alignSelf: "stretch",
+    overflow: "hidden",
+    borderRadius: 20,
+  },
+  imagemSuiteMobile: {
+    width: "100%",
+    height: "100%",
+    minHeight: 200,
+    flexGrow: 0,
+    flexShrink: 0,
+    borderRadius: 20,
   },
   areaDescricaoSuite: {
     flex: 1,
     justifyContent: "center",
+  },
+  areaDescricaoSuiteMobile: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: "auto",
+    width: "100%",
+    alignSelf: "stretch",
+    alignItems: "flex-start",
+    justifyContent: "flex-start",
+    marginTop: 12,
+    marginLeft: 0,
+    paddingHorizontal: 0,
   },
   tituloDescricao: {
     fontSize: 14,
@@ -879,5 +1502,137 @@ const styles = StyleSheet.create({
   descricaoSuite: {
     fontSize: 16,
     color: "#555",
+  },
+  regrasPousada: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.08)",
+  },
+  regrasPousadaTitulo: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.cinza,
+    marginBottom: 4,
+  },
+  areaFiltros: {
+    backgroundColor: "rgba(255,255,255, 0.21)",
+    marginTop: 7,
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 8,
+    marginHorizontal: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    borderRadius: 20,
+  },
+  areaInfoHospedes: {
+    backgroundColor: "rgba(255, 248, 210, 0.95)",
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 193, 7, 0.35)",
+    width: Platform.OS === "web" ? undefined : "100%",
+    alignSelf: "stretch",
+  },
+  infoHospedesTitulo: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.cinza,
+    marginBottom: 8,
+  },
+  infoHospedesItem: {
+    fontSize: 14,
+    color: "#5c4a00",
+    marginBottom: 6,
+    lineHeight: 20,
+    flexShrink: 1,
+  },
+  filtroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    flexWrap: "wrap",
+    columnGap: width <= 1000 ? 6 : 8,
+    rowGap: 4,
+  },
+  filtroDateTime: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    alignItems: "center",
+    gap: width <= 1000 ? 4 : 8,
+    // Se não couber ao lado da label, quebra a linha e ocupa a largura do card
+    minWidth: width <= 1000 ? 196 : 240,
+  },
+  filtroDateField: {
+    flex: 1,
+    minWidth: 118,
+  },
+  filtroTimeField: {
+    width: width <= 1000 ? 76 : 110,
+    flexShrink: 0,
+  },
+  counterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginLeft: 8,
+  },
+  counterValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    minWidth: 28,
+    textAlign: "center",
+  },
+  suiteSelecionada: {
+    borderWidth: 2,
+    borderColor: colors.azul,
+  },
+  areaCotacao: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.1)",
+  },
+  subtotalSuiteCard: {
+    marginTop: 12,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+    width: "100%",
+  },
+  subtotalSuiteTitulo: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.cinza,
+    marginBottom: 8,
+  },
+  subtotalSuiteLinha: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 4,
+  },
+  subtotalSuiteValorFinal: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.azul,
+    marginTop: 4,
+  },
+  areaCarrinho: {
+    backgroundColor: "rgba(255,255,255,0.35)",
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 10,
+  },
+  itemCarrinho: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
   },
 });

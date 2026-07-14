@@ -1,11 +1,13 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Button } from "react-native-paper";
 import colors from "@/src/constants/colors";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { useHospedagem } from "@/src/contexts_/HospedagemContext";
+import { useCart } from "@/src/contexts_/CartContext";
+import { Transacao } from "@/src/types/geral";
+import { extrairIdTransacao } from "@/src/lib/resolverTransacao";
 
-// Função util para formatar o valor em R$
 function formatCurrency(valor: number | undefined) {
   return valor?.toLocaleString("pt-BR", {
     style: "currency",
@@ -13,7 +15,6 @@ function formatCurrency(valor: number | undefined) {
   });
 }
 
-// Função util para formatar a data
 function formatDate(dateStr: string | undefined) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
@@ -51,7 +52,6 @@ const statusInfo = {
     label: "Pagamento devolvido",
     description: "O valor foi devolvido ao pagador.",
   },
-  // Adicione outros status se necessário
 };
 
 interface PaymentData {
@@ -73,6 +73,45 @@ interface MeuStatusCustomizadoProps {
 export default function StatusPaymentCustomizado({
   data,
 }: MeuStatusCustomizadoProps) {
+  const navigation = useNavigation() as any;
+  const route = useRoute();
+  const { state: cartState } = useCart();
+  const { state: hospedagemState, dispatch: dispatchHospedagem } =
+    useHospedagem();
+  const {
+    tipoCompra,
+    registroTransacao: registroTransacaoParam,
+  } = (route.params || {}) as {
+    tipoCompra?: string;
+    registroTransacao?: Transacao | number;
+  };
+  const isHospedagem = tipoCompra === "hospedagem";
+  const idTransacao = extrairIdTransacao(
+    registroTransacaoParam,
+    cartState.transacao,
+  );
+  const redirecionouHospedagem = React.useRef(false);
+
+  React.useEffect(() => {
+    if (data?.status === "approved" && hospedagemState.reserva) {
+      dispatchHospedagem({ type: "CLEAR" });
+    }
+  }, [data?.status, hospedagemState.reserva, dispatchHospedagem]);
+
+  React.useEffect(() => {
+    if (
+      data?.status !== "approved" ||
+      !isHospedagem ||
+      !idTransacao ||
+      redirecionouHospedagem.current
+    ) {
+      return;
+    }
+
+    redirecionouHospedagem.current = true;
+    navigation.navigate("reservaConfirmada", { idTransacao });
+  }, [data?.status, isHospedagem, idTransacao, navigation]);
+
   if (!data) {
     return (
       <View style={styles.container}>
@@ -90,11 +129,16 @@ export default function StatusPaymentCustomizado({
     description: "Não foi possível identificar o status do pagamento.",
   };
 
-  const navigation = useNavigation() as any;
+  const irParaPosPagamento = () => {
+    if (isHospedagem && idTransacao) {
+      navigation.navigate("reservaConfirmada", { idTransacao });
+      return;
+    }
+    navigation.navigate("meusingressos");
+  };
 
   return (
     <View style={[styles.container, { borderColor: info.color }]}>
-      {/* <MaterialCommunityIcons name={info.icon} size={64} color={info.color} /> */}
       <Text style={[styles.title, { color: info.color }]}>{info.label}</Text>
       <Text style={styles.description}>{info.description}</Text>
       <View style={styles.details}>
@@ -105,10 +149,6 @@ export default function StatusPaymentCustomizado({
           <Text style={styles.label}>Valor:</Text>{" "}
           {formatCurrency(data.transaction_amount)}
         </Text>
-        {/* <Text style={styles.detail}>
-          <Text style={styles.label}>Status:</Text>{" "}
-          {data.status_detail || data.status}
-        </Text> */}
         <Text style={styles.detail}>
           <Text style={styles.label}>Método:</Text>{" "}
           {data.payment_method_id?.toUpperCase()}
@@ -129,7 +169,7 @@ export default function StatusPaymentCustomizado({
           </Text>
         )}
       </View>
-      {data && data.status && (
+      {data.status ? (
         <View
           style={{
             flex: 1,
@@ -144,15 +184,15 @@ export default function StatusPaymentCustomizado({
                 styles.buttonSave,
                 { alignSelf: "center", marginTop: 16 },
               ]}
-              onPress={() => navigation.navigate("meusingressos")}
+              onPress={irParaPosPagamento}
             >
               <Text style={{ color: "white", fontWeight: "600" }}>
-                Ver Ingressos
+                {isHospedagem ? "Ver reserva" : "Ver Ingressos"}
               </Text>
             </TouchableOpacity>
           )}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

@@ -2,6 +2,7 @@ import "react-native-gesture-handler";
 import { AuthProvider } from "../contexts_/AuthContext";
 import Routes from "./routes";
 import { CartProvider } from "../contexts_/CartContext";
+import { HospedagemProvider } from "../contexts_/HospedagemContext";
 import FloatingWhatsAppButton from "../components/Whatsapp";
 import GoogleAnalytics from "../components/GoogleAnalytics";
 import { useSegments } from "expo-router";
@@ -30,8 +31,10 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <CartProvider>
-        <GoogleAnalytics />
-        <MainLayout />
+        <HospedagemProvider>
+          <GoogleAnalytics />
+          <MainLayout />
+        </HospedagemProvider>
       </CartProvider>
     </AuthProvider>
   );

@@ -19,7 +19,9 @@ import {
   DadosdePagamento,
 } from "@/src/types/geral";
 import { useAuth } from "@/src/contexts_/AuthContext";
+import { useCart } from "@/src/contexts_/CartContext";
 import { apiGeral } from "@/src/lib/geral";
+import { resolverRegistroTransacao } from "@/src/lib/resolverTransacao";
 import CartaoCreditoSelector from "../CartaoCreditoSelector";
 import { TextInput } from "react-native-gesture-handler";
 import colors from "@/src/constants/colors";
@@ -49,11 +51,20 @@ const MP_PUBLIC_KEY = "APP_USR-499790e3-36ba-4f0d-8b54-a05c499ad93c"; // Chave p
 export default function CheckoutMercadoPago() {
   const route = useRoute();
   const { user } = useAuth();
-  const { idEvento, email, registroTransacao } = route.params as {
+  const { state: cartState } = useCart();
+  const {
+    idEvento,
+    email,
+    registroTransacao: registroTransacaoParam,
+  } = route.params as {
     idEvento: number;
     email?: string;
-    registroTransacao: Transacao;
+    registroTransacao: Transacao | number;
   };
+  const registroTransacao = resolverRegistroTransacao(
+    registroTransacaoParam,
+    cartState.transacao,
+  );
 
   useEffect(() => {
     initMercadoPago(MP_PUBLIC_KEY, {

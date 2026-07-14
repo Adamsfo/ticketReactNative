@@ -19,6 +19,8 @@ import TipoIngresso from "./(panel)/tipoIngresso/page";
 import Ingressos from "./(panel)/ingressos/page";
 import Pousada from "./(panel)/pousada/page";
 import Conferencia from "./(panel)/conferencia/page";
+import ConferenciaHospedagem from "./(panel)/conferenciaHospedagem/page";
+import ReservaConfirmada from "./(panel)/reservaConfirmada/page";
 import Pagamento from "./(panel)/pagamento/page";
 import PagamentoPDV from "./(panel)/pagamentoPDV/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
@@ -574,6 +576,26 @@ function Routes() {
       <Drawer.Screen
         name="pousada"
         component={Pousada}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="conferenciaHospedagem"
+        component={ConferenciaHospedagem}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="reservaConfirmada"
+        component={ReservaConfirmada}
         options={{
           headerShown: false,
           drawerLabel: () => null,

@@ -1,9 +1,11 @@
 /* Define tamanho mínimo da fonte no input para evitar zoom no iOS */
 .custom-datepicker {
   font-size: 16px !important;
-  padding: 10px;
+  padding: 10px 6px;
   height: 45px;
   width: 100%;
+  /* ~10 caracteres DD/MM/AAAA sem ellipsis; cabe no flex do card */
+  min-width: 11.2ch;
   border-radius: 6px;
   border: 1px solid #ccc;
   box-sizing: border-box;

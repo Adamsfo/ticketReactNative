@@ -88,13 +88,17 @@ const DatePickerComponente = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingLeft: 5,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    width: "100%",
     justifyContent: "center",
   },
   webContainer: {
     marginBottom: 16,
     zIndex: 1000, // Adiciona zIndex para garantir que o datepicker apareça corretamente
+    width: "100%",
+    minWidth: 0,
   },
   text: {
     marginTop: 20,

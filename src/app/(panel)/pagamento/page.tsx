@@ -25,10 +25,19 @@ import { useRoute } from "@react-navigation/native";
 import { api } from "@/src/lib/api";
 import ModalResumoIngresso from "@/src/components/ModalResumoIngresso";
 import StepIndicator from "@/src/components/StepIndicator";
+import StepIndicatorHospedagem from "@/src/components/StepIndicatorHospedagem";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
+import { useHospedagem } from "@/src/contexts_/HospedagemContext";
+import { useResumoPagamentoHospedagem } from "@/src/lib/resumoPagamentoHospedagem";
+import ResumoPagamentoHospedagem from "@/src/components/ResumoPagamentoHospedagem";
 import { initMercadoPago } from "@mercadopago/sdk-react";
 import CheckoutMercadoPago from "@/src/components/CheckoutMercadoPago";
+import SimularPagamentoDev from "@/src/components/SimularPagamentoDev";
+import {
+  extrairIdTransacao,
+  resolverRegistroTransacao,
+} from "@/src/lib/resolverTransacao";
 
 const { width } = Dimensions.get("window");
 
@@ -37,10 +46,30 @@ export default function Index() {
   const endpointApiIngressos = "/eventoingresso";
   const route = useRoute();
   const { state } = useCart();
-  const { idEvento, registroTransacao } = route.params as {
+  const { state: hospedagemState } = useHospedagem();
+  const {
+    idEvento,
+    registroTransacao: registroTransacaoParam,
+    tipoCompra,
+  } = route.params as {
     idEvento: number;
-    registroTransacao: Transacao;
+    registroTransacao: Transacao | number;
+    tipoCompra?: string;
   };
+  const registroTransacao = resolverRegistroTransacao(
+    registroTransacaoParam,
+    state.transacao,
+  );
+  const idTransacaoAtual = extrairIdTransacao(
+    registroTransacaoParam,
+    state.transacao,
+  );
+  const { isHospedagem, resumo: resumoHospedagem } = useResumoPagamentoHospedagem({
+    tipoCompra,
+    idEvento,
+    registroTransacao,
+    reserva: hospedagemState.reserva,
+  });
   const [registrosIngressoTransacao, setRegistrosIngressoTransacao] = useState<
     IngressoTransacao[]
   >([]);
@@ -79,9 +108,11 @@ export default function Index() {
       data.data_hora_fim = new Date(data.data_hora_fim.toString());
       setFormData(data as Evento);
 
-      getIngressoTransacao({
-        filters: { idTransacao: state.transacao?.id },
-      });
+      if (!isHospedagem) {
+        getIngressoTransacao({
+          filters: { idTransacao: state.transacao?.id },
+        });
+      }
     }
   };
 
@@ -116,7 +147,7 @@ export default function Index() {
       if (idEvento > 0) {
         getRegistros(idEvento);
       }
-    }, [idEvento])
+    }, [idEvento, isHospedagem])
   );
 
   type IngressoAgrupado = IngressoTransacao & { qtde: number };
@@ -152,7 +183,11 @@ export default function Index() {
 
       <View style={styles.container}>
         <View style={styles.areaStep}>
-          <StepIndicator currentStep={3} />
+          {isHospedagem ? (
+            <StepIndicatorHospedagem currentStep={3} />
+          ) : (
+            <StepIndicator currentStep={3} />
+          )}
         </View>
         <Text style={styles.titulo}>Pagamento</Text>
 
@@ -162,133 +197,157 @@ export default function Index() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={() => (
             <View>
-              <View style={styles.areaEvento}>
+              <View
+                style={[
+                  styles.areaEvento,
+                  isHospedagem && styles.areaEventoHospedagem,
+                ]}
+              >
                 <Image
                   source={{
                     uri: api.getBaseApi() + "/uploads/" + formData.imagem,
                   }}
                   style={styles.imagem}
                 />
-                <View style={styles.areaTextoEvento}>
-                  <Text style={styles.tituloEvento}>{formData.nome}</Text>
+                <View
+                  style={[
+                    styles.areaTextoEvento,
+                    isHospedagem && styles.areaTextoEventoHospedagem,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tituloEvento,
+                      isHospedagem && styles.tituloEventoHospedagem,
+                    ]}
+                    numberOfLines={isHospedagem ? 1 : undefined}
+                  >
+                    {formData.nome}
+                  </Text>
                   {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
                 </View>
               </View>
 
               <View style={styles.areaResumo}>
                 <Text style={styles.titulo}>Resumo</Text>
-                <View>
-                  <FlatList<IngressoAgrupado>
-                    data={ingressosAgrupados}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          paddingVertical: 3,
-                          marginHorizontal: 5,
-                        }}
-                      >
-                        <View
-                          style={{
-                            flex: 1,
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <View style={{ flexDirection: "row" }}>
-                            <Text
+                {isHospedagem && resumoHospedagem ? (
+                  <ResumoPagamentoHospedagem resumo={resumoHospedagem} />
+                ) : (
+                  <>
+                    <View>
+                      <FlatList<IngressoAgrupado>
+                        data={ingressosAgrupados}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item }) => (
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              paddingVertical: 3,
+                              marginHorizontal: 5,
+                            }}
+                          >
+                            <View
                               style={{
-                                paddingHorizontal: 3,
-                                fontWeight: "bold",
-                                fontSize: 14,
+                                flex: 1,
+                                flexDirection: "row",
+                                justifyContent: "space-between",
                               }}
                             >
-                              {item.qtde} x
-                            </Text>
-                            <Text
-                              style={{ paddingHorizontal: 3, fontSize: 14 }}
-                            >
-                              {
-                                item.Ingresso_EventoIngresso?.TipoIngresso
-                                  ?.descricao
-                              }
-                            </Text>
-                            <Text
-                              style={{ paddingHorizontal: 3, fontSize: 14 }}
-                            >
-                              {item.Ingresso_EventoIngresso?.nome}
-                            </Text>
-                            {item.precoDesconto ? (
-                              <Text
-                                style={{
-                                  paddingHorizontal: 3,
-                                  fontSize: 14,
-                                  color: colors.greenEscuro,
-                                }}
-                              >
-                                Desconto:{" "}
-                                {formatCurrency(
-                                  (item.precoDesconto * item.qtde).toFixed(2)
-                                )}
-                              </Text>
-                            ) : null}
+                              <View style={{ flexDirection: "row" }}>
+                                <Text
+                                  style={{
+                                    paddingHorizontal: 3,
+                                    fontWeight: "bold",
+                                    fontSize: 14,
+                                  }}
+                                >
+                                  {item.qtde} x
+                                </Text>
+                                <Text
+                                  style={{ paddingHorizontal: 3, fontSize: 14 }}
+                                >
+                                  {
+                                    item.Ingresso_EventoIngresso?.TipoIngresso
+                                      ?.descricao
+                                  }
+                                </Text>
+                                <Text
+                                  style={{ paddingHorizontal: 3, fontSize: 14 }}
+                                >
+                                  {item.Ingresso_EventoIngresso?.nome}
+                                </Text>
+                                {item.precoDesconto ? (
+                                  <Text
+                                    style={{
+                                      paddingHorizontal: 3,
+                                      fontSize: 14,
+                                      color: colors.greenEscuro,
+                                    }}
+                                  >
+                                    Desconto:{" "}
+                                    {formatCurrency(
+                                      (item.precoDesconto * item.qtde).toFixed(2)
+                                    )}
+                                  </Text>
+                                ) : null}
+                              </View>
+                              <View>
+                                <Text
+                                  style={{ paddingHorizontal: 3, fontSize: 14 }}
+                                >
+                                  {formatCurrency(
+                                    (item.preco * item.qtde).toFixed(2)
+                                  )}
+                                </Text>
+                              </View>
+                            </View>
                           </View>
-                          <View>
+                        )}
+                      />
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        paddingRight: 8,
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+                        Total Ingressos:{" "}
+                        <Text style={{ fontWeight: "bold" }}>
+                          {formatCurrency(registroTransacao?.preco ?? 0)}
+                        </Text>
+                      </Text>
+                      <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+                        Total Taxa:{" "}
+                        {registroTransacao?.taxaServicoDesconto &&
+                          registroTransacao?.taxaServicoDesconto > 0 && (
                             <Text
-                              style={{ paddingHorizontal: 3, fontSize: 14 }}
+                              style={{
+                                color: colors.greenEscuro,
+                                paddingHorizontal: 5,
+                              }}
                             >
+                              Desconto:{" "}
                               {formatCurrency(
-                                (item.preco * item.qtde).toFixed(2)
+                                registroTransacao?.taxaServicoDesconto ?? 0
                               )}
                             </Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-                  />
-                </View>
-                <View
-                  style={{
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    paddingRight: 8,
-                  }}
-                >
-                  <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-                    Total Ingressos:{" "}
-                    <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(registroTransacao?.preco ?? 0)}
-                    </Text>
-                  </Text>
-                  <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-                    Total Taxa:{" "}
-                    {registroTransacao?.taxaServicoDesconto &&
-                      registroTransacao?.taxaServicoDesconto > 0 && (
-                        <Text
-                          style={{
-                            color: colors.greenEscuro,
-                            paddingHorizontal: 5,
-                          }}
-                        >
-                          Desconto:{" "}
-                          {formatCurrency(
-                            registroTransacao?.taxaServicoDesconto ?? 0
                           )}
+                        <Text style={{ fontWeight: "bold" }}>
+                          {formatCurrency(registroTransacao?.taxaServico ?? 0)}
                         </Text>
-                      )}
-                    <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(registroTransacao?.taxaServico ?? 0)}
-                    </Text>
-                  </Text>
-                  <Text style={{ fontSize: 16 }}>
-                    Total incluindo taxas:{" "}
-                    <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(registroTransacao?.valorTotal ?? 0)}
-                    </Text>
-                  </Text>
-                </View>
+                      </Text>
+                      <Text style={{ fontSize: 16 }}>
+                        Total incluindo taxas:{" "}
+                        <Text style={{ fontWeight: "bold" }}>
+                          {formatCurrency(registroTransacao?.valorTotal ?? 0)}
+                        </Text>
+                      </Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           )}
@@ -305,6 +364,10 @@ export default function Index() {
               ]}
             >
               <CheckoutMercadoPago />
+              <SimularPagamentoDev
+                idTransacao={idTransacaoAtual ?? registroTransacao?.id}
+                tipoCompra={tipoCompra}
+              />
             </View>
           )}
         />
@@ -398,6 +461,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
   },
+  areaEventoHospedagem: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    gap: 12,
+  },
   areaStep: {
     justifyContent: "center",
     alignItems: "center",
@@ -443,12 +514,28 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     justifyContent: "center",
   },
+  areaTextoEventoHospedagem: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    marginLeft: 0,
+    maxWidth: undefined,
+    width: "auto",
+  },
   tituloEvento: {
     fontSize: 22,
     fontWeight: "bold",
     textAlign: "left",
     flexShrink: 1,
     flexWrap: "wrap",
+  },
+  tituloEventoHospedagem: {
+    flexShrink: 0,
+    flexWrap: "nowrap",
+    textAlign: "left",
+    ...(Platform.OS === "web"
+      ? ({ whiteSpace: "nowrap" } as object)
+      : null),
   },
   enderecoEvento: {
     fontSize: 16,

@@ -1,12 +1,10 @@
-function formatCurrency(value: number | string) {
-  // Convert the value to a string if it's a number
-  let stringValue = value.toString();
+function formatCurrency(value: number | string): string {
+  const numeric = typeof value === "string" ? Number(value) : value;
 
-  // Replace the dot with a comma
-  stringValue = stringValue.replace(".", ",");
-
-  // Add the currency symbol (R$)
-  return `R$ ${stringValue}`;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number.isNaN(numeric) ? 0 : numeric);
 }
 
 export default formatCurrency;
