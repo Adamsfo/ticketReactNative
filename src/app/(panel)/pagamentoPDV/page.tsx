@@ -46,8 +46,15 @@ import * as Print from "expo-print";
 import html2canvas from "html2canvas";
 import EscPosEncoder from "esc-pos-encoder";
 import ModalMsg from "@/src/components/ModalMsg";
+import QuantidadeAjustePdv from "./QuantidadeAjustePdv";
 
 const { width } = Dimensions.get("window");
+
+type IngressoAgrupado = IngressoTransacao & {
+  qtde: number;
+  chave: string;
+  ids: number[];
+};
 
 export default function Index() {
   const endpointApi = "/evento";
@@ -81,6 +88,8 @@ export default function Index() {
   const [registrosIngressoTransacao, setRegistrosIngressoTransacao] = useState<
     IngressoTransacao[]
   >([]);
+  /** Quantidades ajustadas só nesta tela de Pagamento PDV (chave do grupo → qtde). */
+  const [qtdePorGrupo, setQtdePorGrupo] = useState<Record<string, number>>({});
   const [metodoSelecionado, setMetodoSelecionado] = useState<string | null>();
   // Ref para o iframe
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -91,6 +100,7 @@ export default function Index() {
   const redirecionouHospedagem = useRef(false);
   const [modalConfirmVisible, setModalConfirmVisible] = useState(false);
   const [valorEditavel, setValorEditavel] = useState<string>("0");
+  const [sincronizandoQuantidade, setSincronizandoQuantidade] = useState(false);
 
   let [transacaoAtual, setTransacaoAtual] = useState<Transacao | null>(
     registroTransacao,
@@ -120,12 +130,11 @@ export default function Index() {
   }, [isHospedagem, transacaoAtual?.status, transacaoAtual?.id, dispatchHospedagem, navigation]);
 
   //Jango
-  // initMercadoPago("APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23", {
+  // initMercadoPago(process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "", {
   //   locale: "pt-BR",
   // });
 
-  //Tanz
-  initMercadoPago("APP_USR-499790e3-36ba-4f0d-8b54-a05c499ad93c", {
+  initMercadoPago(process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "", {
     locale: "pt-BR",
   });
 
@@ -174,6 +183,7 @@ export default function Index() {
 
     // console.log("registrosData", registrosData);
     setRegistrosIngressoTransacao(registrosData);
+    setQtdePorGrupo({});
   };
 
   const getTransacao = async () => {
@@ -208,6 +218,7 @@ export default function Index() {
       setMetodoSelecionado(null);
       setHtmlContent("");
       setRegistrosIngressoTransacao([]);
+      setQtdePorGrupo({});
 
       if (idEvento > 0) {
         getRegistros(idEvento);
@@ -216,7 +227,8 @@ export default function Index() {
     }, [idEvento, registroTransacao, isHospedagem]),
   );
 
-  type IngressoAgrupado = IngressoTransacao & { qtde: number };
+  const chaveGrupoIngresso = (item: IngressoTransacao) =>
+    `${item.Ingresso_EventoIngresso?.id ?? item.Ingresso_EventoIngresso?.TipoIngresso?.id}-${item.Ingresso_EventoIngresso?.nome}`;
 
   const agruparIngressos = (
     ingressos: IngressoTransacao[],
@@ -224,13 +236,14 @@ export default function Index() {
     const mapa = new Map<string, IngressoAgrupado>();
 
     ingressos.forEach((item) => {
-      const chave = `${item.Ingresso_EventoIngresso?.TipoIngresso?.id}-${item.Ingresso_EventoIngresso?.nome}`;
+      const chave = chaveGrupoIngresso(item);
 
       if (mapa.has(chave)) {
         const existente = mapa.get(chave)!;
         existente.qtde += 1;
+        existente.ids.push(item.id);
       } else {
-        mapa.set(chave, { ...item, qtde: 1 });
+        mapa.set(chave, { ...item, qtde: 1, chave, ids: [item.id] });
       }
     });
 
@@ -238,6 +251,152 @@ export default function Index() {
   };
 
   const ingressosAgrupados = agruparIngressos(registrosIngressoTransacao);
+
+  const getQtdeExibida = (item: IngressoAgrupado) =>
+    qtdePorGrupo[item.chave] ?? item.qtde;
+
+  const podeAjustarQuantidade =
+    !isHospedagem &&
+    !consultaPagamento &&
+    transacaoAtual?.status !== "Pago" &&
+    transacaoAtual?.status !== "Cancelado";
+
+  const reduzirQuantidadeGrupo = (item: IngressoAgrupado) => {
+    if (!podeAjustarQuantidade) return;
+    const atual = getQtdeExibida(item);
+    if (atual <= 1) return;
+    setQtdePorGrupo((prev) => ({
+      ...prev,
+      [item.chave]: atual - 1,
+    }));
+  };
+
+  const totaisPdv = (() => {
+    if (isHospedagem) {
+      return {
+        preco: Number(registroTransacao?.preco ?? 0),
+        taxaServico: Number(registroTransacao?.taxaServico ?? 0),
+        taxaServicoDesconto: Number(
+          registroTransacao?.taxaServicoDesconto ?? 0,
+        ),
+        valorTotal: Number(registroTransacao?.valorTotal ?? 0),
+      };
+    }
+
+    let preco = 0;
+    let taxaServico = 0;
+    let taxaServicoDesconto = 0;
+    let valorTotal = 0;
+
+    for (const grupo of ingressosAgrupados) {
+      const qtde = getQtdeExibida(grupo);
+      const idsMantidos = grupo.ids.slice(0, qtde);
+      for (const id of idsMantidos) {
+        const item = registrosIngressoTransacao.find((r) => r.id === id);
+        if (!item) continue;
+        preco += Number(item.preco || 0);
+        taxaServico += Number(item.taxaServico || 0);
+        taxaServicoDesconto += Number((item as any).taxaServicoDesconto || 0);
+        valorTotal += Number(item.valorTotal || 0);
+      }
+    }
+
+    return { preco, taxaServico, taxaServicoDesconto, valorTotal };
+  })();
+
+  const temReducaoPendente = ingressosAgrupados.some(
+    (item) => getQtdeExibida(item) < item.qtde,
+  );
+
+  const valorRecebidoAtual = Number(transacaoAtual?.valorRecebido ?? 0);
+  const saldoPendenteCentavos = Math.max(
+    0,
+    Math.round(totaisPdv.valorTotal * 100) - Math.round(valorRecebidoAtual * 100),
+  );
+
+  /**
+   * Persiste a redução na própria Transacao / IngressoTransacao
+   * imediatamente antes de confirmar o pagamento PDV.
+   * Retorna a transação atualizada quando disponível.
+   */
+  const sincronizarQuantidadesAntesPagamento = async (): Promise<{
+    ok: boolean;
+    transacao?: Transacao | null;
+    vendaQuitada?: boolean;
+  }> => {
+    if (!temReducaoPendente) {
+      return { ok: true, transacao: transacaoAtual, vendaQuitada: false };
+    }
+
+    if (!registroTransacao?.id || !user?.id) {
+      setMsg("Não foi possível ajustar a quantidade da transação.");
+      setVisibleMsg(true);
+      return { ok: false };
+    }
+
+    const itens = ingressosAgrupados
+      .map((item) => ({
+        idsIngressoTransacao: item.ids,
+        quantidade: getQtdeExibida(item),
+      }))
+      .filter((item) => item.quantidade < item.idsIngressoTransacao.length);
+
+    if (itens.length === 0) {
+      return { ok: true, transacao: transacaoAtual, vendaQuitada: false };
+    }
+
+    try {
+      setSincronizandoQuantidade(true);
+      const response = await apiGeral.createResource(
+        "/pagamentopdv/ajustarquantidade",
+        {
+          idTransacao: registroTransacao.id,
+          idUsuarioPDV: user.id,
+          itens,
+        },
+      );
+
+      if (response.success === false) {
+        setMsg(
+          response.message ||
+            "Erro ao atualizar quantidade dos ingressos.",
+        );
+        setVisibleMsg(true);
+        return { ok: false };
+      }
+
+      const payload = (response.data as any)?.data ?? response.data;
+      const transacaoAtualizada = payload?.transacao as Transacao | undefined;
+      const idsRemovidos: number[] =
+        payload?.idsIngressoTransacaoRemovidos ?? [];
+      const vendaQuitada = Boolean(payload?.vendaQuitada);
+
+      if (idsRemovidos.length > 0) {
+        setRegistrosIngressoTransacao((prev) =>
+          prev.filter((item) => !idsRemovidos.includes(item.id)),
+        );
+      }
+
+      if (transacaoAtualizada) {
+        setTransacaoAtual(transacaoAtualizada);
+        dispatch({ type: "ADD_TRANSACAO", transacao: transacaoAtualizada });
+      }
+
+      setQtdePorGrupo({});
+      return {
+        ok: true,
+        transacao: transacaoAtualizada ?? null,
+        vendaQuitada,
+      };
+    } catch (error) {
+      console.error("Erro ao sincronizar quantidade PDV:", error);
+      setMsg("Erro ao atualizar quantidade dos ingressos.");
+      setVisibleMsg(true);
+      return { ok: false };
+    } finally {
+      setSincronizandoQuantidade(false);
+    }
+  };
 
   const fetchPagamentoPos = async () => {
     try {
@@ -546,6 +705,70 @@ export default function Index() {
     }
   };
 
+  // Redução com total == recebido: quita automaticamente no fluxo já existente (payment_status 4).
+  useEffect(() => {
+    const deveQuitar =
+      !isHospedagem &&
+      transacaoAtual?.status !== "Pago" &&
+      transacaoAtual?.status !== "Cancelado" &&
+      !consultaPagamento &&
+      !sincronizandoQuantidade &&
+      temReducaoPendente &&
+      saldoPendenteCentavos === 0;
+
+    if (!deveQuitar) return;
+
+    let cancelado = false;
+
+    (async () => {
+      const resultado = await sincronizarQuantidadesAntesPagamento();
+      if (cancelado || !resultado.ok) return;
+
+      let transacaoA = resultado.transacao ?? null;
+      if (!transacaoA || transacaoA.status !== "Pago") {
+        transacaoA = await getTransacao();
+      }
+      if (cancelado) return;
+
+      if (transacaoA?.status === "Pago" || resultado.vendaQuitada) {
+        setDadosDePagamento({
+          payment_uniqueid: 0,
+          payment_status: 4,
+          payment_message: "Pagamento realizado em Dinheiro",
+          created_at: new Date().toISOString(),
+        });
+        setConsultaPagamento(false);
+        setMetodoSelecionado(null);
+
+        if ((transacaoA?.valorRecebido ?? 0) >= (transacaoA?.valorTotal ?? 0)) {
+          if (registroTransacao?.idEvento === 4) {
+            for (const item of registrosIngressoTransacao) {
+              const ingresso = await getIngresso(item.idIngresso);
+              if (ingresso?.status === "Cancelado") continue;
+              await apiGeral.createResource("/validadorqrcode", {
+                ingresso: ingresso.id,
+              });
+            }
+          }
+          if (registroTransacao?.idEvento === 1) {
+            await handleAbrirConta();
+          }
+        }
+      }
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    saldoPendenteCentavos,
+    temReducaoPendente,
+    isHospedagem,
+    transacaoAtual?.status,
+    consultaPagamento,
+  ]);
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -631,7 +854,9 @@ export default function Index() {
                       <FlatList<IngressoAgrupado>
                         data={ingressosAgrupados}
                         keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
+                        renderItem={({ item }) => {
+                          const qtdeExibida = getQtdeExibida(item);
+                          return (
                           <View
                             style={{
                               flexDirection: "row",
@@ -645,18 +870,22 @@ export default function Index() {
                                 flex: 1,
                                 flexDirection: "row",
                                 justifyContent: "space-between",
+                                alignItems: "center",
                               }}
                             >
-                              <View style={{ flexDirection: "row" }}>
-                                <Text
-                                  style={{
-                                    paddingHorizontal: 3,
-                                    fontWeight: "bold",
-                                    fontSize: 14,
-                                  }}
-                                >
-                                  {item.qtde} x
-                                </Text>
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  flexShrink: 1,
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <QuantidadeAjustePdv
+                                  quantidade={qtdeExibida}
+                                  disabled={!podeAjustarQuantidade}
+                                  onReduzir={() => reduzirQuantidadeGrupo(item)}
+                                />
                                 <Text
                                   style={{ paddingHorizontal: 3, fontSize: 14 }}
                                 >
@@ -680,7 +909,9 @@ export default function Index() {
                                   >
                                     Desconto:{" "}
                                     {formatCurrency(
-                                      (item.precoDesconto * item.qtde).toFixed(2),
+                                      (
+                                        item.precoDesconto * qtdeExibida
+                                      ).toFixed(2),
                                     )}
                                   </Text>
                                 ) : null}
@@ -690,13 +921,14 @@ export default function Index() {
                                   style={{ paddingHorizontal: 3, fontSize: 14 }}
                                 >
                                   {formatCurrency(
-                                    (item.preco * item.qtde).toFixed(2),
+                                    (item.preco * qtdeExibida).toFixed(2),
                                   )}
                                 </Text>
                               </View>
                             </View>
                           </View>
-                        )}
+                          );
+                        }}
                       />
                     </View>
                     <View
@@ -709,13 +941,12 @@ export default function Index() {
                       <Text style={{ fontSize: 16, paddingBottom: 3 }}>
                         Total Ingressos:{" "}
                         <Text style={{ fontWeight: "bold" }}>
-                          {formatCurrency(registroTransacao?.preco ?? 0)}
+                          {formatCurrency(totaisPdv.preco)}
                         </Text>
                       </Text>
                       <Text style={{ fontSize: 16, paddingBottom: 3 }}>
                         Total Taxa:{" "}
-                        {registroTransacao?.taxaServicoDesconto &&
-                          registroTransacao?.taxaServicoDesconto > 0 && (
+                        {totaisPdv.taxaServicoDesconto > 0 && (
                             <Text
                               style={{
                                 color: colors.greenEscuro,
@@ -723,19 +954,17 @@ export default function Index() {
                               }}
                             >
                               Desconto:{" "}
-                              {formatCurrency(
-                                registroTransacao?.taxaServicoDesconto ?? 0,
-                              )}
+                              {formatCurrency(totaisPdv.taxaServicoDesconto)}
                             </Text>
                           )}
                         <Text style={{ fontWeight: "bold" }}>
-                          {formatCurrency(registroTransacao?.taxaServico ?? 0)}
+                          {formatCurrency(totaisPdv.taxaServico)}
                         </Text>
                       </Text>
                       <Text style={{ fontSize: 16 }}>
                         Total incluindo taxas:{" "}
                         <Text style={{ fontWeight: "bold" }}>
-                          {formatCurrency(registroTransacao?.valorTotal ?? 0)}
+                          {formatCurrency(totaisPdv.valorTotal)}
                         </Text>
                       </Text>
                       <Text
@@ -866,8 +1095,11 @@ export default function Index() {
                           setDadosDePagamento({});
                           setValorEditavel(
                             String(
-                              (registroTransacao?.valorTotal ?? 0) -
-                                (transacaoAtual?.valorRecebido ?? 0),
+                              Math.max(
+                                0,
+                                totaisPdv.valorTotal -
+                                  (transacaoAtual?.valorRecebido ?? 0),
+                              ),
                             ),
                           );
                           setModalConfirmVisible(true);
@@ -1040,6 +1272,7 @@ export default function Index() {
                     marginRight: 5,
                   }}
                   onPress={() => setModalConfirmVisible(false)}
+                  disabled={sincronizandoQuantidade}
                 >
                   <Text style={{ textAlign: "center" }}>Cancelar</Text>
                 </TouchableOpacity>
@@ -1051,11 +1284,36 @@ export default function Index() {
                     borderRadius: 8,
                     flex: 1,
                     marginLeft: 5,
+                    opacity: sincronizandoQuantidade ? 0.7 : 1,
                   }}
+                  disabled={sincronizandoQuantidade}
                   onPress={async () => {
                     if (!valorEditavel || Number(valorEditavel) <= 0) {
                       setMsg("Informe um valor válido");
                       setVisibleMsg(true);
+                      return;
+                    }
+
+                    const sincronizado =
+                      await sincronizarQuantidadesAntesPagamento();
+                    if (!sincronizado.ok) {
+                      return;
+                    }
+
+                    if (
+                      sincronizado.vendaQuitada ||
+                      sincronizado.transacao?.status === "Pago"
+                    ) {
+                      setModalConfirmVisible(false);
+                      setDadosDePagamento({
+                        payment_uniqueid: 0,
+                        payment_status: 4,
+                        payment_message:
+                          "Venda quitada após ajuste de quantidade",
+                        created_at: new Date().toISOString(),
+                      });
+                      setConsultaPagamento(false);
+                      setMetodoSelecionado(null);
                       return;
                     }
 
@@ -1069,7 +1327,7 @@ export default function Index() {
                   }}
                 >
                   <Text style={{ color: "#fff", textAlign: "center" }}>
-                    Confirmar
+                    {sincronizandoQuantidade ? "Atualizando..." : "Confirmar"}
                   </Text>
                 </TouchableOpacity>
               </View>

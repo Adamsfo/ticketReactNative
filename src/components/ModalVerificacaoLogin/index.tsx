@@ -56,9 +56,9 @@ export default function ModalVerificacaoLogin({ onClose, user }: Props) {
         );
 
         // === CONFIGURAÇÃO Z-API ===
-        const instanceId = "3E893A152BA131DB903DFA5FB5498E95";
-        const token = "9A4CDF91FE88589BDD9BA3FC";
-        const clientToken = "F891e8c3d58d84a7eac82cf030ef273faS";
+        const instanceId = process.env.EXPO_PUBLIC_ZAPI_INSTANCE_ID || "";
+        const token = process.env.EXPO_PUBLIC_ZAPI_TOKEN || "";
+        const clientToken = process.env.EXPO_PUBLIC_ZAPI_CLIENT_TOKEN || "";
 
         const message = `🔐 Seu código para entrar no Jango Ingressos é: ${result.data.code}.
 Não compartilhe com ninguém.`;

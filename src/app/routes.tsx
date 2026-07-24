@@ -13,6 +13,9 @@ import Evento from "./(panel)/evento/page";
 import MeusEventos from "./(panel)/meuseventos/page";
 import MeusEventosEdit from "./(panel)/meuseventos/pageEdit";
 import MeusEventoNewIngresso from "./(panel)/meuseventos/pageNewIngresso";
+import HospedagemAdmin from "./(panel)/hospedagem/page";
+import HospedagemReservaDetalhe from "./(panel)/hospedagem/reservaDetalhe/page";
+import HospedagemSuiteDetalhe from "./(panel)/hospedagem/suiteDetalhe/page";
 import Produtor from "./(panel)/produtor/page";
 import Usuario from "./(panel)/usuario/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
@@ -135,6 +138,11 @@ function Routes() {
             options={{ headerShown: false, title: "Meus Eventos" }}
           />
           <Drawer.Screen
+            name="hospedagem"
+            component={HospedagemAdmin}
+            options={{ headerShown: false, title: "🏨 Hospedagem" }}
+          />
+          <Drawer.Screen
             name="produtor"
             component={Produtor}
             options={{ headerShown: false, title: "Produtor" }}
@@ -250,6 +258,11 @@ function Routes() {
             name="meusevento"
             component={MeusEventos}
             options={{ headerShown: false, title: "Meus Eventos" }}
+          />
+          <Drawer.Screen
+            name="hospedagem"
+            component={HospedagemAdmin}
+            options={{ headerShown: false, title: "🏨 Hospedagem" }}
           />
           <Drawer.Screen
             name="cupompromocional"
@@ -556,6 +569,26 @@ function Routes() {
       <Drawer.Screen
         name="meuseventonewingresso"
         component={MeusEventoNewIngresso}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="hospedagemReservaDetalhe"
+        component={HospedagemReservaDetalhe}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="hospedagemSuiteDetalhe"
+        component={HospedagemSuiteDetalhe}
         options={{
           headerShown: false,
           drawerLabel: () => null,

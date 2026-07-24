@@ -43,10 +43,11 @@ type InstallmentResponse = {
 };
 
 //Jango
-// const MP_PUBLIC_KEY = "APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23"; // Chave pública do Mercado Pago
+// const MP_PUBLIC_KEY = process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "";
 
 //Tanz
-const MP_PUBLIC_KEY = "APP_USR-499790e3-36ba-4f0d-8b54-a05c499ad93c"; // Chave pública do Mercado Pago
+const MP_PUBLIC_KEY =
+  process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || ""; // Chave pública do Mercado Pago
 
 export default function CheckoutMercadoPago() {
   const route = useRoute();

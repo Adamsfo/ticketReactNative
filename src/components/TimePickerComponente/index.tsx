@@ -33,6 +33,10 @@ function gerarHorariosPermitidos(
 ): Date[] {
   const inicio = minutosDesdeMeiaNoite(minTime);
   const fim = minutosDesdeMeiaNoite(maxTime);
+  if (inicio > fim) {
+    return [];
+  }
+
   const slots: Date[] = [];
 
   for (let minutos = inicio; minutos <= fim; minutos += intervaloMinutos) {
@@ -56,6 +60,11 @@ function clampTime(value: Date, minTime?: Date, maxTime?: Date): Date {
   const atual = minutosDesdeMeiaNoite(value);
   const minimo = minTime ? minutosDesdeMeiaNoite(minTime) : 0;
   const maximo = maxTime ? minutosDesdeMeiaNoite(maxTime) : 24 * 60 - 1;
+
+  if (minimo > maximo) {
+    return aplicarHorario(value, Math.floor(maximo / 60), maximo % 60);
+  }
+
   const limitado = Math.max(minimo, Math.min(maximo, atual));
 
   return aplicarHorario(
@@ -99,6 +108,8 @@ const TimePickerComponente = ({
     return gerarHorariosPermitidos(minTime, maxTime);
   }, [minTime, maxTime]);
 
+  const semHorarios = hasLimits && horariosPermitidos.length === 0;
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = clampTime(selectedDate || value, minTime, maxTime);
     setShow(false);
@@ -109,17 +120,22 @@ const TimePickerComponente = ({
     setShow(true);
   };
 
-  const selectedMinutes = minutosDesdeMeiaNoite(value);
+  const selectedMinutes = minutosDesdeMeiaNoite(
+    clampTime(value, minTime, maxTime),
+  );
 
   return (
     <View style={styles.container}>
       {Platform.OS === "web" ? (
         <View style={styles.webContainer}>
           <DatePicker
-            selected={clampTime(value, minTime, maxTime)}
-            onChange={(date) =>
-              onChange(clampTime(date || value, minTime, maxTime))
+            selected={
+              semHorarios ? value : clampTime(value, minTime, maxTime)
             }
+            onChange={(date) => {
+              if (semHorarios) return;
+              onChange(clampTime(date || value, minTime, maxTime));
+            }}
             dateFormat="p"
             timeFormat="HH:mm"
             showTimeSelect
@@ -129,15 +145,28 @@ const TimePickerComponente = ({
             popperPlacement="bottom-start"
             locale="pt"
             className="custom-timepicker"
-            minTime={minTime}
+            minTime={semHorarios ? maxTime : minTime}
             maxTime={maxTime}
-            includeTimes={hasLimits ? horariosPermitidos : undefined}
+            includeTimes={
+              hasLimits && !semHorarios ? horariosPermitidos : undefined
+            }
+            disabled={semHorarios}
           />
         </View>
       ) : hasLimits ? (
         <Picker
-          selectedValue={selectedMinutes}
+          enabled={!semHorarios}
+          selectedValue={
+            semHorarios
+              ? -1
+              : horariosPermitidos.some(
+                    (s) => minutosDesdeMeiaNoite(s) === selectedMinutes,
+                  )
+                ? selectedMinutes
+                : minutosDesdeMeiaNoite(horariosPermitidos[0])
+          }
           onValueChange={(itemValue) => {
+            if (semHorarios || Number(itemValue) < 0) return;
             onChange(
               aplicarHorario(
                 value,
@@ -148,19 +177,23 @@ const TimePickerComponente = ({
           }}
           style={styles.nativePicker}
         >
-          {horariosPermitidos.map((slot) => {
-            const minutos = minutosDesdeMeiaNoite(slot);
-            return (
-              <Picker.Item
-                key={minutos}
-                label={slot.toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-                value={minutos}
-              />
-            );
-          })}
+          {semHorarios ? (
+            <Picker.Item label="Sem horários" value={-1} />
+          ) : (
+            horariosPermitidos.map((slot) => {
+              const minutos = minutosDesdeMeiaNoite(slot);
+              return (
+                <Picker.Item
+                  key={minutos}
+                  label={slot.toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  value={minutos}
+                />
+              );
+            })
+          )}
         </Picker>
       ) : (
         <View>

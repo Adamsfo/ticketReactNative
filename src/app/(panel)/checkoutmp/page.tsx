@@ -7,12 +7,11 @@ import { Transacao } from "@/src/types/geral";
 
 export default function Index() {
   //Jango
-  // initMercadoPago("APP_USR-8ccbd791-ea60-4e70-a915-a89fd05f5c23", {
+  // initMercadoPago(process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "", {
   //   locale: "pt-BR",
   // });
 
-  //Tanz
-  initMercadoPago("APP_USR-499790e3-36ba-4f0d-8b54-a05c499ad93c", {
+  initMercadoPago(process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "", {
     locale: "pt-BR",
   });
 

@@ -16,7 +16,7 @@ import { Transacao } from "@/src/types/geral";
 import { api } from "@/src/lib/api";
 import { initMercadoPago, Wallet } from "@mercadopago/sdk-react";
 
-const MP_PUBLIC_KEY = "APP_USR-499790e3-36ba-4f0d-8b54-a05c499ad93c"; // Chave pública do Mercado Pago
+const MP_PUBLIC_KEY = process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || ""; // Chave pública do Mercado Pago
 
 type Props = {
   savedPaymentData: any;

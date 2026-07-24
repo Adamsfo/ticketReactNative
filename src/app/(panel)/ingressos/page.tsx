@@ -152,7 +152,7 @@ export default function Index() {
       if (id > 1 && isPDV && user) {
         setFormDataUsuario(user);
       }
-    }, [id])
+    }, [id, isPDV])
   );
 
   // Filtrar os diferentes TipoIngresso_descricao

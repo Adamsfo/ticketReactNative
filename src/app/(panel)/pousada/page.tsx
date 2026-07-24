@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -56,7 +56,7 @@ const SCROLL_OFFSET_SUITES = 16;
 
 const CHECKIN_TIME_MIN = (() => {
   const d = new Date();
-  d.setHours(14, 0, 0, 0);
+  d.setHours(16, 0, 0, 0);
   return d;
 })();
 const CHECKIN_TIME_MAX = (() => {
@@ -75,14 +75,70 @@ const CHECKOUT_TIME_MAX = (() => {
   return d;
 })();
 
+const INTERVALO_SLOTS_CHECKIN_MIN = 30;
+const MSG_SEM_HORARIOS_HOJE =
+  "Os horários disponíveis para hoje já se encerraram. Escolha uma nova data.";
+const MSG_SEM_HORARIOS_HOJE_BUSCA =
+  "Não há mais horários disponíveis para check-in hoje. Selecione outra data.";
+
 function minutosDesdeMeiaNoite(time: Date): number {
   return time.getHours() * 60 + time.getMinutes();
+}
+
+function aplicarHorarioBase(hours: number, minutes: number): Date {
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d;
+}
+
+function isMesmaDataLocal(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Próximo slot de 30 min estritamente posterior ao horário atual. */
+function proximoSlotAposAgora(
+  agora: Date,
+  intervaloMinutos = INTERVALO_SLOTS_CHECKIN_MIN,
+): number {
+  const minutos = minutosDesdeMeiaNoite(agora);
+  return Math.ceil((minutos + 1) / intervaloMinutos) * intervaloMinutos;
+}
+
+/**
+ * Mínimo efetivo do check-in:
+ * - datas futuras: 16:00
+ * - hoje: max(16:00, próximo slot > agora)
+ */
+function calcularMinCheckinEfetivo(dataCheckin: Date, agora: Date): Date {
+  const oficial = minutosDesdeMeiaNoite(CHECKIN_TIME_MIN);
+  if (!isMesmaDataLocal(dataCheckin, agora)) {
+    return aplicarHorarioBase(
+      Math.floor(oficial / 60),
+      oficial % 60,
+    );
+  }
+  const aposAgora = proximoSlotAposAgora(agora);
+  const efetivo = Math.max(oficial, aposAgora);
+  return aplicarHorarioBase(Math.floor(efetivo / 60), efetivo % 60);
+}
+
+function haHorariosCheckinDisponiveis(
+  dataCheckin: Date,
+  agora: Date,
+): boolean {
+  const min = calcularMinCheckinEfetivo(dataCheckin, agora);
+  return minutosDesdeMeiaNoite(min) <= minutosDesdeMeiaNoite(CHECKIN_TIME_MAX);
 }
 
 function horarioDentroDoIntervalo(time: Date, min: Date, max: Date): boolean {
   const atual = minutosDesdeMeiaNoite(time);
   const minimo = minutosDesdeMeiaNoite(min);
   const maximo = minutosDesdeMeiaNoite(max);
+  if (minimo > maximo) return false;
   return atual >= minimo && atual <= maximo;
 }
 
@@ -101,7 +157,19 @@ export default function Index() {
   const { state, dispatch } = useCart();
   const { dispatch: dispatchHospedagem } = useHospedagem();
   const navigation = useNavigation() as any;
-  const { id } = route.params as { id: number };
+  const routeParams = (route.params || {}) as {
+    id: number;
+    agendaPrefill?: {
+      checkinDate: string;
+      idEventoSuite?: number;
+      checkinHora?: string;
+    };
+  };
+  const { id } = routeParams;
+  const agendaPrefill = routeParams.agendaPrefill;
+  const agendaPrefillKey = agendaPrefill
+    ? `${agendaPrefill.checkinDate}-${agendaPrefill.idEventoSuite ?? ""}`
+    : "";
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [infoUsuario, setInfoUsuario] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -151,7 +219,7 @@ export default function Index() {
 
   const defaultCheckinTime = () => {
     const d = new Date();
-    d.setHours(14, 0, 0, 0);
+    d.setHours(16, 0, 0, 0);
     return d;
   };
   const defaultCheckoutTime = () => {
@@ -168,6 +236,38 @@ export default function Index() {
     return d;
   });
   const [checkoutTime, setCheckoutTime] = useState(defaultCheckoutTime);
+  const [agoraTick, setAgoraTick] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setAgoraTick(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const checkinMinEfetivo = useMemo(
+    () => calcularMinCheckinEfetivo(checkinDate, agoraTick),
+    [checkinDate, agoraTick],
+  );
+
+  const checkinHojeSemHorarios = useMemo(
+    () =>
+      isMesmaDataLocal(checkinDate, agoraTick) &&
+      !haHorariosCheckinDisponiveis(checkinDate, agoraTick),
+    [checkinDate, agoraTick],
+  );
+
+  // Mantém o horário selecionado dentro da faixa válida (hoje > agora)
+  useEffect(() => {
+    if (checkinHojeSemHorarios) return;
+    setCheckinTime((atual) => {
+      const minutos = minutosDesdeMeiaNoite(atual);
+      const min = minutosDesdeMeiaNoite(checkinMinEfetivo);
+      const max = minutosDesdeMeiaNoite(CHECKIN_TIME_MAX);
+      if (minutos < min || minutos > max) {
+        return checkinMinEfetivo;
+      }
+      return atual;
+    });
+  }, [checkinMinEfetivo, checkinHojeSemHorarios]);
 
   const getRegistros = async (id: number) => {
     if (id > 0) {
@@ -192,8 +292,10 @@ export default function Index() {
 
   const validarFiltros = () => {
     const newErrors: { [key: string]: string } = {};
+    const agora = new Date();
     const checkin = combineDateTime(checkinDate, checkinTime);
     const checkout = combineDateTime(checkoutDate, checkoutTime);
+    const minEfetivo = calcularMinCheckinEfetivo(checkinDate, agora);
 
     if (!checkinDate || !checkoutDate) {
       newErrors.datas = "Check-in e check-out são obrigatórios.";
@@ -201,9 +303,27 @@ export default function Index() {
     if (checkout <= checkin) {
       newErrors.datas = "Check-out deve ser posterior ao check-in.";
     }
-    if (!horarioDentroDoIntervalo(checkinTime, CHECKIN_TIME_MIN, CHECKIN_TIME_MAX)) {
+    if (
+      isMesmaDataLocal(checkinDate, agora) &&
+      !haHorariosCheckinDisponiveis(checkinDate, agora)
+    ) {
+      newErrors.checkinHorario = MSG_SEM_HORARIOS_HOJE_BUSCA;
+    } else if (
+      !horarioDentroDoIntervalo(checkinTime, minEfetivo, CHECKIN_TIME_MAX)
+    ) {
+      if (isMesmaDataLocal(checkinDate, agora)) {
+        newErrors.checkinHorario =
+          "O horário de check-in deve ser posterior ao horário atual.";
+      } else {
+        newErrors.checkinHorario =
+          "O horário de check-in deve estar entre 16:00 e 19:00.";
+      }
+    } else if (
+      isMesmaDataLocal(checkinDate, agora) &&
+      checkin.getTime() <= agora.getTime()
+    ) {
       newErrors.checkinHorario =
-        "O horário de check-in deve estar entre 14:00 e 19:00.";
+        "O horário de check-in deve ser posterior ao horário atual.";
     }
     if (!horarioDentroDoIntervalo(checkoutTime, CHECKOUT_TIME_MIN, CHECKOUT_TIME_MAX)) {
       newErrors.checkoutHorario =
@@ -213,20 +333,44 @@ export default function Index() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBuscarDisponibilidade = async () => {
+  const handleBuscarDisponibilidade = async (override?: {
+    checkinIso: string;
+    checkoutIso: string;
+    idEventoSuite?: number;
+  }) => {
     setFiltroErrors({});
     setCarrinho([]);
     setSuiteEmEdicao(null);
     pendenteScrollSuitesRef.current = false;
-    if (!validarFiltros()) return;
+
+    const checkinIso = override?.checkinIso ?? getCheckinIso();
+    const checkoutIso = override?.checkoutIso ?? getCheckoutIso();
+
+    if (!override) {
+      if (!validarFiltros()) return;
+    } else {
+      // Prefill/agenda: ainda valida check-in de hoje vs horário atual
+      const checkinOverride = new Date(checkinIso);
+      const agora = new Date();
+      if (
+        !Number.isNaN(checkinOverride.getTime()) &&
+        isMesmaDataLocal(checkinOverride, agora) &&
+        checkinOverride.getTime() <= agora.getTime()
+      ) {
+        setFiltroErrors({
+          checkinHorario: MSG_SEM_HORARIOS_HOJE_BUSCA,
+        });
+        return;
+      }
+    }
 
     setBuscandoDisponibilidade(true);
     setDisponibilidadeBuscada(false);
     try {
       const response = await getDisponibilidade({
         idEvento: id,
-        checkin: getCheckinIso(),
-        checkout: getCheckoutIso(),
+        checkin: checkinIso,
+        checkout: checkoutIso,
       });
       if (!response.success || !response.data) {
         setMsgApi(response.message || "Erro ao buscar disponibilidade.");
@@ -239,6 +383,15 @@ export default function Index() {
       setDisponibilidadeBuscada(true);
       if (suites.length > 0) {
         pendenteScrollSuitesRef.current = true;
+      }
+      if (override?.idEventoSuite) {
+        const alvo = suites.find((s) => s.id === override.idEventoSuite);
+        if (alvo) {
+          const { min } = getLimitesSuite(alvo);
+          setSuiteEmEdicao(alvo);
+          setAdultosItem(min);
+          setCriancasItem(0);
+        }
       }
     } catch {
       setMsgApi("Erro ao buscar disponibilidade.");
@@ -400,7 +553,50 @@ export default function Index() {
       if (id > 1 && isPDV && user) {
         setFormDataUsuario(user);
       }
-    }, [id]),
+
+      if (!agendaPrefill?.checkinDate || !id) {
+        return;
+      }
+
+      const [y, m, d] = agendaPrefill.checkinDate.split("-").map(Number);
+      const checkinDateLocal = new Date(y, (m || 1) - 1, d || 1);
+      const checkoutDateLocal = new Date(checkinDateLocal);
+      checkoutDateLocal.setDate(checkoutDateLocal.getDate() + 1);
+
+      const horaParts = (agendaPrefill.checkinHora || "16:00").split(":");
+      const checkinTimeLocal = new Date();
+      checkinTimeLocal.setHours(
+        Number(horaParts[0]) || 16,
+        Number(horaParts[1]) || 0,
+        0,
+        0,
+      );
+      const checkoutTimeLocal = defaultCheckoutTime();
+
+      setCheckinDate(checkinDateLocal);
+      setCheckinTime(checkinTimeLocal);
+      setCheckoutDate(checkoutDateLocal);
+      setCheckoutTime(checkoutTimeLocal);
+
+      const checkinIso = combineDateTime(
+        checkinDateLocal,
+        checkinTimeLocal,
+      ).toISOString();
+      const checkoutIso = combineDateTime(
+        checkoutDateLocal,
+        checkoutTimeLocal,
+      ).toISOString();
+
+      const timer = setTimeout(() => {
+        handleBuscarDisponibilidade({
+          checkinIso,
+          checkoutIso,
+          idEventoSuite: agendaPrefill.idEventoSuite,
+        });
+      }, 150);
+
+      return () => clearTimeout(timer);
+    }, [id, agendaPrefillKey]),
   );
 
   const zerarIngressos = () => {
@@ -862,12 +1058,21 @@ export default function Index() {
                   <TimePickerComponente
                     value={checkinTime}
                     onChange={setCheckinTime}
-                    minTime={CHECKIN_TIME_MIN}
+                    minTime={checkinMinEfetivo}
                     maxTime={CHECKIN_TIME_MAX}
                   />
                 </View>
               </View>
             </View>
+            {checkinHojeSemHorarios ? (
+              <Text style={styles.labelError}>{MSG_SEM_HORARIOS_HOJE}</Text>
+            ) : null}
+            {filtroErrors.checkinHorario && !checkinHojeSemHorarios ? (
+              <Text style={styles.labelError}>{filtroErrors.checkinHorario}</Text>
+            ) : null}
+            {filtroErrors.checkoutHorario ? (
+              <Text style={styles.labelError}>{filtroErrors.checkoutHorario}</Text>
+            ) : null}
             <View style={styles.filtroRow}>
               <Text style={styles.labelData}>Check-out</Text>
               <View style={styles.filtroDateTime}>
@@ -894,9 +1099,12 @@ export default function Index() {
               style={[
                 styles.newButton,
                 { alignSelf: "center", marginBottom: 12 },
+                (buscandoDisponibilidade || checkinHojeSemHorarios) && {
+                  opacity: 0.5,
+                },
               ]}
-              onPress={handleBuscarDisponibilidade}
-              disabled={buscandoDisponibilidade}
+              onPress={() => handleBuscarDisponibilidade()}
+              disabled={buscandoDisponibilidade || checkinHojeSemHorarios}
             >
               {buscandoDisponibilidade ? (
                 <ActivityIndicator size="small" color="#fff" />

@@ -4,12 +4,12 @@ import { router } from "expo-router";
 import { Platform } from "react-native";
 
 const BASEAPI = [
-  "http://192.168.18.11:9000",
+  // process.env.EXPO_PUBLIC_API_URL || "http://localhost:9000",
   // "http://15.229.161.174:9000",
-  // "https://api.jangoingressos.com.br",
+  "https://api.jangoingressos.com.br",
   "Homologação",
   "1.0.32",
-  "https://jangoingressos.com.br/",
+  process.env.EXPO_PUBLIC_SITE_URL || "https://jangoingressos.com.br/",
 ];
 
 export const isAuthenticated = async (): Promise<boolean> => {
