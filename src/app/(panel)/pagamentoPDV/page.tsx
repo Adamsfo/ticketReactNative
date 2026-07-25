@@ -50,6 +50,27 @@ import QuantidadeAjustePdv from "./QuantidadeAjustePdv";
 
 const { width } = Dimensions.get("window");
 
+/** Máscara monetária: dígitos internos; 2 últimos = centavos. */
+function digitosParaExibicaoMoeda(digitos: string): string {
+  const only = (digitos || "").replace(/\D/g, "");
+  const padded = only.padStart(3, "0");
+  const cents = padded.slice(-2);
+  const integerRaw = padded.slice(0, -2).replace(/^0+/, "") || "0";
+  const integer = integerRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `R$ ${integer},${cents}`;
+}
+
+function valorParaDigitosCentavos(valor: number): string {
+  const cents = Math.round(Math.max(0, valor) * 100);
+  return String(cents);
+}
+
+function digitosCentavosParaNumero(digitos: string): number {
+  const only = (digitos || "").replace(/\D/g, "");
+  if (!only) return 0;
+  return Number(only) / 100;
+}
+
 type IngressoAgrupado = IngressoTransacao & {
   qtde: number;
   chave: string;
@@ -99,7 +120,7 @@ export default function Index() {
   const [visibleMsg, setVisibleMsg] = useState<boolean>(false);
   const redirecionouHospedagem = useRef(false);
   const [modalConfirmVisible, setModalConfirmVisible] = useState(false);
-  const [valorEditavel, setValorEditavel] = useState<string>("0");
+  const [valorEditavel, setValorEditavel] = useState<string>(""); // só dígitos (centavos)
   const [sincronizandoQuantidade, setSincronizandoQuantidade] = useState(false);
 
   let [transacaoAtual, setTransacaoAtual] = useState<Transacao | null>(
@@ -313,6 +334,18 @@ export default function Index() {
     0,
     Math.round(totaisPdv.valorTotal * 100) - Math.round(valorRecebidoAtual * 100),
   );
+  const valorInformadoCentavos = Number(
+    (valorEditavel || "").replace(/\D/g, "") || "0",
+  );
+  const valorExcedeSaldo =
+    valorInformadoCentavos > saldoPendenteCentavos;
+  const valorPagamentoInvalido =
+    valorInformadoCentavos <= 0 || valorExcedeSaldo;
+  const msgErroValorPagamento = valorExcedeSaldo
+    ? `O valor informado não pode ser maior que o saldo restante (${digitosParaExibicaoMoeda(String(saldoPendenteCentavos))}).`
+    : valorInformadoCentavos <= 0 && valorEditavel.length > 0
+      ? "Informe um valor maior que R$ 0,00."
+      : "";
 
   /**
    * Persiste a redução na própria Transacao / IngressoTransacao
@@ -408,7 +441,7 @@ export default function Index() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          valorTotal: Number(valorEditavel),
+          valorTotal: digitosCentavosParaNumero(valorEditavel),
           // email: email,
           descricao: "Venda de Ingressos",
           idTransacao: registroTransacao?.id,
@@ -445,7 +478,7 @@ export default function Index() {
         body: JSON.stringify({
           idTransacao: registroTransacao?.id,
           idUsuarioPDV: user?.id,
-          valorTotal: Number(valorEditavel),
+          valorTotal: digitosCentavosParaNumero(valorEditavel),
         }), // Adicione o ID do usuário aqui
       });
 
@@ -1094,7 +1127,7 @@ export default function Index() {
                         if (!consultaPagamento) {
                           setDadosDePagamento({});
                           setValorEditavel(
-                            String(
+                            valorParaDigitosCentavos(
                               Math.max(
                                 0,
                                 totaisPdv.valorTotal -
@@ -1233,23 +1266,30 @@ export default function Index() {
                 }}
               /> */}
 
-              <View>
+              <View style={{ marginBottom: 15 }}>
                 <Text style={styles.label}>Valor</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      marginBottom: msgErroValorPagamento ? 6 : 0,
+                    },
+                    valorExcedeSaldo && { borderColor: colors.red },
+                  ]}
                   multiline={Platform.OS === "web" ? false : true}
-                  placeholder="Exemplo: 60,00"
+                  placeholder="Exemplo: R$ 60,00"
                   keyboardType="numeric"
-                  value={formatCurrency(valorEditavel)}
+                  value={digitosParaExibicaoMoeda(valorEditavel)}
                   onChangeText={(text) => {
-                    const cleaned = text
-                      .replace(/R\$\s?/g, "")
-                      .replace(/\./g, "")
-                      .replace(",", ".");
-
-                    setValorEditavel(cleaned);
+                    const digitos = text.replace(/\D/g, "");
+                    setValorEditavel(digitos);
                   }}
                 ></TextInput>
+                {msgErroValorPagamento ? (
+                  <Text style={styles.erroValorModal}>
+                    {msgErroValorPagamento}
+                  </Text>
+                ) : null}
               </View>
 
               <Text style={{ marginBottom: 15 }}>
@@ -1284,12 +1324,29 @@ export default function Index() {
                     borderRadius: 8,
                     flex: 1,
                     marginLeft: 5,
-                    opacity: sincronizandoQuantidade ? 0.7 : 1,
+                    opacity:
+                      sincronizandoQuantidade || valorPagamentoInvalido
+                        ? 0.5
+                        : 1,
                   }}
-                  disabled={sincronizandoQuantidade}
+                  disabled={sincronizandoQuantidade || valorPagamentoInvalido}
                   onPress={async () => {
-                    if (!valorEditavel || Number(valorEditavel) <= 0) {
-                      setMsg("Informe um valor válido");
+                    const valorConfirmado =
+                      digitosCentavosParaNumero(valorEditavel);
+                    const valorConfirmadoCentavos = Math.round(
+                      valorConfirmado * 100,
+                    );
+
+                    if (!valorEditavel || valorConfirmadoCentavos <= 0) {
+                      setMsg("Informe um valor maior que R$ 0,00.");
+                      setVisibleMsg(true);
+                      return;
+                    }
+
+                    if (valorConfirmadoCentavos > saldoPendenteCentavos) {
+                      setMsg(
+                        `O valor informado não pode ser maior que o saldo restante (${digitosParaExibicaoMoeda(String(saldoPendenteCentavos))}).`,
+                      );
                       setVisibleMsg(true);
                       return;
                     }
@@ -1397,6 +1454,13 @@ const styles = StyleSheet.create({
     color: colors.red,
     marginTop: -18,
     marginBottom: 18,
+  },
+  erroValorModal: {
+    color: colors.red,
+    fontSize: 13,
+    marginTop: 0,
+    marginBottom: 0,
+    flexWrap: "wrap",
   },
   eventDetails: {
     flexWrap: "wrap",
