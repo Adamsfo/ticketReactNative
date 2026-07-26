@@ -122,6 +122,9 @@ export default function Index() {
   const [modalConfirmVisible, setModalConfirmVisible] = useState(false);
   const [valorEditavel, setValorEditavel] = useState<string>(""); // só dígitos (centavos)
   const [sincronizandoQuantidade, setSincronizandoQuantidade] = useState(false);
+  /** Evita múltiplas aberturas de conta Jango para a mesma venda PDV nesta tela. */
+  const abrirContaPdvEmAndamento = useRef(false);
+  const contaJangoPdvJaProcessada = useRef<number | null>(null);
 
   let [transacaoAtual, setTransacaoAtual] = useState<Transacao | null>(
     registroTransacao,
@@ -240,6 +243,15 @@ export default function Index() {
       setHtmlContent("");
       setRegistrosIngressoTransacao([]);
       setQtdePorGrupo({});
+      // Só libera nova abertura se a venda mudou; não resetar na mesma transação.
+      const idTrxAtual = Number(registroTransacao?.id ?? 0);
+      if (
+        contaJangoPdvJaProcessada.current != null &&
+        contaJangoPdvJaProcessada.current !== idTrxAtual
+      ) {
+        contaJangoPdvJaProcessada.current = null;
+        abrirContaPdvEmAndamento.current = false;
+      }
 
       if (idEvento > 0) {
         getRegistros(idEvento);
@@ -715,26 +727,77 @@ export default function Index() {
   };
 
   const handleAbrirConta = async () => {
+    const idTransacao = Number(registroTransacao?.id ?? state.transacao?.id);
+    if (!idTransacao || !user?.id) {
+      console.log("[PDV abrirConta FE] abortado — sem idTransacao/user", {
+        idTransacao,
+        userId: user?.id,
+      });
+      return;
+    }
+
+    if (contaJangoPdvJaProcessada.current === idTransacao) {
+      console.log("[PDV abrirConta FE] já processada nesta sessão", {
+        idTransacao,
+        motivo: "reexecução local",
+      });
+      return;
+    }
+
+    if (abrirContaPdvEmAndamento.current) {
+      console.log("[PDV abrirConta FE] já em andamento — ignorando chamada paralela", {
+        idTransacao,
+      });
+      return;
+    }
+
     try {
-      let ingressosSelecionados = [];
+      abrirContaPdvEmAndamento.current = true;
+      console.log("[PDV abrirConta FE] início", {
+        idTransacao,
+        idPagamento: payment_uniqueid || null,
+        idUsuarioPDV: user.id,
+      });
 
-      for (const item of registrosIngressoTransacao) {
-        ingressosSelecionados.push(item.idIngresso);
-      }
+      const response = await apiGeral.createResource("/pagamentopdv/abrirconta", {
+        idTransacao,
+        idUsuarioPDV: user.id,
+      });
 
-      if (ingressosSelecionados.length === 0) {
+      if (response.success === false) {
+        console.log("[PDV abrirConta FE] falha", {
+          idTransacao,
+          idPagamento: payment_uniqueid || null,
+          message: response.message,
+        });
+        setMsg(response.message || "Erro ao abrir conta.");
+        setVisibleMsg(true);
         return;
       }
 
-      const json = await apiGeral.createResource("/validadorjango", {
-        ingressos: ingressosSelecionados,
+      const payload = (response.data as any)?.data ?? response.data;
+      contaJangoPdvJaProcessada.current = idTransacao;
+
+      console.log("[PDV abrirConta FE] sucesso", {
+        idTransacao,
+        idPagamento: payload?.idPagamento ?? payment_uniqueid ?? null,
+        reutilizada: payload?.reutilizada,
+        idVendaJango: payload?.idVendaJango,
+        message: payload?.message,
+        motivo: payload?.reutilizada ? "conta reutilizada / reexecução" : "conta criada",
       });
 
-      setMsg("Conta aberta e ingressos utilizados com sucesso!");
+      setMsg(
+        payload?.message ||
+          "Conta aberta e ingressos utilizados com sucesso!",
+      );
       setVisibleMsg(true);
     } catch (error) {
+      console.log("[PDV abrirConta FE] erro", error);
       setMsg("Erro ao abrir conta.");
       setVisibleMsg(true);
+    } finally {
+      abrirContaPdvEmAndamento.current = false;
     }
   };
 
