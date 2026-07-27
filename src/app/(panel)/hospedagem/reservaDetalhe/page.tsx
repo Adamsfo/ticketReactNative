@@ -24,11 +24,20 @@ import {
   corStatusReserva,
   getReservaAdminDetalhe,
   labelStatusReserva,
+  postReenviarLinkPagamentoReserva,
   ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
-import { deveExibirFinanceiroRecepcao } from "@/src/lib/hospedagemPagamentoRecepcao";
+import {
+  deveExibirFinanceiroRecepcao,
+  obterSaldoPendenteExibicao,
+} from "@/src/lib/hospedagemPagamentoRecepcao";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
+import {
+  ReceberSaldoHospedagemProvider,
+  useReceberSaldoHospedagem,
+} from "../contexts/ReceberSaldoHospedagemContext";
+import ReceberSaldoHospedagemModal from "../components/ReceberSaldoHospedagemModal";
 
 const { width } = Dimensions.get("window");
 
@@ -50,8 +59,18 @@ function labelTipoHospede(tipo: string): string {
 }
 
 export default function HospedagemReservaDetalhePage() {
+  return (
+    <ReceberSaldoHospedagemProvider>
+      <HospedagemReservaDetalheContent />
+      <ReceberSaldoHospedagemModal />
+    </ReceberSaldoHospedagemProvider>
+  );
+}
+
+function HospedagemReservaDetalheContent() {
   const navigation = useNavigation() as any;
   const route = useRoute();
+  const { openReceberSaldo } = useReceberSaldoHospedagem();
   const { idReserva } = (route.params || {}) as { idReserva?: number };
   const id = Number(idReserva);
 
@@ -59,6 +78,8 @@ export default function HospedagemReservaDetalhePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [reserva, setReserva] = useState<ReservaAdminDetalhe | null>(null);
+  const [reenviandoLink, setReenviandoLink] = useState(false);
+  const [msgLink, setMsgLink] = useState<string | null>(null);
 
   const carregar = useCallback(
     async (isRefresh = false) => {
@@ -98,8 +119,31 @@ export default function HospedagemReservaDetalhePage() {
     }, [carregar]),
   );
 
+  const handleReenviarLink = async () => {
+    if (!reserva?.id) return;
+    setReenviandoLink(true);
+    setMsgLink(null);
+    try {
+      const resp = await postReenviarLinkPagamentoReserva(reserva.id);
+      if (!resp.success) {
+        setMsgLink(resp.message || "Não foi possível reenviar o link.");
+        return;
+      }
+      if (resp.data) setReserva(resp.data as ReservaAdminDetalhe);
+      setMsgLink("Link reenviado ao cliente (WhatsApp/e-mail).");
+    } catch {
+      setMsgLink("Erro ao reenviar o link.");
+    } finally {
+      setReenviandoLink(false);
+    }
+  };
+
   const status = reserva?.status ?? "Confirmada";
   const cor = corStatusReserva(status);
+  const podeReenviarLink =
+    (reserva?.statusOriginal === "AguardandoPagamento" ||
+      status === "AguardandoPagamento") &&
+    Boolean(reserva?.tokenPagamento || reserva?.linkPagamento || reserva?.idTransacao);
   const pagamento = reserva?.pagamento ?? null;
   const totalDescontoReserva = (reserva?.suites ?? []).reduce((sum, suite) => {
     if (
@@ -175,6 +219,29 @@ export default function HospedagemReservaDetalhePage() {
                       {labelStatusReserva(status)}
                     </Text>
                   </View>
+                  {podeReenviarLink ? (
+                    <TouchableOpacity
+                      style={styles.botaoLink}
+                      onPress={handleReenviarLink}
+                      disabled={reenviandoLink}
+                    >
+                      {reenviandoLink ? (
+                        <ActivityIndicator color={colors.branco} />
+                      ) : (
+                        <Text style={styles.botaoLinkTexto}>
+                          Reenviar link de pagamento
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+                  {msgLink ? (
+                    <Text style={styles.msgLink}>{msgLink}</Text>
+                  ) : null}
+                  {reserva.linkPagamento ? (
+                    <Text style={styles.meta} selectable>
+                      {reserva.linkPagamento}
+                    </Text>
+                  ) : null}
                   {reserva.evento?.nome ? (
                     <Text style={styles.subtitulo}>{reserva.evento.nome}</Text>
                   ) : null}
@@ -314,6 +381,18 @@ export default function HospedagemReservaDetalhePage() {
                     <ResumoFinanceiroRecepcao
                       dados={reserva}
                       mostrarReceberSaldo
+                      onReceberSaldo={() => {
+                        openReceberSaldo({
+                          idReservaHospedagem: reserva.idReservaHospedagem,
+                          saldoPendente: obterSaldoPendenteExibicao(reserva),
+                          valorTotal: reserva.valorTotal,
+                          valorPago: reserva.valorPago,
+                          suiteNome: reserva.suites?.[0]?.nome,
+                          responsavel:
+                            reserva.responsavel || reserva.nomeResponsavel,
+                          onSuccess: () => carregar(true),
+                        });
+                      }}
                     />
                   ) : null}
                   <View style={styles.linhaResumo}>
@@ -467,6 +546,25 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 13,
+  },
+  botaoLink: {
+    marginTop: 12,
+    backgroundColor: colors.azul,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignSelf: "flex-start",
+  },
+  botaoLinkTexto: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  msgLink: {
+    marginTop: 8,
+    fontSize: 13,
+    color: colors.azul,
+    fontWeight: "600",
   },
   secaoTitulo: {
     fontSize: 12,

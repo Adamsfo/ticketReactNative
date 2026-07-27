@@ -73,6 +73,74 @@ export function criarHospedesIniciais(
   }));
 }
 
+/**
+ * Alinha a estrutura de hóspedes ao carrinho, preservando nomes já preenchidos
+ * (voltar/avançar etapas ou alterar qtde não apaga o que o usuário digitou).
+ */
+export function sincronizarHospedesComCarrinho(
+  atuais: HospedesSuiteForm[],
+  itens: ItemCarrinhoHospedagem[],
+): HospedesSuiteForm[] {
+  return itens.map((item) => {
+    const existente = atuais.find((h) => h.idEventoSuite === item.idEventoSuite);
+    return {
+      idEventoSuite: item.idEventoSuite,
+      nomeSuite: item.nomeSuite,
+      adultos: Array.from({ length: item.adultos }, (_, index) => {
+        const ordem = index + 1;
+        const prev = existente?.adultos.find((a) => a.ordem === ordem);
+        return {
+          tipo: "adulto" as const,
+          ordem,
+          nomeCompleto: prev?.nomeCompleto ?? "",
+        };
+      }),
+      criancas: Array.from({ length: item.criancas }, (_, index) => {
+        const ordem = index + 1;
+        const prev = existente?.criancas.find((c) => c.ordem === ordem);
+        return {
+          tipo: "crianca" as const,
+          ordem,
+          nomeCompleto: prev?.nomeCompleto ?? "",
+          dataNascimento: prev?.dataNascimento ?? null,
+        };
+      }),
+    };
+  });
+}
+
+/**
+ * Nova reserva: preenche Adulto 1 da primeira suíte com o nome do cliente
+ * responsável, sem sobrescrever se o campo já tiver valor.
+ */
+export function preencherPrimeiroAdultoSeVazio(
+  hospedes: HospedesSuiteForm[],
+  nomeCompleto: string,
+): HospedesSuiteForm[] {
+  const nome = String(nomeCompleto || "").trim();
+  if (!nome || hospedes.length === 0) return hospedes;
+
+  let aplicado = false;
+  return hospedes.map((suite) => {
+    if (aplicado || suite.adultos.length === 0) return suite;
+
+    const adulto1 = suite.adultos.find((a) => a.ordem === 1);
+    if (!adulto1) return suite;
+    if (adulto1.nomeCompleto.trim()) {
+      aplicado = true;
+      return suite;
+    }
+
+    aplicado = true;
+    return {
+      ...suite,
+      adultos: suite.adultos.map((adulto) =>
+        adulto.ordem === 1 ? { ...adulto, nomeCompleto: nome } : adulto,
+      ),
+    };
+  });
+}
+
 export function validarHospedes(
   hospedes: HospedesSuiteForm[],
 ): Record<string, string> {

@@ -51,10 +51,14 @@ export default function ResumoFinanceiroRecepcao({
           ? `Falta receber: ${formatCurrency(saldo)}`
           : `💰 Saldo: ${formatCurrency(saldo)}`}
       </Text>
-      {mostrarReceberSaldo ? (
+      {mostrarReceberSaldo && onReceberSaldo ? (
         <TouchableOpacity
           style={styles.btnReceber}
-          onPress={onReceberSaldo}
+          onPress={(e) => {
+            // Evita abrir o card/sheet ao tocar no botão (Agenda das Suítes).
+            (e as { stopPropagation?: () => void })?.stopPropagation?.();
+            onReceberSaldo();
+          }}
           activeOpacity={0.85}
         >
           <Text style={styles.btnReceberTexto}>Receber Saldo</Text>

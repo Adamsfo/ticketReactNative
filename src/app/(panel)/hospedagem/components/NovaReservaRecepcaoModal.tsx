@@ -19,22 +19,30 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import { ItemCarrinhoHospedagem } from "@/src/components/ModalResumoPousada";
 import { apiAuth } from "@/src/lib/auth";
 import {
-  criarHospedesIniciais,
   calcularIdadeEmAnos,
   formatarIdadeAnos,
   HospedesSuiteForm,
   hospedesSuiteParaCheckout,
   IDADE_MAXIMA_CRIANCA_HOSPEDAGEM,
   MSG_CRIANCA_ACIMA_IDADE,
+  preencherPrimeiroAdultoSeVazio,
+  sincronizarHospedesComCarrinho,
   validarHospedes,
 } from "@/src/lib/hospedagemHospedes";
-import { postReservaRecepcao } from "@/src/lib/hospedagemAdmin";
+import {
+  postReservaRecepcao,
+  postReservaRecepcaoEnviarCliente,
+} from "@/src/lib/hospedagemAdmin";
 import {
   nomeCompletoCliente,
   ordenarClientesPorRelevancia,
   TextoComDestaque,
 } from "@/src/lib/hospedagemBuscaCliente";
-import { formatDateTimeHospedagem } from "@/src/lib/hospedagemStatusOperacional";
+import {
+  formatDateTimeHospedagem,
+  HOSPEDAGEM_TZ,
+} from "@/src/lib/hospedagemStatusOperacional";
+import { fromZonedTime } from "date-fns-tz";
 import {
   aplicarDescontoProporcional,
   calcularValorFinalComDesconto,
@@ -159,10 +167,22 @@ function horarioMaiorOuIgual(time: Date, min: Date): boolean {
   return minutosDesdeMeiaNoite(time) >= minutosDesdeMeiaNoite(min);
 }
 
+/**
+ * Monta o instante UTC a partir da data/hora escolhidas no seletor,
+ * interpretadas como horário de parede em America/Cuiaba — assim 22:00
+ * informado pelo usuário é gravado/exibido como 22:00, sem cair no padrão 16:00.
+ */
 function combineDateTime(date: Date, time: Date): Date {
-  const d = new Date(date);
-  d.setHours(time.getHours(), time.getMinutes(), 0, 0);
-  return d;
+  const wall = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    time.getHours(),
+    time.getMinutes(),
+    0,
+    0,
+  );
+  return fromZonedTime(wall, HOSPEDAGEM_TZ);
 }
 
 function defaultCheckinTime() {
@@ -188,11 +208,11 @@ function labelCapacidade(suite: EventoSuite): string {
   return min === max ? `${max} hóspedes` : `${min} a ${max} hóspedes`;
 }
 
-function parsePrefillDates(
-  checkinDate?: string | null,
-  checkinHora?: string | null,
-) {
-  const agora = new Date();
+/**
+ * Datas podem vir do calendário/suíte; horários são sempre o padrão do sistema.
+ * Nunca herdar check-in/check-out de reserva anterior ou de prefill.
+ */
+function parsePrefillDates(checkinDate?: string | null) {
   let checkinDateLocal = new Date();
   let checkoutDateLocal = new Date();
   checkoutDateLocal.setDate(checkoutDateLocal.getDate() + 1);
@@ -204,36 +224,17 @@ function parsePrefillDates(
     checkoutDateLocal.setDate(checkoutDateLocal.getDate() + 1);
   }
 
-  // Sem hora explícita: aplica regra da recepção (16:00 ou próximo slot se for hoje)
-  let checkinTimeLocal: Date;
-  if (checkinHora) {
-    const horaParts = checkinHora.split(":");
-    checkinTimeLocal = new Date();
-    checkinTimeLocal.setHours(
-      Number(horaParts[0]) || 16,
-      Number(horaParts[1]) || 0,
-      0,
-      0,
-    );
-  } else {
-    checkinTimeLocal = calcularMinCheckinRecepcao(checkinDateLocal, agora);
-    // Datas futuras: padrão operacional 16:00
-    if (!isMesmaDataLocal(checkinDateLocal, agora)) {
-      checkinTimeLocal = defaultCheckinTime();
-    }
-  }
-
   return {
     checkinDate: checkinDateLocal,
     checkoutDate: checkoutDateLocal,
-    checkinTime: checkinTimeLocal,
+    checkinTime: defaultCheckinTime(),
     checkoutTime: defaultCheckoutTime(),
-    agora,
   };
 }
 
 export default function NovaReservaRecepcaoModal() {
-  const { visible, prefill, closeNovaReserva } = useNovaReservaRecepcao();
+  const { visible, sessionKey, prefill, closeNovaReserva } =
+    useNovaReservaRecepcao();
   const { notifyOperacaoConcluida } = useHospedagemAdminRefresh();
 
   const [step, setStep] = useState(1);
@@ -335,6 +336,8 @@ export default function NovaReservaRecepcaoModal() {
     prefillSuiteRef.current = null;
   }, []);
 
+  // Nova sessão (abrir/fechar/Nova Reserva): limpa tudo e aplica horários padrão.
+  // Navegação entre etapas da mesma sessão NÃO passa por aqui — horários do usuário permanecem.
   useEffect(() => {
     if (!visible) {
       resetState();
@@ -342,13 +345,13 @@ export default function NovaReservaRecepcaoModal() {
     }
 
     resetState();
-    const parsed = parsePrefillDates(prefill?.checkinDate, prefill?.checkinHora);
+    const parsed = parsePrefillDates(prefill?.checkinDate);
     setCheckinDate(parsed.checkinDate);
     setCheckoutDate(parsed.checkoutDate);
     setCheckinTime(parsed.checkinTime);
     setCheckoutTime(parsed.checkoutTime);
     prefillSuiteRef.current = prefill?.idEventoSuite ?? null;
-  }, [visible, prefill, resetState]);
+  }, [visible, sessionKey, prefill?.checkinDate, prefill?.idEventoSuite, resetState]);
 
   useEffect(() => {
     if (!visible) return;
@@ -515,9 +518,19 @@ export default function NovaReservaRecepcaoModal() {
 
   useEffect(() => {
     if (!visible || step !== 4 || carrinho.length === 0) return;
-    setHospedes(criarHospedesIniciais(carrinho));
+
+    // Nova reserva: sincroniza com o carrinho sem apagar nomes já digitados.
+    // Adulto 1 recebe o nome do cliente só se o campo ainda estiver vazio.
+    const nomeCliente = cliente ? nomeCompletoCliente(cliente) : "";
+    setHospedes((prev) =>
+      preencherPrimeiroAdultoSeVazio(
+        sincronizarHospedesComCarrinho(prev, carrinho),
+        nomeCliente,
+      ),
+    );
+    // Erros de validação só são limpos quando a estrutura é (re)montada ao entrar na etapa.
     setHospedesErrors({});
-  }, [visible, step, carrinho]);
+  }, [visible, step, carrinho, cliente]);
 
   const totaisResumo = useMemo(() => {
     let preco = 0;
@@ -870,6 +883,23 @@ export default function NovaReservaRecepcaoModal() {
     }
   };
 
+  const montarSuitesPayload = () =>
+    carrinho.map((item) => {
+      const suiteHospedes = hospedes.find(
+        (s) => s.idEventoSuite === item.idEventoSuite,
+      );
+      return {
+        idEventoSuite: item.idEventoSuite,
+        adultos: item.adultos,
+        criancas: item.criancas,
+        hospedes: suiteHospedes
+          ? hospedesSuiteParaCheckout(suiteHospedes)
+          : [],
+        desconto:
+          item.desconto && item.desconto.valor > 0 ? item.desconto : undefined,
+      };
+    });
+
   const handleSalvar = async () => {
     if (!cliente?.id || !idEvento || carrinho.length === 0) return;
 
@@ -908,20 +938,7 @@ export default function NovaReservaRecepcaoModal() {
         idUsuario: cliente.id,
         checkin: getCheckinIso(),
         checkout: getCheckoutIso(),
-        suites: carrinho.map((item) => {
-          const suiteHospedes = hospedes.find(
-            (s) => s.idEventoSuite === item.idEventoSuite,
-          );
-          return {
-            idEventoSuite: item.idEventoSuite,
-            adultos: item.adultos,
-            criancas: item.criancas,
-            hospedes: suiteHospedes
-              ? hospedesSuiteParaCheckout(suiteHospedes)
-              : [],
-            desconto: item.desconto && item.desconto.valor > 0 ? item.desconto : undefined,
-          };
-        }),
+        suites: montarSuitesPayload(),
         observacoes: observacoes.trim() || null,
         pagamento: {
           valor: valorPago,
@@ -940,6 +957,58 @@ export default function NovaReservaRecepcaoModal() {
       closeNovaReserva();
     } catch {
       setErroGeral("Erro ao salvar reserva.");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  /** Cria AguardandoPagamento + envia link (reutiliza pagamentos existentes). */
+  const handleEnviarParaCliente = async () => {
+    if (!cliente?.id || !idEvento || carrinho.length === 0) return;
+
+    if (carrinhoTemDescontoInvalido) {
+      setErroGeral(MSG_DESCONTO_INVALIDO);
+      return;
+    }
+
+    const errs = validarHospedes(hospedes);
+    setHospedesErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setErroGeral("Revise os dados dos hóspedes.");
+      return;
+    }
+
+    if (!cliente.telefone && !cliente.email) {
+      setErroGeral(
+        "O cliente precisa ter telefone ou e-mail para receber o link.",
+      );
+      return;
+    }
+
+    setSalvando(true);
+    setErroGeral(null);
+    setPagamentoErro(null);
+    try {
+      const resp = await postReservaRecepcaoEnviarCliente({
+        idEvento,
+        idUsuario: cliente.id,
+        checkin: getCheckinIso(),
+        checkout: getCheckoutIso(),
+        suites: montarSuitesPayload(),
+        observacoes: observacoes.trim() || null,
+      });
+
+      if (!resp.success) {
+        setErroGeral(
+          resp.message || "Não foi possível enviar a reserva ao cliente.",
+        );
+        return;
+      }
+
+      notifyOperacaoConcluida();
+      closeNovaReserva();
+    } catch {
+      setErroGeral("Erro ao enviar reserva para o cliente.");
     } finally {
       setSalvando(false);
     }
@@ -1728,29 +1797,44 @@ export default function NovaReservaRecepcaoModal() {
 
         <View style={[styles.footer, { paddingBottom: bottomPad }]}>
           {step === 5 ? (
-            <>
-              <TouchableOpacity
-                style={styles.btnFooterSec}
-                onPress={closeNovaReserva}
-                disabled={salvando}
-              >
-                <Text style={styles.btnFooterSecText}>Cancelar</Text>
-              </TouchableOpacity>
+            <View style={{ flex: 1, gap: 8 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.btnFooterSec, { flex: 1 }]}
+                  onPress={handleVoltar}
+                  disabled={salvando}
+                >
+                  <Text style={styles.btnFooterSecText}>Voltar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.btnFooterPri,
+                    { flex: 1 },
+                    (salvando || !!pagamentoErro) && { opacity: 0.6 },
+                  ]}
+                  onPress={handleSalvar}
+                  disabled={salvando || !!pagamentoErro}
+                >
+                  {salvando ? (
+                    <ActivityIndicator color={colors.branco} />
+                  ) : (
+                    <Text style={styles.btnFooterPriText}>Salvar Reserva</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
               <TouchableOpacity
                 style={[
-                  styles.btnFooterPri,
-                  (salvando || !!pagamentoErro) && { opacity: 0.6 },
+                  styles.btnFooterEnviarCliente,
+                  salvando && { opacity: 0.6 },
                 ]}
-                onPress={handleSalvar}
-                disabled={salvando || !!pagamentoErro}
+                onPress={handleEnviarParaCliente}
+                disabled={salvando}
               >
-                {salvando ? (
-                  <ActivityIndicator color={colors.branco} />
-                ) : (
-                  <Text style={styles.btnFooterPriText}>Salvar Reserva</Text>
-                )}
+                <Text style={styles.btnFooterEnviarClienteText}>
+                  Enviar para Cliente
+                </Text>
               </TouchableOpacity>
-            </>
+            </View>
           ) : (
             <>
               <TouchableOpacity style={styles.btnFooterSec} onPress={handleVoltar}>
@@ -2194,6 +2278,7 @@ const styles = StyleSheet.create({
   btnOutlineText: { fontWeight: "600", color: colors.cinza },
   footer: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     paddingHorizontal: 12,
     paddingTop: 12,
@@ -2220,4 +2305,19 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   btnFooterPriText: { fontWeight: "700", color: colors.branco },
+  btnFooterEnviarCliente: {
+    backgroundColor: colors.branco,
+    borderWidth: 2,
+    borderColor: colors.azul,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 46,
+  },
+  btnFooterEnviarClienteText: {
+    fontWeight: "800",
+    color: colors.azul,
+    fontSize: 15,
+  },
 });

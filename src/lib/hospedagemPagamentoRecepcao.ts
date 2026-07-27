@@ -4,9 +4,15 @@ export type FormaPagamentoRecepcao =
   | "CartaoCredito"
   | "CartaoDebito"
   | "Transferencia"
+  | "LinkPagamento"
   | "Outro";
 
-export type OrigemReservaHospedagem = "SITE" | "ATENDENTE";
+/** Valores de produção: CLIENTE | ATENDENTE. SITE = legado. */
+export type OrigemReservaHospedagem =
+  | "CLIENTE"
+  | "ATENDENTE"
+  | "SITE"
+  | string;
 
 export const FORMAS_PAGAMENTO_RECEPCAO: Array<{
   value: FormaPagamentoRecepcao;
@@ -17,11 +23,18 @@ export const FORMAS_PAGAMENTO_RECEPCAO: Array<{
   { value: "CartaoCredito", label: "Cartão Crédito" },
   { value: "CartaoDebito", label: "Cartão Débito" },
   { value: "Transferencia", label: "Transferência" },
+  { value: "LinkPagamento", label: "Link de Pagamento" },
   { value: "Outro", label: "Outro" },
 ];
 
 export const MSG_VALOR_PAGO_MAIOR =
   "O valor recebido não pode ser maior que o valor da reserva.";
+
+export const MSG_VALOR_MAIOR_QUE_SALDO =
+  "O valor recebido não pode ser maior que o saldo pendente.";
+
+export const MSG_CHECKIN_BLOQUEADO_SALDO =
+  "Não é possível realizar o check-in enquanto houver saldo pendente. Receba o pagamento antes de prosseguir.";
 
 export const COR_RECEBIDO = "#027a3a";
 export const COR_SALDO_PENDENTE = "#e67e22";
@@ -34,7 +47,7 @@ export type PagamentoRecepcaoPayload = {
 };
 
 export type DadosFinanceirosReserva = {
-  origemReserva?: OrigemReservaHospedagem | "CLIENTE" | string | null;
+  origemReserva?: OrigemReservaHospedagem | null;
   idUsuarioCriacao?: number | null;
   valorPago?: number | null;
   saldoPendente?: number | null;
@@ -101,22 +114,35 @@ export function deveExibirFinanceiroRecepcao(
     Boolean(dados.formaPagamentoRecepcao);
   if (!origemAtendente) return false;
 
-  const saldo =
-    dados.saldoPendente != null
-      ? Number(dados.saldoPendente)
-      : calcularSaldoPendente(
-          Number(dados.valorTotal ?? 0),
-          Number(dados.valorPago ?? 0),
-        );
-  return saldo > 0.009;
+  return obterSaldoPendenteExibicao(dados) > 0.009;
 }
 
+/**
+ * Saldo para UI: preferencialmente ReservaHospedagem.saldo_pendente,
+ * desde que coerente com valor_total - valor_pago. Caso contrário, recalcula.
+ */
 export function obterSaldoPendenteExibicao(
   dados: DadosFinanceirosReserva,
 ): number {
-  if (dados.saldoPendente != null) return roundMoney(Number(dados.saldoPendente));
-  return calcularSaldoPendente(
-    Number(dados.valorTotal ?? 0),
-    Number(dados.valorPago ?? 0),
-  );
+  const valorTotal = roundMoney(Number(dados.valorTotal ?? 0));
+  const valorPago = roundMoney(Number(dados.valorPago ?? 0));
+  const calculado = calcularSaldoPendente(valorTotal, valorPago);
+
+  if (dados.saldoPendente == null) return calculado;
+
+  const coluna = roundMoney(Number(dados.saldoPendente));
+  if (Number.isNaN(coluna)) return calculado;
+
+  // Coluna desatualizada (ex.: 0 com valor_pago < valor_total) → usa o cálculo.
+  if (Math.abs(coluna - calculado) > 0.009) return calculado;
+
+  return coluna;
+}
+
+/** Impede início do check-in enquanto houver qualquer valor pendente. */
+export function bloqueiaCheckinPorSaldoPendente(
+  dados: DadosFinanceirosReserva | null | undefined,
+): boolean {
+  if (!dados) return false;
+  return obterSaldoPendenteExibicao(dados) > 0.009;
 }

@@ -24,6 +24,7 @@ import Pousada from "./(panel)/pousada/page";
 import Conferencia from "./(panel)/conferencia/page";
 import ConferenciaHospedagem from "./(panel)/conferenciaHospedagem/page";
 import ReservaConfirmada from "./(panel)/reservaConfirmada/page";
+import ReservaPublica from "./(panel)/reserva/page";
 import Pagamento from "./(panel)/pagamento/page";
 import PagamentoPDV from "./(panel)/pagamentoPDV/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
@@ -352,7 +353,7 @@ function Routes() {
         </>
       );
     }
-    // VALIDADOR vê só o menu "Validador"
+    // PDV: menus atuais + Hospedagem (mesmo item do Administrador)
     if (isPDV) {
       return (
         <>
@@ -370,6 +371,11 @@ function Routes() {
                 />
               ),
             }}
+          />
+          <Drawer.Screen
+            name="hospedagem"
+            component={HospedagemAdmin}
+            options={{ headerShown: false, title: "🏨 Hospedagem" }}
           />
           <Drawer.Screen
             name="validador"
@@ -629,6 +635,16 @@ function Routes() {
       <Drawer.Screen
         name="reservaConfirmada"
         component={ReservaConfirmada}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="reserva"
+        component={ReservaPublica}
         options={{
           headerShown: false,
           drawerLabel: () => null,

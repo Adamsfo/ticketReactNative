@@ -1,6 +1,7 @@
 import { addDays, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import {
+  DiaCalendarioSuites,
   EventoAgendaSuite,
   getReservasAdmin,
   getSuitesOperacionais,
@@ -28,6 +29,8 @@ export type BarraAgendaReserva = {
   adultos?: number;
   criancas?: number;
   valorTotal?: number;
+  valorPago?: number;
+  saldoPendente?: number;
   dataHoraCheckinReal?: string | null;
   dataHoraCheckoutRealizado?: string | null;
 };
@@ -210,6 +213,8 @@ function mesclarReservasAdmin(
       adultos: r.adultos,
       criancas: r.criancas,
       valorTotal: r.valorTotal,
+      valorPago: r.valorPago ?? existente?.valorPago,
+      saldoPendente: r.saldoPendente ?? existente?.saldoPendente,
       dataHoraCheckinReal:
         (r as ReservaAdminCard & { dataHoraCheckinReal?: string | null })
           .dataHoraCheckinReal ??
@@ -230,6 +235,8 @@ export async function carregarDadosAgenda(
 ): Promise<{
   suites: SuiteOperacionalCard[];
   barras: BarraAgendaReserva[];
+  /** Dias do calendário com disponibilidadePorSuite (SuiteDisponibilidadeService). */
+  diasCalendario: DiaCalendarioSuites[];
 }> {
   const diasVisiveis = buildDiasVisiveis(dataInicio, range);
   const meses = mesesNoIntervalo(diasVisiveis);
@@ -243,6 +250,8 @@ export async function carregarDadosAgenda(
   const suites = suitesResp.data ?? [];
 
   const barrasMap = new Map<string, BarraAgendaReserva>();
+  const diasCalendario: DiaCalendarioSuites[] = [];
+  const diasVistos = new Set<string>();
 
   for (const mes of meses) {
     const resp = await getSuitesOperacionais({
@@ -250,6 +259,11 @@ export async function carregarDadosAgenda(
       data: `${mes}-01`,
       mes,
     });
+    for (const dia of resp.meta?.calendario?.dias ?? []) {
+      if (diasVistos.has(dia.data)) continue;
+      diasVistos.add(dia.data);
+      diasCalendario.push(dia);
+    }
     const eventos = extrairEventosCalendario(
       resp.meta?.calendario?.dias ?? [],
     );
@@ -274,32 +288,7 @@ export async function carregarDadosAgenda(
     // Mantém apenas eventos do calendário se a listagem falhar
   }
 
-  // Alinha status da barra com a operação do dia (ex.: Hospedada após check-in)
-  for (const suite of suites) {
-    if (!suite.idReservaHospedagem) continue;
-    const key = chaveBarra(suite.idReservaHospedagem, suite.idEventoSuite);
-    const barra = barrasMap.get(key);
-    if (!barra) continue;
-    if (suite.dataHoraCheckinReal) {
-      barra.dataHoraCheckinReal = suite.dataHoraCheckinReal;
-    }
-    if (
-      suite.statusReserva === "Hospedada" ||
-      suite.status === "Hospedada" ||
-      suite.status === "CheckOutHoje"
-    ) {
-      barra.status = "Hospedada";
-    }
-    if (
-      suite.statusReserva === "CheckOutRealizado" ||
-      suite.statusReserva === "CheckoutRealizado"
-    ) {
-      barra.status = "CheckOutRealizado";
-    }
-  }
-
-  // Também carrega barras encerradas do dia (check-out real) via reservas
-  // já mescladas — fim = dataHoraCheckoutRealizado quando existir
+  // Geometria: check-out real encerra a barra no horário efetivo (não recalcula disponibilidade).
   for (const barra of barrasMap.values()) {
     if (barra.dataHoraCheckoutRealizado) {
       barra.fim = barra.dataHoraCheckoutRealizado;
@@ -313,7 +302,7 @@ export async function carregarDadosAgenda(
     ),
   );
 
-  return { suites, barras };
+  return { suites, barras, diasCalendario };
 }
 
 export function labelDiaCurto(data: string): string {
@@ -332,44 +321,17 @@ export function dataCuiabaFromIso(iso: string): string {
   return formatInTimeZone(new Date(iso), TZ, "yyyy-MM-dd");
 }
 
-/** Dia ocupa a grade se a reserva sobrepõe o calendário (mesma regra das barras). */
-export function diaOcupadoPorBarras(
+/** Dia ocupa a grade se o serviço marcou agendaOcupada (não recalcula datas). */
+export function diaOcupadoPorDisponibilidade(
   data: string,
-  barras: BarraAgendaReserva[],
+  idEventoSuite: number,
+  diasCalendario: DiaCalendarioSuites[],
 ): boolean {
-  const inicioDia = diaInicioMs(data);
-  const fimDia = diaFimMs(data);
-  return barras.some((b) => {
-    const ci = new Date(b.inicio).getTime();
-    const co = new Date(b.fim).getTime();
-    return ci < fimDia && co > inicioDia;
-  });
-}
-
-function reservaAtiva(b: BarraAgendaReserva): boolean {
-  const s = String(b.status || "");
-  return (
-    s === "Confirmada" ||
-    s === "Hospedada" ||
-    s === "AguardandoPagamento" ||
-    (s !== "Cancelada" &&
-      s !== "Expirada" &&
-      s !== "CheckOutRealizado" &&
-      s !== "CheckoutRealizado")
+  const dia = diasCalendario.find((d) => d.data === data);
+  const info = dia?.disponibilidadePorSuite?.find(
+    (s) => s.idEventoSuite === idEventoSuite,
   );
-}
-
-/** Há check-in de outra reserva neste dia (ocupa a tarde a partir das 16:00). */
-function alguemEntraNoDia(
-  data: string,
-  barras: BarraAgendaReserva[],
-  excluirId?: string,
-): boolean {
-  return barras.some((b) => {
-    if (excluirId && b.id === excluirId) return false;
-    if (!reservaAtiva(b)) return false;
-    return dataCuiabaFromIso(b.inicio) === data;
-  });
+  return Boolean(info?.agendaOcupada);
 }
 
 export type SlotDisponivelAgenda = {
@@ -379,37 +341,41 @@ export type SlotDisponivelAgenda = {
 };
 
 /**
- * Slots onde uma nova reserva pode começar (check-in 16:00).
- * Após cada ocupação: o próprio dia do check-out (meia célula direita),
- * pois a suíte fica livre após o check-out (13:00) e o novo check-in é às 16:00.
- * Suíte sem reservas: primeiro dia da janela (célula cheia).
+ * Slots clicáveis na Agenda — somente flags do SuiteDisponibilidadeService
+ * (`podeReservar` / `disponivelAposCheckout` / `agendaOcupada`).
+ * Mantém a UX esparsa: suíte sem ocupação → primeiro dia reservável;
+ * com ocupação → dias de disponível após checkout.
  */
-export function calcularPrimeirosDiasDisponiveis(
-  barrasSuite: BarraAgendaReserva[],
+export function slotsDisponiveisDaAgenda(
+  idEventoSuite: number,
   diasVisiveis: string[],
+  diasCalendario: DiaCalendarioSuites[],
 ): SlotDisponivelAgenda[] {
   if (!diasVisiveis.length) return [];
 
-  const porData = new Map<string, SlotDisponivelAgenda>();
-  const ativas = barrasSuite.filter(reservaAtiva);
-  const encerradas = barrasSuite.filter((b) => {
-    const s = String(b.status || "");
-    return s === "CheckOutRealizado" || s === "CheckoutRealizado";
+  const byData = new Map(diasCalendario.map((d) => [d.data, d]));
+  const infos = diasVisiveis.map((data) => {
+    const info = byData
+      .get(data)
+      ?.disponibilidadePorSuite?.find((s) => s.idEventoSuite === idEventoSuite);
+    return { data, info };
   });
 
-  if (ativas.length === 0 && encerradas.length === 0) {
-    return [{ data: diasVisiveis[0], modo: "cheia" }];
+  const temOcupacao = infos.some((i) => i.info?.agendaOcupada);
+  if (!temOcupacao) {
+    const primeiro = infos.find((i) => i.info?.podeReservar);
+    return primeiro
+      ? [{ data: primeiro.data, modo: "cheia" }]
+      : [];
   }
 
-  for (const barra of [...ativas, ...encerradas]) {
-    const checkoutDia = dataCuiabaFromIso(barra.fim);
-    if (!diasVisiveis.includes(checkoutDia)) continue;
-    if (alguemEntraNoDia(checkoutDia, ativas, barra.id)) continue;
-
-    porData.set(checkoutDia, { data: checkoutDia, modo: "meia" });
-  }
-
-  return Array.from(porData.values());
+  return infos
+    .filter(
+      (i) =>
+        Boolean(i.info?.podeReservar) &&
+        Boolean(i.info?.disponivelAposCheckout),
+    )
+    .map((i) => ({ data: i.data, modo: "meia" as const }));
 }
 
 export type AgendaNovaReservaPrefill = {

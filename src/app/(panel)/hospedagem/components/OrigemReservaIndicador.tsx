@@ -16,7 +16,8 @@ export function normalizarOrigemReserva(
     valorPago?: number | null;
     formaPagamentoRecepcao?: string | null;
   },
-): "SITE" | "ATENDENTE" {
+): "CLIENTE" | "ATENDENTE" {
+  // Produção: CLIENTE | ATENDENTE. SITE legado = cliente online.
   if (origem === "ATENDENTE") return "ATENDENTE";
   if (
     Number(extras?.idUsuarioCriacao ?? 0) > 0 ||
@@ -25,7 +26,7 @@ export function normalizarOrigemReserva(
   ) {
     return "ATENDENTE";
   }
-  return "SITE";
+  return "CLIENTE";
 }
 
 type Props = {

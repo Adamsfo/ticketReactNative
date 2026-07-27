@@ -51,10 +51,12 @@ export default function Index() {
     idEvento,
     registroTransacao: registroTransacaoParam,
     tipoCompra,
+    resumoHospedagemBootstrap,
   } = route.params as {
     idEvento: number;
     registroTransacao: Transacao | number;
     tipoCompra?: string;
+    resumoHospedagemBootstrap?: import("@/src/lib/resumoPagamentoHospedagem").ResumoPagamentoHospedagemData;
   };
   const registroTransacao = resolverRegistroTransacao(
     registroTransacaoParam,
@@ -69,6 +71,7 @@ export default function Index() {
     idEvento,
     registroTransacao,
     reserva: hospedagemState.reserva,
+    resumoBootstrap: resumoHospedagemBootstrap ?? null,
   });
   const [registrosIngressoTransacao, setRegistrosIngressoTransacao] = useState<
     IngressoTransacao[]

@@ -70,8 +70,16 @@ export function useResumoPagamentoHospedagem(params: {
   idEvento: number;
   registroTransacao?: Transacao | null;
   reserva: HospedagemReserva | null;
+  /** Opcional: resumo já carregado (ex.: link público /reserva/TOKEN). */
+  resumoBootstrap?: ResumoPagamentoHospedagemData | null;
 }) {
-  const { tipoCompra, idEvento, registroTransacao, reserva } = params;
+  const {
+    tipoCompra,
+    idEvento,
+    registroTransacao,
+    reserva,
+    resumoBootstrap,
+  } = params;
   const isHospedagem = tipoCompra === "hospedagem";
   const [resumo, setResumo] = useState<ResumoPagamentoHospedagemData | null>(
     null,
@@ -80,6 +88,23 @@ export function useResumoPagamentoHospedagem(params: {
   useEffect(() => {
     if (!isHospedagem) {
       setResumo(null);
+      return;
+    }
+
+    if (resumoBootstrap) {
+      setResumo({
+        ...resumoBootstrap,
+        taxaServicoDesconto: registroTransacao?.taxaServicoDesconto,
+        subtotalGeral: Number(
+          registroTransacao?.preco ?? resumoBootstrap.subtotalGeral,
+        ),
+        taxaServico: Number(
+          registroTransacao?.taxaServico ?? resumoBootstrap.taxaServico,
+        ),
+        valorTotal: Number(
+          registroTransacao?.valorTotal ?? resumoBootstrap.valorTotal,
+        ),
+      });
       return;
     }
 
@@ -119,7 +144,7 @@ export function useResumoPagamentoHospedagem(params: {
     return () => {
       ativo = false;
     };
-  }, [isHospedagem, reserva, idEvento, registroTransacao]);
+  }, [isHospedagem, reserva, idEvento, registroTransacao, resumoBootstrap]);
 
   return { isHospedagem, resumo };
 }

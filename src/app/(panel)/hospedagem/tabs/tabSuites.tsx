@@ -13,7 +13,6 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import colors from "@/src/constants/colors";
 import formatCurrency from "@/src/components/FormatCurrency";
@@ -35,10 +34,10 @@ import {
   badgeStatusOperacional,
   CORES_STATUS_OPERACIONAL,
   corStatusOperacionalPadrao,
-  formatHoraHospedagem,
-  getStatusOperacionalSuite,
 } from "@/src/lib/hospedagemStatusOperacional";
 import { ReservaOperacaoRef } from "@/src/lib/hospedagemOperacao";
+import { obterSaldoPendenteExibicao } from "@/src/lib/hospedagemPagamentoRecepcao";
+import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemContext";
 
 const TZ = "America/Cuiaba";
 
@@ -102,18 +101,6 @@ function dataNoMes(mes: string, dataAtual: string): string {
   const ultimo = new Date(y, m, 0).getDate();
   const dia = Math.min(Math.max(diaAtual, 1), ultimo);
   return `${mes}-${String(dia).padStart(2, "0")}`;
-}
-
-function formatParte(iso?: string | null): { data: string; hora: string } {
-  if (!iso) return { data: "--/--", hora: "--:--" };
-  try {
-    return {
-      data: formatInTimeZone(parseISO(String(iso)), TZ, "dd/MM"),
-      hora: formatInTimeZone(parseISO(String(iso)), TZ, "HH:mm"),
-    };
-  } catch {
-    return { data: "--/--", hora: "--:--" };
-  }
 }
 
 function IndicadoresDots({
@@ -299,35 +286,46 @@ function CardSuite({
   item,
   onPress,
   filtroAtivo,
-  dataReferencia,
+  dataSelecionada,
+  hoje,
 }: {
   item: SuiteOperacionalCard;
   onPress: () => void;
   filtroAtivo: FiltroSuiteOperacional;
-  dataReferencia: string;
+  dataSelecionada: string;
+  hoje: string;
 }) {
-  const statusOp = getStatusOperacionalSuite({
-    statusOperacional: item.status,
-    statusReserva: item.statusReserva,
-    checkin: item.checkin,
-    checkout: item.checkout,
-    dataHoraCheckinReal: item.dataHoraCheckinReal,
-    dataReferencia,
-  });
+  const { openReceberSaldo } = useReceberSaldoHospedagem();
 
-  // No filtro "Livres", check-out hoje entra como disponível para venda
-  const livreAposCheckout =
-    filtroAtivo === "livres" && statusOp === "CHECKOUT_HOJE";
+  // Apresentação pura: badge/mensagens/botão vêm do SuiteDisponibilidadeService (API).
+  // Modo Livres + disponível após checkout: matriz §3.6 — visual Livre, flags do backend.
+  // Check-in / Check-out só no dia corrente (agenda operacional).
+  const ehHoje = dataSelecionada === hoje;
+  const badgeApi = (item.badge || "").toUpperCase();
+  const modoLivreAposCheckout =
+    filtroAtivo === "livres" &&
+    item.disponivelHojeAposCheckout === true &&
+    item.acoesDisponiveis?.reservar === true;
 
-  const statusExibicao = livreAposCheckout ? "LIVRE" : statusOp;
+  const statusExibicao = (
+    modoLivreAposCheckout ? "LIVRE" : badgeApi || item.status || "LIVRE"
+  ) as string;
+
   const cor = corStatusOperacionalPadrao(statusExibicao);
-  const badgeTexto = badgeStatusOperacional(statusExibicao);
+  const badgeTexto =
+    modoLivreAposCheckout
+      ? "LIVRE"
+      : (item.badgeLabel || badgeStatusOperacional(statusExibicao)).toUpperCase();
 
-  const horaEntrada = formatHoraHospedagem(
-    item.dataHoraCheckinReal || item.checkin,
-  );
-  const horaCheckout = formatHoraHospedagem(item.checkout);
-  const checkout = formatParte(item.checkout);
+  const botao = item.botaoPrincipal;
+  const mostrarChipNovaReserva =
+    modoLivreAposCheckout || botao === "nova_reserva";
+  const mostrarChipCheckin =
+    ehHoje && !modoLivreAposCheckout && botao === "checkin";
+  const mostrarChipCheckout =
+    ehHoje && !modoLivreAposCheckout && botao === "checkout";
+  const mostrarChipVerReserva =
+    !modoLivreAposCheckout && botao === "ver_reserva";
 
   return (
     <TouchableOpacity
@@ -346,23 +344,21 @@ function CardSuite({
             <Text style={styles.badgeTexto}>{badgeTexto}</Text>
           </View>
 
-          {statusExibicao === "LIVRE" ? (
+          {statusExibicao === "LIVRE" || statusExibicao === "Livre" ? (
             <>
               <Text style={styles.livreTitulo}>
-                {livreAposCheckout
-                  ? item.mensagemDisponibilidade ||
-                    "Disponível para nova reserva após 13:00"
-                  : "Disponível para reserva"}
+                {item.mensagemDisponibilidade || "Disponível para reserva"}
               </Text>
-              {livreAposCheckout ? (
+              {item.mensagemDisponibilidadeSecundaria ? (
                 <Text style={styles.disponivelSecundario}>
-                  {item.mensagemDisponibilidadeSecundaria ||
-                    "Disponível após o check-out"}
+                  {item.mensagemDisponibilidadeSecundaria}
                 </Text>
               ) : null}
-              <View style={styles.reservarChip}>
-                <Text style={styles.reservarTexto}>Nova Reserva</Text>
-              </View>
+              {mostrarChipNovaReserva ? (
+                <View style={styles.reservarChip}>
+                  <Text style={styles.reservarTexto}>Nova Reserva</Text>
+                </View>
+              ) : null}
             </>
           ) : statusExibicao === "CHECKIN_HOJE" ? (
             <>
@@ -370,9 +366,11 @@ function CardSuite({
                 <Text style={styles.responsavel}>{item.responsavel}</Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              <Text style={styles.destaqueHora}>
-                {item.mensagemDisponibilidade || "Entrada prevista às 16:00"}
-              </Text>
+              {item.mensagemDisponibilidade ? (
+                <Text style={styles.destaqueHora}>
+                  {item.mensagemDisponibilidade}
+                </Text>
+              ) : null}
               <ResumoFinanceiroRecepcao
                 dados={{
                   ...item,
@@ -380,15 +378,32 @@ function CardSuite({
                 }}
                 compact
                 mostrarReceberSaldo
+                onReceberSaldo={() => {
+                  if (!item.idReservaHospedagem) return;
+                  const dados = {
+                    ...item,
+                    valorTotal: item.valorHospedagem ?? item.valorTotal,
+                  };
+                  openReceberSaldo({
+                    idReservaHospedagem: item.idReservaHospedagem,
+                    saldoPendente: obterSaldoPendenteExibicao(dados),
+                    valorTotal: dados.valorTotal,
+                    valorPago: item.valorPago,
+                    suiteNome: item.nome,
+                    responsavel: item.responsavel,
+                  });
+                }}
               />
-              <View
-                style={[
-                  styles.reservarChip,
-                  { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
-                ]}
-              >
-                <Text style={styles.reservarTexto}>Realizar Check-in</Text>
-              </View>
+              {mostrarChipCheckin ? (
+                <View
+                  style={[
+                    styles.reservarChip,
+                    { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
+                  ]}
+                >
+                  <Text style={styles.reservarTexto}>Realizar Check-in</Text>
+                </View>
+              ) : null}
             </>
           ) : statusExibicao === "HOSPEDADA" ? (
             <>
@@ -396,13 +411,16 @@ function CardSuite({
                 <Text style={styles.responsavel}>{item.responsavel}</Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              <Text style={styles.destaqueHora}>
-                {item.mensagemDisponibilidade || `Entrou às ${horaEntrada}`}
-              </Text>
-              <Text style={styles.disponivelSecundario}>
-                {item.mensagemDisponibilidadeSecundaria ||
-                  `Sai em ${checkout.data} às 13:00`}
-              </Text>
+              {item.mensagemDisponibilidade ? (
+                <Text style={styles.destaqueHora}>
+                  {item.mensagemDisponibilidade}
+                </Text>
+              ) : null}
+              {item.mensagemDisponibilidadeSecundaria ? (
+                <Text style={styles.disponivelSecundario}>
+                  {item.mensagemDisponibilidadeSecundaria}
+                </Text>
+              ) : null}
               <ResumoFinanceiroRecepcao
                 dados={{
                   ...item,
@@ -410,14 +428,18 @@ function CardSuite({
                 }}
                 compact
               />
-              <View
-                style={[
-                  styles.reservarChip,
-                  { backgroundColor: CORES_STATUS_OPERACIONAL.hospedada },
-                ]}
-              >
-                <Text style={styles.reservarTexto}>Ver Reserva</Text>
-              </View>
+              {mostrarChipVerReserva || mostrarChipCheckout ? (
+                <View
+                  style={[
+                    styles.reservarChip,
+                    { backgroundColor: CORES_STATUS_OPERACIONAL.hospedada },
+                  ]}
+                >
+                  <Text style={styles.reservarTexto}>
+                    {mostrarChipCheckout ? "Realizar Check-out" : "Ver Reserva"}
+                  </Text>
+                </View>
+              ) : null}
             </>
           ) : statusExibicao === "CHECKOUT_HOJE" ? (
             <>
@@ -425,12 +447,16 @@ function CardSuite({
                 <Text style={styles.responsavel}>{item.responsavel}</Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              <Text style={styles.destaqueHora}>
-                {item.mensagemDisponibilidade || `Sai às ${horaCheckout}`}
-              </Text>
-              <Text style={styles.disponivelSecundario}>
-                Disponível após o check-out.
-              </Text>
+              {item.mensagemDisponibilidade ? (
+                <Text style={styles.destaqueHora}>
+                  {item.mensagemDisponibilidade}
+                </Text>
+              ) : null}
+              {item.mensagemDisponibilidadeSecundaria ? (
+                <Text style={styles.disponivelSecundario}>
+                  {item.mensagemDisponibilidadeSecundaria}
+                </Text>
+              ) : null}
               <ResumoFinanceiroRecepcao
                 dados={{
                   ...item,
@@ -438,14 +464,29 @@ function CardSuite({
                 }}
                 compact
               />
-              <View
-                style={[
-                  styles.reservarChip,
-                  { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
-                ]}
-              >
-                <Text style={styles.reservarTexto}>Realizar Check-out</Text>
-              </View>
+              {mostrarChipCheckout ? (
+                <View
+                  style={[
+                    styles.reservarChip,
+                    { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
+                  ]}
+                >
+                  <Text style={styles.reservarTexto}>Realizar Check-out</Text>
+                </View>
+              ) : mostrarChipNovaReserva ? (
+                <View style={styles.reservarChip}>
+                  <Text style={styles.reservarTexto}>Nova Reserva</Text>
+                </View>
+              ) : mostrarChipVerReserva ? (
+                <View
+                  style={[
+                    styles.reservarChip,
+                    { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
+                  ]}
+                >
+                  <Text style={styles.reservarTexto}>Ver Reserva</Text>
+                </View>
+              ) : null}
             </>
           ) : (
             <>
@@ -456,6 +497,11 @@ function CardSuite({
               {item.mensagemDisponibilidade ? (
                 <Text style={styles.livreTitulo}>
                   {item.mensagemDisponibilidade}
+                </Text>
+              ) : null}
+              {item.mensagemDisponibilidadeSecundaria ? (
+                <Text style={styles.disponivelSecundario}>
+                  {item.mensagemDisponibilidadeSecundaria}
                 </Text>
               ) : null}
               <ResumoFinanceiroRecepcao
@@ -472,6 +518,11 @@ function CardSuite({
                     {formatCurrency(Number(item.valorHospedagem))}
                   </Text>
                 </Text>
+              ) : null}
+              {mostrarChipVerReserva ? (
+                <View style={styles.reservarChip}>
+                  <Text style={styles.reservarTexto}>Ver Reserva</Text>
+                </View>
               ) : null}
             </>
           )}
@@ -538,22 +589,12 @@ export default function TabSuites() {
   }, [refreshVersion, carregar]);
 
   const abrirSuite = (item: SuiteOperacionalCard) => {
-    const statusOp = getStatusOperacionalSuite({
-      statusOperacional: item.status,
-      statusReserva: item.statusReserva,
-      checkin: item.checkin,
-      checkout: item.checkout,
-      dataHoraCheckinReal: item.dataHoraCheckinReal,
-      dataReferencia,
-    });
-
-    const livreParaReservar =
-      statusOp === "LIVRE" ||
-      (filtro === "livres" && statusOp === "CHECKOUT_HOJE");
+    const livreParaReservar = item.acoesDisponiveis?.reservar === true;
 
     if (livreParaReservar && item.idEvento) {
       openNovaReserva({
         idEvento: item.idEvento,
+        idEventoSuite: item.idEventoSuite ?? item.id,
         checkinDate: dataReferencia,
       });
       return;
@@ -572,6 +613,8 @@ export default function TabSuites() {
         adultos: item.adultos,
         criancas: item.criancas,
         valorTotal: item.valorHospedagem,
+        valorPago: item.valorPago,
+        saldoPendente: item.saldoPendente,
         idEvento: item.idEvento,
         idEventoSuite: item.idEventoSuite,
       });
@@ -659,7 +702,8 @@ export default function TabSuites() {
             <CardSuite
               item={item}
               filtroAtivo={filtro}
-              dataReferencia={dataReferencia}
+              dataSelecionada={dataReferencia}
+              hoje={hoje}
               onPress={() => abrirSuite(item)}
             />
           )}

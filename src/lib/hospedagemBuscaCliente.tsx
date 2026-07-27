@@ -20,7 +20,7 @@ export function nomeCompletoCliente(u: {
  * Relevância da busca:
  * 1) nome iniciando pelo texto
  * 2) sobrenome contendo o texto
- * 3) demais ocorrências no nome completo / CPF / telefone
+ * 3) código / CPF / telefone (sem máscara)
  */
 export function scoreRelevanciaCliente(u: Usuario, busca: string): number {
   const q = busca.trim().toLowerCase();
@@ -34,13 +34,16 @@ export function scoreRelevanciaCliente(u: Usuario, busca: string): number {
     .toLowerCase();
   const completo = nomeCompletoCliente(u).toLowerCase();
   const digits = q.replace(/\D/g, "");
+  const hasLetters = /[A-Za-zÀ-ÿ]/.test(busca);
 
-  if (digits.length >= 3) {
+  if (!hasLetters && digits.length > 0) {
     const cpf = String(u.cpf || "").replace(/\D/g, "");
     const tel = String(u.telefone || "").replace(/\D/g, "");
-    if (cpf.includes(digits) || tel.includes(digits)) {
-      return 85;
-    }
+    const id = String(u.id ?? "");
+    const idCliente = String(u.id_cliente ?? "");
+    if (id === digits || idCliente === digits) return 98;
+    if (id.includes(digits) || idCliente.includes(digits)) return 92;
+    if (cpf.includes(digits) || tel.includes(digits)) return 85;
   }
 
   if (nome.startsWith(q)) return 100;

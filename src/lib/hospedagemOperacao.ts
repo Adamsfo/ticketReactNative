@@ -13,14 +13,12 @@ import {
 
 export {
   HOSPEDAGEM_TZ,
-  checkinDisponivelInfo,
   formatDateTimeHospedagem,
   formatHoraHospedagem,
   getStatusOperacionalSuite,
   corStatusOperacionalPadrao,
   labelStatusOperacionalPadrao,
   badgeStatusOperacional,
-  acoesSheetPorStatus,
   CORES_STATUS_OPERACIONAL,
   type StatusOperacionalPadrao,
   type InputStatusOperacional,
@@ -40,6 +38,8 @@ export type ReservaOperacaoRef = {
   adultos?: number;
   criancas?: number;
   valorTotal?: number | null;
+  valorPago?: number | null;
+  saldoPendente?: number | null;
   /** idEvento para Nova Reserva */
   idEvento?: number | null;
   idEventoSuite?: number | null;

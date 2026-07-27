@@ -1,16 +1,12 @@
 /**
- * Status operacional padronizado — Fonte única para Agenda + Suítes.
+ * Helpers de apresentação (cores / labels) para status de reserva e badges.
  *
- * Cores:
- * 🟢 Livre / disponível
- * 🔵 Hospedada (check-in feito)
- * 🟠 Aguardando ação (check-in hoje, check-out hoje, aguardando pagamento)
- * 🔴 Manutenção / Bloqueada / Cancelada / Expirada / Overbooking
- * ⚪ Check-out realizado
+ * Disponibilidade e estado operacional das suítes: SuiteDisponibilidadeService (API).
+ * Este módulo NÃO decide podeCheckin / podeCheckout / Livre — só pinta e rotula.
  */
 
-import { parseISO, startOfDay } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 export const HOSPEDAGEM_TZ = "America/Cuiaba";
 
@@ -19,6 +15,7 @@ export type StatusOperacionalPadrao =
   | "CHECKIN_HOJE"
   | "HOSPEDADA"
   | "CHECKOUT_HOJE"
+  | "RESERVADA"
   | "AGUARDANDO_PAGAMENTO"
   | "BLOQUEADA"
   | "MANUTENCAO"
@@ -58,9 +55,8 @@ function hojeStrCuiaba(): string {
 }
 
 /**
- * Classificação única consumida por Suítes, Agenda e BottomSheet.
- *
- * Regra-chave: quem já fez check-in NUNCA retorna CHECKIN_HOJE.
+ * Mapeia status de reserva / badge já classificado para o enum de apresentação.
+ * Não recalcula disponibilidade — use SuiteDisponibilidadeService no backend.
  */
 export function getStatusOperacionalSuite(
   input: InputStatusOperacional,
@@ -177,6 +173,8 @@ export function corStatusOperacionalPadrao(
     case "CheckInHoje":
     case "CHECKOUT_HOJE":
     case "CheckOutHoje":
+    case "RESERVADA":
+    case "Ocupada":
     case "AGUARDANDO_PAGAMENTO":
     case "AguardandoPagamento":
     case "Confirmada":
@@ -215,6 +213,9 @@ export function labelStatusOperacionalPadrao(
     case "CHECKOUT_HOJE":
     case "CheckOutHoje":
       return "Check-out hoje";
+    case "RESERVADA":
+    case "Ocupada":
+      return "Reservada";
     case "AGUARDANDO_PAGAMENTO":
     case "AguardandoPagamento":
       return "Aguardando pagamento";
@@ -245,82 +246,6 @@ export function badgeStatusOperacional(
   status: StatusOperacionalPadrao | string,
 ): string {
   return labelStatusOperacionalPadrao(status).toUpperCase();
-}
-
-/** Ações sugeridas no BottomSheet conforme status. */
-export function acoesSheetPorStatus(status: StatusOperacionalPadrao): {
-  realizarCheckin: boolean;
-  realizarCheckout: boolean;
-  verReserva: boolean;
-  novaReserva: boolean;
-} {
-  switch (status) {
-    case "CHECKIN_HOJE":
-      return {
-        realizarCheckin: true,
-        realizarCheckout: false,
-        verReserva: true,
-        novaReserva: false,
-      };
-    case "HOSPEDADA":
-      return {
-        realizarCheckin: false,
-        realizarCheckout: true,
-        verReserva: true,
-        novaReserva: false,
-      };
-    case "CHECKOUT_HOJE":
-      return {
-        realizarCheckin: false,
-        realizarCheckout: true,
-        verReserva: true,
-        novaReserva: false,
-      };
-    case "CHECKOUT_REALIZADO":
-      return {
-        realizarCheckin: false,
-        realizarCheckout: false,
-        verReserva: true,
-        novaReserva: false,
-      };
-    case "LIVRE":
-      return {
-        realizarCheckin: false,
-        realizarCheckout: false,
-        verReserva: false,
-        novaReserva: true,
-      };
-    default:
-      return {
-        realizarCheckin: false,
-        realizarCheckout: false,
-        verReserva: true,
-        novaReserva: false,
-      };
-  }
-}
-
-export function checkinDisponivelInfo(checkinIso: string): {
-  disponivel: boolean;
-  labelDisponivelEm: string | null;
-} {
-  try {
-    const agora = toZonedTime(new Date(), HOSPEDAGEM_TZ);
-    const checkin = toZonedTime(parseISO(String(checkinIso)), HOSPEDAGEM_TZ);
-    const disponivel =
-      startOfDay(agora).getTime() >= startOfDay(checkin).getTime();
-    if (disponivel) return { disponivel: true, labelDisponivelEm: null };
-    return {
-      disponivel: false,
-      labelDisponivelEm: formatInTimeZone(
-        parseISO(String(checkinIso)),
-        HOSPEDAGEM_TZ,
-        "dd/MM",
-      ),
-    };
-  } catch {
-    return { disponivel: false, labelDisponivelEm: null };
-  }
 }
 
 export function formatDateTimeHospedagem(iso: string): string {

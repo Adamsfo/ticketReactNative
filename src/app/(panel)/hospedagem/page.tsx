@@ -16,7 +16,9 @@ import TabSuites from "./tabs/tabSuites";
 import TabAgenda from "./tabs/tabAgenda";
 import { HospedagemAdminRefreshProvider } from "./contexts/HospedagemAdminRefreshContext";
 import { NovaReservaRecepcaoProvider } from "./contexts/NovaReservaRecepcaoContext";
+import { ReceberSaldoHospedagemProvider } from "./contexts/ReceberSaldoHospedagemContext";
 import NovaReservaRecepcaoModal from "./components/NovaReservaRecepcaoModal";
+import ReceberSaldoHospedagemModal from "./components/ReceberSaldoHospedagemModal";
 
 const TABS = [
   { key: "suites", label: "🏨 Suítes" },
@@ -32,74 +34,77 @@ export default function HospedagemAdminPage() {
   return (
     <HospedagemAdminRefreshProvider>
       <NovaReservaRecepcaoProvider>
-        <LinearGradient
-          colors={[colors.branco, colors.laranjado]}
-          style={styles.gradient}
-        >
-          <StatusBarPage style="dark" />
-          <BarMenu />
+        <ReceberSaldoHospedagemProvider>
+          <LinearGradient
+            colors={[colors.branco, colors.laranjado]}
+            style={styles.gradient}
+          >
+            <StatusBarPage style="dark" />
+            <BarMenu />
 
-          <ScreenContainer style={styles.container}>
-            <Text style={styles.titulo}>🏨 Hospedagem</Text>
+            <ScreenContainer style={styles.container}>
+              <Text style={styles.titulo}>🏨 Hospedagem</Text>
 
-            <View style={styles.tabsRow}>
-              {TABS.map((tab) => {
-                const ativo = activeTab === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[styles.tab, ativo && styles.tabAtiva]}
-                    onPress={() => setActiveTab(tab.key)}
-                  >
-                    <Text
-                      style={[styles.tabTexto, ativo && styles.tabTextoAtivo]}
+              <View style={styles.tabsRow}>
+                {TABS.map((tab) => {
+                  const ativo = activeTab === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
+                      style={[styles.tab, ativo && styles.tabAtiva]}
+                      onPress={() => setActiveTab(tab.key)}
                     >
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <Text
+                        style={[styles.tabTexto, ativo && styles.tabTextoAtivo]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            {/* Abas montadas em paralelo para receber refresh após operações */}
-            <View style={styles.tabContent}>
-              <View
-                style={[
-                  styles.tabPanel,
-                  activeTab === "suites"
-                    ? styles.tabPanelAtivo
-                    : styles.tabPanelHidden,
-                ]}
-                pointerEvents={activeTab === "suites" ? "auto" : "none"}
-              >
-                <TabSuites />
+              {/* Abas montadas em paralelo para receber refresh após operações */}
+              <View style={styles.tabContent}>
+                <View
+                  style={[
+                    styles.tabPanel,
+                    activeTab === "suites"
+                      ? styles.tabPanelAtivo
+                      : styles.tabPanelHidden,
+                  ]}
+                  pointerEvents={activeTab === "suites" ? "auto" : "none"}
+                >
+                  <TabSuites />
+                </View>
+                <View
+                  style={[
+                    styles.tabPanel,
+                    activeTab === "agenda"
+                      ? styles.tabPanelAtivo
+                      : styles.tabPanelHidden,
+                  ]}
+                  pointerEvents={activeTab === "agenda" ? "auto" : "none"}
+                >
+                  <TabAgenda />
+                </View>
+                <View
+                  style={[
+                    styles.tabPanel,
+                    activeTab === "reservas"
+                      ? styles.tabPanelAtivo
+                      : styles.tabPanelHidden,
+                  ]}
+                  pointerEvents={activeTab === "reservas" ? "auto" : "none"}
+                >
+                  <TabReservas />
+                </View>
               </View>
-              <View
-                style={[
-                  styles.tabPanel,
-                  activeTab === "agenda"
-                    ? styles.tabPanelAtivo
-                    : styles.tabPanelHidden,
-                ]}
-                pointerEvents={activeTab === "agenda" ? "auto" : "none"}
-              >
-                <TabAgenda />
-              </View>
-              <View
-                style={[
-                  styles.tabPanel,
-                  activeTab === "reservas"
-                    ? styles.tabPanelAtivo
-                    : styles.tabPanelHidden,
-                ]}
-                pointerEvents={activeTab === "reservas" ? "auto" : "none"}
-              >
-                <TabReservas />
-              </View>
-            </View>
-          </ScreenContainer>
-        </LinearGradient>
-        <NovaReservaRecepcaoModal />
+            </ScreenContainer>
+          </LinearGradient>
+          <NovaReservaRecepcaoModal />
+          <ReceberSaldoHospedagemModal />
+        </ReceberSaldoHospedagemProvider>
       </NovaReservaRecepcaoProvider>
     </HospedagemAdminRefreshProvider>
   );

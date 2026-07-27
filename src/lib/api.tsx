@@ -4,9 +4,9 @@ import { router } from "expo-router";
 import { Platform } from "react-native";
 
 const BASEAPI = [
-  // process.env.EXPO_PUBLIC_API_URL || "http://localhost:9000",
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:9000",
   // "http://15.229.161.174:9000",
-  "https://api.jangoingressos.com.br",
+  // "https://api.jangoingressos.com.br",
   "Homologação",
   "1.0.32",
   process.env.EXPO_PUBLIC_SITE_URL || "https://jangoingressos.com.br/",

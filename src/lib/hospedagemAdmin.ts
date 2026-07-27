@@ -124,6 +124,17 @@ export type SuiteOperacionalCard = {
   checkoutHoje?: boolean;
   aguardandoPagamento?: boolean;
   disponivelHojeAposCheckout?: boolean;
+  /** Badge oficial (SuiteDisponibilidadeService) — LIVRE, CHECKIN_HOJE, … */
+  badge?: string;
+  badgeLabel?: string;
+  botaoPrincipal?:
+    | "nova_reserva"
+    | "checkin"
+    | "checkout"
+    | "ver_reserva"
+    | "nenhum";
+  /** True se há reserva com check-in na data (bloqueia nova reserva). */
+  bloqueadaPorCheckinNaData?: boolean;
   mensagemDisponibilidade?: string | null;
   mensagemDisponibilidadeSecundaria?: string | null;
   acoesDisponiveis?: {
@@ -140,6 +151,30 @@ export type SuiteOperacionalCard = {
 
 /** @deprecated use SuiteOperacionalCard */
 export type SuiteAdminCard = SuiteOperacionalCard;
+
+export type DisponibilidadeOperacionalReserva = {
+  dataSelecionada: string;
+  idEventoSuite: number;
+  badge: string;
+  badgeLabel: string;
+  mensagem: string | null;
+  mensagemSecundaria: string | null;
+  podeCheckin: boolean;
+  podeCheckout: boolean;
+  botaoPrincipal:
+    | "nova_reserva"
+    | "checkin"
+    | "checkout"
+    | "ver_reserva"
+    | "nenhum";
+  podeReservar: boolean;
+  disponivelAposCheckout: boolean;
+  agendaOcupada: boolean;
+  livre: boolean;
+  checkinHoje: boolean;
+  checkoutHoje: boolean;
+  hospedada: boolean;
+};
 
 export type ReservaAdminDetalhe = {
   id: number;
@@ -166,6 +201,11 @@ export type ReservaAdminDetalhe = {
   nomeUsuarioCriacao?: string | null;
   dataCriacao?: string | null;
   dataConfirmacao?: string | null;
+  tokenPagamento?: string | null;
+  linkPagamento?: string | null;
+  linkPagamentoEnviadoEm?: string | null;
+  expiraEm?: string | null;
+  idTransacao?: number | null;
   responsavel: string;
   nomeResponsavel?: string;
   telefone?: string | null;
@@ -190,6 +230,8 @@ export type ReservaAdminDetalhe = {
       dataNascimento?: string | null;
     }>;
   }>;
+  /** Parte 7: SuiteDisponibilidadeService para o dia consultado. */
+  disponibilidade?: DisponibilidadeOperacionalReserva | null;
   pagamentos?: Array<{
     id: number;
     valor: number;
@@ -294,8 +336,16 @@ export async function getReservasAdmin(params?: {
 
 export async function getReservaAdminDetalhe(
   id: number,
+  dataSelecionada?: string | null,
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
-  return api.request<ReservaAdminDetalhe>(`/hospedagem/reservas/${id}`, "GET");
+  const query: Record<string, string> = {};
+  if (dataSelecionada) query.data = dataSelecionada;
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${id}`,
+    "GET",
+    null,
+    query,
+  );
 }
 
 /** Check-in operacional: Confirmada → Hospedada. */
@@ -315,6 +365,138 @@ export async function postRealizarCheckout(
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/checkout`,
     "POST",
+  );
+}
+
+/** Recebe saldo (parcial/total) — módulo isolado da hospedagem. */
+export async function postReceberSaldoHospedagem(
+  idReservaHospedagem: number,
+  pagamento: {
+    valor: number;
+    formaPagamento: string;
+    comprovante?: string | null;
+    observacao?: string | null;
+  },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/receber-saldo`,
+    "POST",
+    { pagamento },
+  );
+}
+
+export type HospedagemPagamentoPayload = {
+  valor: number;
+  formaPagamento: string;
+  comprovante?: string | null;
+  observacao?: string | null;
+};
+
+/** Retorno idêntico ao POST /pagamentopos do PDV. */
+export type HospedagemTefInicio = {
+  id: string | number;
+  status: string;
+};
+
+/** Retorno idêntico ao GET /consultapagamentopos do PDV. */
+export type HospedagemTefConsultaData = {
+  payment_uniqueid?: string | number;
+  payment_status?: number;
+  payment_message?: string;
+  created_at?: string;
+  payment_data?: Record<string, unknown>;
+};
+
+/** Dinheiro — espelho de /pagamentodinheiro, grava só hospedagem. */
+export async function postReceberSaldoDinheiroHospedagem(
+  idReservaHospedagem: number,
+  body: { valorTotal: number; observacao?: string | null },
+): Promise<ApiResponse<{ data: HospedagemTefConsultaData; reserva?: ReservaAdminDetalhe }>> {
+  return api.request(
+    `/hospedagem/reservas/${idReservaHospedagem}/pagamento/dinheiro`,
+    "POST",
+    body,
+  );
+}
+
+/** Transferência / Outro — registro manual na hospedagem. */
+export async function postReceberSaldoManualHospedagem(
+  idReservaHospedagem: number,
+  pagamento: HospedagemPagamentoPayload,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/pagamento/manual`,
+    "POST",
+    { pagamento },
+  );
+}
+
+/**
+ * Inicia SuperTEF — mesma sequência do PDV (POST /pagamentopos).
+ * Body: valorTotal + transaction_type (1 débito, 2 crédito, 3 PIX).
+ * Retorno: { id: payment_uniqueid, status: 'pending' }
+ */
+export async function postIniciarTefHospedagem(
+  idReservaHospedagem: number,
+  body: {
+    valorTotal: number;
+    transaction_type: number;
+    /** Mesmo campo enviado pelo PagamentoPDV em /pagamentopos. */
+    idUsuarioPDV: number;
+    observacao?: string | null;
+  },
+): Promise<{
+  id?: string | number;
+  status?: string;
+  success?: boolean;
+  message?: string;
+  error?: string;
+  data?: any;
+}> {
+  const resp = await api.request<any>(
+    `/hospedagem/reservas/${idReservaHospedagem}/pagamento/tef/iniciar`,
+    "POST",
+    body,
+  );
+  // api.request em POST devolve o body inteiro em data
+  const bodyResp = resp.data ?? resp;
+  const errorMsg =
+    bodyResp?.error || bodyResp?.message || resp.message || undefined;
+  return {
+    ...resp,
+    id: bodyResp?.id ?? bodyResp?.data?.id,
+    status: bodyResp?.status ?? bodyResp?.data?.status,
+    error: errorMsg,
+    message: errorMsg || resp.message,
+    success: Boolean(bodyResp?.id ?? bodyResp?.data?.id) && !bodyResp?.error,
+  };
+}
+
+/** Consulta SuperTEF — mesma sequência do PDV (filters.payment_uniqueid). */
+export async function getConsultarTefHospedagem(
+  idReservaHospedagem: number,
+  paymentUniqueId: string,
+): Promise<ApiResponse<HospedagemTefConsultaData>> {
+  return api.request<HospedagemTefConsultaData>(
+    `/hospedagem/reservas/${idReservaHospedagem}/pagamento/tef/consultar`,
+    "GET",
+    null,
+    {
+      filters: JSON.stringify({ payment_uniqueid: paymentUniqueId }),
+      payment_uniqueid: paymentUniqueId,
+    },
+  );
+}
+
+/** Cancela SuperTEF — mesma sequência do PDV. */
+export async function postCancelarTefHospedagem(
+  idReservaHospedagem: number,
+  paymentUniqueId: string,
+): Promise<ApiResponse<HospedagemTefConsultaData>> {
+  return api.request(
+    `/hospedagem/reservas/${idReservaHospedagem}/pagamento/tef/cancelar`,
+    "POST",
+    { payment_uniqueid: paymentUniqueId },
   );
 }
 
@@ -355,6 +537,40 @@ export async function postReservaRecepcao(body: {
   );
 }
 
+/** Cria reserva AguardandoPagamento e envia link ao cliente (novo endpoint). */
+export async function postReservaRecepcaoEnviarCliente(body: {
+  idEvento: number;
+  idUsuario: number;
+  checkin: string;
+  checkout: string;
+  suites: SuiteRecepcaoPayload[];
+  observacoes?: string | null;
+}): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/recepcao/enviar-cliente`,
+    "POST",
+    body,
+  );
+}
+
+/** Reenvia WhatsApp/e-mail com o link de pagamento. */
+export async function postReenviarLinkPagamentoReserva(
+  idReserva: number,
+): Promise<ApiResponse<ReservaAdminDetalhe & { linkPagamento?: string }>> {
+  return api.request(
+    `/hospedagem/reservas/${idReserva}/reenviar-link`,
+    "POST",
+    {},
+  );
+}
+
+/** Consulta pública da reserva pelo token do link. */
+export async function getReservaPublicaPorToken(
+  token: string,
+): Promise<ApiResponse<any>> {
+  return api.request(`/reserva/${encodeURIComponent(token)}`, "GET");
+}
+
 /** Indicadores do calendário horizontal (e base para agenda/timeline futura). */
 export type IndicadoresDiaCalendario = {
   checkin: number;
@@ -384,6 +600,17 @@ export type DiaCalendarioSuites = {
   data: string;
   indicadores: IndicadoresDiaCalendario;
   eventosAgenda: EventoAgendaSuite[];
+  /** Parte 5: estado por suíte via SuiteDisponibilidadeService (origem no backend). */
+  disponibilidadePorSuite?: DisponibilidadeSuiteNoDia[];
+};
+
+/** Espelho do retorno de `calcularDisponibilidadeSuite` usado pela Agenda. */
+export type DisponibilidadeSuiteNoDia = {
+  idEventoSuite: number;
+  badge: string;
+  podeReservar: boolean;
+  disponivelAposCheckout: boolean;
+  agendaOcupada: boolean;
 };
 
 export type MetaCalendarioSuites = {

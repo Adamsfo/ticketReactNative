@@ -34,7 +34,6 @@ import {
   BarraAgendaReserva,
   buildDiasVisiveis,
   calcularGeometriaBarra,
-  calcularPrimeirosDiasDisponiveis,
   carregarDadosAgenda,
   hojeStrCuiaba,
   labelDiaCurto,
@@ -42,8 +41,9 @@ import {
   labelMesAno,
   mesDeData,
   SlotDisponivelAgenda,
+  slotsDisponiveisDaAgenda,
 } from "@/src/lib/hospedagemAgenda";
-import { SuiteOperacionalCard } from "@/src/lib/hospedagemAdmin";
+import { DiaCalendarioSuites, SuiteOperacionalCard } from "@/src/lib/hospedagemAdmin";
 import { ReservaOperacaoRef } from "@/src/lib/hospedagemOperacao";
 
 const RANGES: Array<{ key: AgendaRange; label: string }> = [
@@ -136,6 +136,7 @@ function LinhaSuite({
   suite,
   barras,
   diasVisiveis,
+  diasCalendario,
   gridWidth,
   onBarPress,
   onDisponivelPress,
@@ -143,6 +144,7 @@ function LinhaSuite({
   suite: SuiteOperacionalCard;
   barras: BarraAgendaReserva[];
   diasVisiveis: string[];
+  diasCalendario: DiaCalendarioSuites[];
   gridWidth: number;
   onBarPress: (barra: BarraAgendaReserva) => void;
   onDisponivelPress: (suite: SuiteOperacionalCard, data: string) => void;
@@ -153,8 +155,13 @@ function LinhaSuite({
   );
 
   const diasDisponiveis = useMemo(
-    () => calcularPrimeirosDiasDisponiveis(barrasSuite, diasVisiveis),
-    [barrasSuite, diasVisiveis],
+    () =>
+      slotsDisponiveisDaAgenda(
+        suite.idEventoSuite,
+        diasVisiveis,
+        diasCalendario,
+      ),
+    [suite.idEventoSuite, diasVisiveis, diasCalendario],
   );
 
   return (
@@ -200,6 +207,9 @@ export default function TabAgenda() {
   const [range, setRange] = useState<AgendaRange>(15);
   const [suites, setSuites] = useState<SuiteOperacionalCard[]>([]);
   const [barras, setBarras] = useState<BarraAgendaReserva[]>([]);
+  const [diasCalendario, setDiasCalendario] = useState<DiaCalendarioSuites[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reservaOperacao, setReservaOperacao] =
@@ -227,9 +237,11 @@ export default function TabAgenda() {
         const dados = await carregarDadosAgenda(dataInicio, range);
         setSuites(dados.suites);
         setBarras(dados.barras);
+        setDiasCalendario(dados.diasCalendario);
       } catch {
         setSuites([]);
         setBarras([]);
+        setDiasCalendario([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -283,6 +295,8 @@ export default function TabAgenda() {
       adultos: barra.adultos,
       criancas: barra.criancas,
       valorTotal: barra.valorTotal,
+      valorPago: barra.valorPago,
+      saldoPendente: barra.saldoPendente,
       idEventoSuite: barra.idEventoSuite,
     });
     setSheetVisible(true);
@@ -295,7 +309,6 @@ export default function TabAgenda() {
         idEvento: suite.idEvento,
         idEventoSuite: suite.idEventoSuite,
         checkinDate,
-        checkinHora: "16:00",
       });
     },
     [openNovaReserva],
@@ -318,6 +331,7 @@ export default function TabAgenda() {
       suite={item}
       barras={barras}
       diasVisiveis={diasVisiveis}
+      diasCalendario={diasCalendario}
       gridWidth={gridWidth}
       onBarPress={abrirBarra}
       onDisponivelPress={abrirNovaReserva}

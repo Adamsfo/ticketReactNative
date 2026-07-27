@@ -28,11 +28,22 @@ export default function Index({ route }: any) {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      console.log("URL Params:", param.toString());
-      const param2 = param.toString().replace("jangoingressos.com.br", "");
+      const rawUrl =
+        (param && String(param)) ||
+        (Platform.OS === "web" && typeof window !== "undefined"
+          ? window.location.href
+          : "");
+      console.log("URL Params:", rawUrl);
+      const param2 = rawUrl.toString().replace("jangoingressos.com.br", "");
+
+      const reservaMatch = param2.match(/\/reserva\/([^/?#]+)/i);
+      if (reservaMatch?.[1]) {
+        navigation.navigate("reserva", { token: reservaMatch[1] });
+        return;
+      }
 
       if (param2.includes("checkoutmp")) {
-        const urlParams = new URLSearchParams(param);
+        const urlParams = new URLSearchParams(rawUrl);
 
         const idEvento = urlParams.get("idEvento");
         const email = urlParams.get("email");
@@ -54,7 +65,7 @@ export default function Index({ route }: any) {
           //   ),
         });
       } else if (param2.includes("ingresso")) {
-        const url = new URL(param);
+        const url = new URL(rawUrl);
         const urlParams = new URLSearchParams(url.search);
 
         const qrcode = urlParams.get("qrcode");
@@ -63,7 +74,7 @@ export default function Index({ route }: any) {
           qrcode: qrcode,
         });
       } else if (param2.includes("redefinirsenha")) {
-        const url = new URL(param);
+        const url = new URL(rawUrl);
         const urlParams = new URLSearchParams(url.search);
 
         const token = urlParams.get("token");
@@ -72,7 +83,7 @@ export default function Index({ route }: any) {
           token,
         });
       } else if (param2.includes("evento?")) {
-        const url = new URL(param);
+        const url = new URL(rawUrl);
         const urlParams = new URLSearchParams(url.search);
 
         const id = urlParams.get("id");

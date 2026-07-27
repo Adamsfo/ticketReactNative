@@ -21,7 +21,8 @@ export function resolverRegistroTransacao(
     if (cartTransacao && Number(cartTransacao.id) === id) {
       return cartTransacao;
     }
-    return cartTransacao ?? null;
+    // Deep link / link público: mantém ao menos o id para o checkout.
+    return (cartTransacao ?? { id }) as Transacao;
   }
 
   return cartTransacao ?? null;
