@@ -27,7 +27,9 @@ import {
 import { dotsIndicadoresCalendario } from "@/src/constants/hospedagemStatusColors";
 import ReservaOperacaoSheet from "../components/ReservaOperacaoSheet";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
-import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
+import OrigemReservaIndicador, {
+  labelChipOrigemReserva,
+} from "../components/OrigemReservaIndicador";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
 import {
@@ -282,24 +284,153 @@ function CalendarioHorizontal({
   );
 }
 
+function horaCheckinCurta(iso: string | null | undefined): string {
+  if (!iso) return "--:--";
+  try {
+    return formatInTimeZone(new Date(iso), TZ, "HH:mm");
+  } catch {
+    return "--:--";
+  }
+}
+
+/** Bloco clicável com seta (>) — mesmo padrão visual dos demais cards. */
+function BlocoReservaClicavel({
+  titulo,
+  children,
+  onPress,
+}: {
+  titulo: string;
+  children: React.ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={styles.blocoReserva}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={styles.blocoReservaRow}>
+        <View style={styles.blocoReservaConteudo}>
+          <Text style={styles.blocoTitulo}>{titulo}</Text>
+          {children}
+        </View>
+        <Text style={styles.chevron}>{">"}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+/** Checkout A + Check-in B no mesmo dia — blocos independentes por reservaId. */
+function CardSuiteDuplaReserva({
+  item,
+  onAbrirReserva,
+}: {
+  item: SuiteOperacionalCard;
+  onAbrirReserva: (ref: ReservaOperacaoRef) => void;
+}) {
+  const proxima = item.proximaReservaResumo!;
+  const chip = labelChipOrigemReserva({
+    origemReserva: proxima.origemReserva,
+    idUsuarioCriacao: proxima.idUsuarioCriacao,
+    nomeUsuarioCriacao: proxima.nomeUsuarioCriacao,
+  });
+  const cor = corStatusOperacionalPadrao("CHECKOUT_HOJE");
+  const badgeTexto = (
+    item.badgeLabel || badgeStatusOperacional("CHECKOUT_HOJE")
+  ).toUpperCase();
+
+  return (
+    <View style={[styles.card, { borderLeftColor: cor }]}>
+      <View style={styles.cardBody}>
+        <Text style={styles.suiteNome}>
+          <Text style={{ color: cor }}>● </Text>
+          {item.nome}
+        </Text>
+        <View style={[styles.badge, { backgroundColor: cor }]}>
+          <Text style={styles.badgeTexto}>{badgeTexto}</Text>
+        </View>
+
+        <BlocoReservaClicavel
+          titulo="Checkout hoje"
+          onPress={() => {
+            if (!item.idReservaHospedagem) return;
+            onAbrirReserva({
+              idReservaHospedagem: item.idReservaHospedagem,
+              suiteNome: item.nome,
+              inicio: item.checkin,
+              fim: item.checkout,
+              status: item.status,
+              statusReserva: item.statusReserva ?? item.status,
+              dataHoraCheckinReal: item.dataHoraCheckinReal,
+              responsavel: item.responsavel,
+              adultos: item.adultos,
+              criancas: item.criancas,
+              valorTotal: item.valorHospedagem,
+              valorPago: item.valorPago,
+              saldoPendente: item.saldoPendente,
+              idEvento: item.idEvento,
+              idEventoSuite: item.idEventoSuite,
+            });
+          }}
+        >
+          <Text style={styles.blocoNome}>
+            {item.responsavel?.trim() || "Hóspede"}
+          </Text>
+          <Text style={styles.blocoMeta}>
+            Sai às {horaCheckinCurta(item.checkout)}
+          </Text>
+        </BlocoReservaClicavel>
+
+        <View style={styles.blocoSeparador} />
+
+        <BlocoReservaClicavel
+          titulo="Próxima reserva"
+          onPress={() => {
+            onAbrirReserva({
+              idReservaHospedagem: proxima.id,
+              suiteNome: item.nome,
+              inicio: proxima.checkin,
+              fim: proxima.checkout ?? null,
+              status: proxima.status ?? "Confirmada",
+              statusReserva: proxima.status ?? "Confirmada",
+              responsavel: proxima.responsavel,
+              idEvento: item.idEvento,
+              idEventoSuite: item.idEventoSuite,
+            });
+          }}
+        >
+          <Text style={styles.blocoNome}>
+            {proxima.responsavel?.trim() || "Hóspede"}
+          </Text>
+          <Text style={styles.blocoMeta}>
+            Check-in às {horaCheckinCurta(proxima.checkin)}
+          </Text>
+          {chip ? (
+            <Text style={styles.blocoOrigem}>{chip.texto}</Text>
+          ) : null}
+        </BlocoReservaClicavel>
+      </View>
+    </View>
+  );
+}
+
 function CardSuite({
   item,
   onPress,
+  onAbrirReserva,
   filtroAtivo,
   dataSelecionada,
   hoje,
 }: {
   item: SuiteOperacionalCard;
   onPress: () => void;
+  onAbrirReserva: (ref: ReservaOperacaoRef) => void;
   filtroAtivo: FiltroSuiteOperacional;
   dataSelecionada: string;
   hoje: string;
 }) {
   const { openReceberSaldo } = useReceberSaldoHospedagem();
 
-  // Apresentação pura: badge/mensagens/botão vêm do SuiteDisponibilidadeService (API).
-  // Modo Livres + disponível após checkout: matriz §3.6 — visual Livre, flags do backend.
-  // Check-in / Check-out só no dia corrente (agenda operacional).
   const ehHoje = dataSelecionada === hoje;
   const badgeApi = (item.badge || "").toUpperCase();
   const modoLivreAposCheckout =
@@ -310,6 +441,22 @@ function CardSuite({
   const statusExibicao = (
     modoLivreAposCheckout ? "LIVRE" : badgeApi || item.status || "LIVRE"
   ) as string;
+
+  const modoDupla =
+    Boolean(item.modoDuplaReserva) &&
+    Boolean(item.proximaReservaResumo?.id) &&
+    Boolean(item.idReservaHospedagem) &&
+    item.proximaReservaResumo!.id !== item.idReservaHospedagem &&
+    statusExibicao === "CHECKOUT_HOJE";
+
+  if (modoDupla) {
+    return (
+      <CardSuiteDuplaReserva
+        item={item}
+        onAbrirReserva={onAbrirReserva}
+      />
+    );
+  }
 
   const cor = corStatusOperacionalPadrao(statusExibicao);
   const badgeTexto =
@@ -588,7 +735,23 @@ export default function TabSuites() {
     carregar(true);
   }, [refreshVersion, carregar]);
 
+  const abrirReserva = (ref: ReservaOperacaoRef) => {
+    if (!ref.idReservaHospedagem) return;
+    setReservaOperacao(ref);
+    setSheetVisible(true);
+  };
+
   const abrirSuite = (item: SuiteOperacionalCard) => {
+    // Modo duplo: só pelos botões dos blocos (nunca abrir reserva ambígua pelo card).
+    if (
+      item.modoDuplaReserva &&
+      item.proximaReservaResumo?.id &&
+      item.idReservaHospedagem &&
+      item.proximaReservaResumo.id !== item.idReservaHospedagem
+    ) {
+      return;
+    }
+
     const livreParaReservar = item.acoesDisponiveis?.reservar === true;
 
     if (livreParaReservar && item.idEvento) {
@@ -601,7 +764,7 @@ export default function TabSuites() {
     }
 
     if (item.idReservaHospedagem) {
-      setReservaOperacao({
+      abrirReserva({
         idReservaHospedagem: item.idReservaHospedagem,
         suiteNome: item.nome,
         inicio: item.checkin,
@@ -618,7 +781,6 @@ export default function TabSuites() {
         idEvento: item.idEvento,
         idEventoSuite: item.idEventoSuite,
       });
-      setSheetVisible(true);
       return;
     }
     navigation.navigate("hospedagemSuiteDetalhe", {
@@ -705,6 +867,7 @@ export default function TabSuites() {
               dataSelecionada={dataReferencia}
               hoje={hoje}
               onPress={() => abrirSuite(item)}
+              onAbrirReserva={abrirReserva}
             />
           )}
         />
@@ -890,6 +1053,93 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 14,
     color: "#555",
+  },
+  proximaBox: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e5e7eb",
+  },
+  proximaTitulo: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9ca3af",
+    letterSpacing: 0.4,
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  proximaNome: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.cinza,
+  },
+  proximaHora: {
+    marginTop: 2,
+    fontSize: 14,
+    color: "#555",
+  },
+  proximaChip: {
+    alignSelf: "flex-start",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
+  },
+  proximaChipAtendente: {
+    backgroundColor: "rgba(0, 115, 230, 0.12)",
+  },
+  proximaChipSite: {
+    backgroundColor: "rgba(2, 122, 58, 0.12)",
+  },
+  proximaChipTextoAtendente: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0073E6",
+  },
+  proximaChipTextoSite: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#027a3a",
+  },
+  blocoReserva: {
+    marginTop: 10,
+  },
+  blocoReservaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  blocoReservaConteudo: {
+    flex: 1,
+    paddingRight: 8,
+    gap: 2,
+  },
+  blocoTitulo: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9ca3af",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  blocoNome: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  blocoMeta: {
+    fontSize: 14,
+    color: "#555",
+  },
+  blocoOrigem: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
+  },
+  blocoSeparador: {
+    marginTop: 12,
+    marginBottom: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#d1d5db",
   },
   checkoutHint: {
     marginTop: 6,

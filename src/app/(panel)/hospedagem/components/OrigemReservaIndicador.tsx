@@ -29,6 +29,47 @@ export function normalizarOrigemReserva(
   return "CLIENTE";
 }
 
+/** Chip compacto de origem (card / resumo próxima reserva). */
+export function labelChipOrigemReserva(
+  dados: DadosOrigemReserva | null | undefined,
+): { texto: string; atendente: boolean } | null {
+  if (!dados) return null;
+  const raw = String(dados.origemReserva || "").toUpperCase();
+  const nome = dados.nomeUsuarioCriacao?.trim() || "Atendente";
+
+  if (raw === "BOOKING") {
+    return { texto: "🌐 Booking.com", atendente: false };
+  }
+  if (raw === "EXPEDIA") {
+    return { texto: "🌐 Expedia", atendente: false };
+  }
+  if (raw === "AIRBNB") {
+    return { texto: "🌐 Airbnb", atendente: false };
+  }
+  if (raw === "TELEFONE") {
+    return { texto: "☎️ Telefone", atendente: false };
+  }
+  if (raw === "BALCAO" || raw === "BALCÃO") {
+    return { texto: "🚶 Balcão", atendente: false };
+  }
+  if (
+    raw === "ATENDENTE" ||
+    Number(dados.idUsuarioCriacao ?? 0) > 0
+  ) {
+    return { texto: `🧑‍💼 Criada por ${nome}`, atendente: true };
+  }
+  if (raw === "SITE" || raw === "CLIENTE" || raw === "LINK_CLIENTE" || !raw) {
+    const canal = normalizarOrigemReserva(dados.origemReserva, {
+      idUsuarioCriacao: dados.idUsuarioCriacao,
+    });
+    if (canal === "ATENDENTE") {
+      return { texto: `🧑‍💼 Criada por ${nome}`, atendente: true };
+    }
+    return { texto: "💻 Site", atendente: false };
+  }
+  return { texto: `🌐 ${dados.origemReserva}`, atendente: false };
+}
+
 type Props = {
   dados: DadosOrigemReserva | null | undefined;
   /** card = badge compacto; sheet = seção ORIGEM; detalhe = bloco completo */
@@ -36,7 +77,7 @@ type Props = {
 };
 
 /**
- * Indicador de origem da reserva (Site vs Atendente).
+ * Indicador de origem da reserva (Site, Atendente, OTAs…).
  * Mesma regra em Suítes, Reservas, Sheet e Detalhes.
  */
 export default function OrigemReservaIndicador({
@@ -45,6 +86,7 @@ export default function OrigemReservaIndicador({
 }: Props) {
   if (!dados) return null;
 
+  const chip = labelChipOrigemReserva(dados);
   const origem = normalizarOrigemReserva(dados.origemReserva, {
     idUsuarioCriacao: dados.idUsuarioCriacao,
     valorPago: (dados as DadosOrigemReserva & { valorPago?: number }).valorPago,
@@ -60,16 +102,23 @@ export default function OrigemReservaIndicador({
     : null;
 
   if (variante === "card") {
-    if (origem === "ATENDENTE") {
-      return (
-        <View style={[styles.badge, styles.badgeAtendente]}>
-          <Text style={styles.badgeTextoAtendente}>🏢 Criada por {nome}</Text>
-        </View>
-      );
-    }
+    if (!chip) return null;
     return (
-      <View style={[styles.badge, styles.badgeSite]}>
-        <Text style={styles.badgeTextoSite}>🌐 Reserva Online</Text>
+      <View
+        style={[
+          styles.badge,
+          chip.atendente ? styles.badgeAtendente : styles.badgeSite,
+        ]}
+      >
+        <Text
+          style={
+            chip.atendente
+              ? styles.badgeTextoAtendente
+              : styles.badgeTextoSite
+          }
+        >
+          {chip.texto}
+        </Text>
       </View>
     );
   }
@@ -77,11 +126,9 @@ export default function OrigemReservaIndicador({
   if (variante === "sheet") {
     return (
       <View style={styles.sheetBox}>
-        <Text style={styles.sheetTitulo}>ORIGEM</Text>
         {origem === "ATENDENTE" ? (
           <>
-            <Text style={styles.sheetValor}>Criada pelo atendente</Text>
-            <Text style={styles.sheetSub}>{nome}</Text>
+            <Text style={styles.sheetValor}>Criada por {nome}</Text>
             {dataIso ? (
               <Text style={styles.sheetSub}>
                 {formatDateTimeHospedagem(dataIso)}
@@ -89,7 +136,9 @@ export default function OrigemReservaIndicador({
             ) : null}
           </>
         ) : (
-          <Text style={styles.sheetValor}>Reserva Online</Text>
+          <Text style={styles.sheetValor}>
+            {chip?.texto?.replace(/^[^\s]+\s/, "") || "Reserva Online"}
+          </Text>
         )}
       </View>
     );
@@ -117,7 +166,7 @@ export default function OrigemReservaIndicador({
         </>
       ) : (
         <Text style={styles.detalheValor}>
-          🌐 Reserva realizada pelo cliente
+          {chip?.texto || "🌐 Reserva realizada pelo cliente"}
         </Text>
       )}
     </View>
@@ -127,73 +176,68 @@ export default function OrigemReservaIndicador({
 const styles = StyleSheet.create({
   badge: {
     alignSelf: "flex-start",
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeSite: {
-    backgroundColor: "rgba(0,115,230,0.12)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
   },
   badgeAtendente: {
-    backgroundColor: "rgba(107,114,128,0.16)",
+    backgroundColor: "rgba(0, 115, 230, 0.12)",
   },
-  badgeTextoSite: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#0073E6",
+  badgeSite: {
+    backgroundColor: "rgba(2, 122, 58, 0.12)",
   },
   badgeTextoAtendente: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#4b5563",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0073E6",
+  },
+  badgeTextoSite: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#027a3a",
   },
   sheetBox: {
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#e5e7eb",
+    gap: 2,
   },
   sheetTitulo: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#777",
+    color: "#9ca3af",
     letterSpacing: 0.6,
     marginBottom: 4,
   },
   sheetValor: {
     fontSize: 15,
-    fontWeight: "700",
-    color: "#333",
+    fontWeight: "600",
+    color: "#374151",
   },
   sheetSub: {
     fontSize: 13,
-    color: "#666",
+    color: "#6b7280",
     marginTop: 2,
   },
   detalheBox: {
-    marginTop: 4,
+    marginTop: 12,
   },
   detalheTitulo: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
-    color: "#666",
+    color: "#6b7280",
     marginBottom: 6,
   },
   detalheValor: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#333",
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
   },
   detalheLabel: {
-    marginTop: 10,
     fontSize: 12,
-    fontWeight: "600",
-    color: "#777",
+    color: "#9ca3af",
+    marginTop: 4,
   },
   detalheSub: {
-    fontSize: 15,
-    color: "#333",
-    marginTop: 2,
+    fontSize: 14,
+    color: "#374151",
   },
 });

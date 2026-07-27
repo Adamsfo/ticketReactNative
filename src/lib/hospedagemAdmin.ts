@@ -137,6 +137,21 @@ export type SuiteOperacionalCard = {
   bloqueadaPorCheckinNaData?: boolean;
   mensagemDisponibilidade?: string | null;
   mensagemDisponibilidadeSecundaria?: string | null;
+  /** Resumo da reserva com entrada na data (ex.: CO + nova entrada). */
+  proximaReservaResumo?: {
+    id: number;
+    responsavel: string | null;
+    checkin: string;
+    checkout?: string | null;
+    status?: string | null;
+    origemReserva?: string | null;
+    idUsuarioCriacao?: number | null;
+    nomeUsuarioCriacao?: string | null;
+    podeCheckin?: boolean;
+    botao?: "checkin" | "ver_detalhes";
+  } | null;
+  /** CO hoje + outra reserva com check-in no mesmo dia. */
+  modoDuplaReserva?: boolean;
   acoesDisponiveis?: {
     verReserva?: boolean;
     reservar?: boolean;
@@ -174,6 +189,40 @@ export type DisponibilidadeOperacionalReserva = {
   checkinHoje: boolean;
   checkoutHoje: boolean;
   hospedada: boolean;
+  proximaReservaResumo?: {
+    id: number;
+    responsavel?: string | null;
+    checkin: string;
+    origemReserva?: string | null;
+    idUsuarioCriacao?: number | null;
+    nomeUsuarioCriacao?: string | null;
+  } | null;
+};
+
+export type ReservaTimelineEvento = {
+  id: number | string;
+  data: string;
+  titulo?: string;
+  descricao: string;
+  usuario?: string | null;
+  tipo?: string | null;
+  detalhe?: string | null;
+  valor?: number | null;
+  formaPagamento?: string | null;
+  suiteOrigem?: string | null;
+  suiteDestino?: string | null;
+  motivo?: string | null;
+};
+
+export type ReservaSuiteMovimentacaoItem = {
+  id: number;
+  dataHora: string;
+  motivo?: string | null;
+  tipo?: string;
+  suiteOrigem: { id: number; nome: string };
+  suiteDestino: { id: number; nome: string };
+  usuario?: string | null;
+  idUsuario?: number;
 };
 
 export type ReservaAdminDetalhe = {
@@ -193,6 +242,7 @@ export type ReservaAdminDetalhe = {
   valorTotal: number;
   valorPago?: number;
   saldoPendente?: number;
+  situacaoFinanceira?: "Quitada" | "Parcial" | "Pendente" | string;
   formaPagamentoRecepcao?: string | null;
   observacaoPagamento?: string | null;
   comprovantePagamento?: string | null;
@@ -213,6 +263,7 @@ export type ReservaAdminDetalhe = {
   evento?: { id: number; nome: string } | null;
   suites: Array<{
     idReservaSuite: number;
+    idEventoSuite?: number;
     nome: string;
     adultos: number;
     criancas: number;
@@ -243,6 +294,7 @@ export type ReservaAdminDetalhe = {
     idUsuario?: number;
     usuario?: string | null;
   }>;
+  movimentacoesSuite?: ReservaSuiteMovimentacaoItem[];
   pagamento?: {
     id: number;
     status: string;
@@ -255,12 +307,7 @@ export type ReservaAdminDetalhe = {
     dataPagamento?: string | null;
     dataTransacao?: string;
   } | null;
-  timeline?: Array<{
-    id: number;
-    data: string;
-    descricao: string;
-    usuario?: string | null;
-  }>;
+  timeline?: ReservaTimelineEvento[];
 };
 
 export type MetaReservasAdmin = {
@@ -365,6 +412,63 @@ export async function postRealizarCheckout(
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/checkout`,
     "POST",
+  );
+}
+
+export type SuiteDisponivelTroca = {
+  id: number;
+  idEventoSuite: number;
+  nome: string;
+  descricao?: string | null;
+  qtdeMinimaPessoas?: number;
+  qtdeMaximaPessoas?: number;
+  livre?: boolean;
+  podeReservar?: boolean;
+};
+
+export type SuitesDisponiveisTrocaData = {
+  idReservaHospedagem: number;
+  idReservaSuite: number;
+  suiteAtual: {
+    idEventoSuite: number;
+    nome: string;
+  };
+  checkin: string;
+  checkout: string;
+  responsavel: string;
+  adultos: number;
+  criancas: number;
+  suites: SuiteDisponivelTroca[];
+};
+
+/** Suítes disponíveis para troca (SuiteDisponibilidadeService). */
+export async function getSuitesDisponiveisTroca(
+  idReservaHospedagem: number,
+  idReservaSuite?: number | null,
+): Promise<ApiResponse<SuitesDisponiveisTrocaData>> {
+  const query: Record<string, string> = {};
+  if (idReservaSuite) query.idReservaSuite = String(idReservaSuite);
+  return api.request<SuitesDisponiveisTrocaData>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites-disponiveis-troca`,
+    "GET",
+    null,
+    query,
+  );
+}
+
+/** Opera troca de suíte com histórico. */
+export async function postTrocarSuiteReserva(
+  idReservaHospedagem: number,
+  body: {
+    idReservaSuite: number;
+    idEventoSuiteDestino: number;
+    motivo?: string | null;
+  },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/trocar-suite`,
+    "POST",
+    body,
   );
 }
 

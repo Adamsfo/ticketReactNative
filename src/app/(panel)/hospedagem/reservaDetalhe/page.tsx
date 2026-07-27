@@ -445,7 +445,7 @@ function HospedagemReservaDetalheContent() {
                     </Text>
                   ) : (
                     (reserva.timeline ?? []).map((evento) => (
-                      <View key={evento.id} style={styles.timelineItem}>
+                      <View key={String(evento.id)} style={styles.timelineItem}>
                         <Text style={styles.timelineData}>
                           {formatDateTime(String(evento.data))}
                         </Text>
@@ -454,7 +454,7 @@ function HospedagemReservaDetalheContent() {
                         </Text>
                         {evento.usuario ? (
                           <Text style={styles.timelineUser}>
-                            {evento.usuario}
+                            por {evento.usuario}
                           </Text>
                         ) : null}
                       </View>
