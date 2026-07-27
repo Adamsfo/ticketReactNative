@@ -212,6 +212,10 @@ export type ReservaTimelineEvento = {
   suiteOrigem?: string | null;
   suiteDestino?: string | null;
   motivo?: string | null;
+  checkinAnterior?: string | null;
+  checkoutAnterior?: string | null;
+  checkinNovo?: string | null;
+  checkoutNovo?: string | null;
 };
 
 export type ReservaSuiteMovimentacaoItem = {
@@ -467,6 +471,22 @@ export async function postTrocarSuiteReserva(
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/trocar-suite`,
+    "POST",
+    body,
+  );
+}
+
+/** Altera período da reserva com histórico. */
+export async function postAlterarPeriodoReserva(
+  idReservaHospedagem: number,
+  body: {
+    checkin: string;
+    checkout: string;
+    motivo?: string | null;
+  },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/alterar-periodo`,
     "POST",
     body,
   );

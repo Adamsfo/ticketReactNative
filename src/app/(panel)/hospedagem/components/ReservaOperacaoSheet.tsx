@@ -48,6 +48,7 @@ import OrigemReservaIndicador, {
   labelChipOrigemReserva,
 } from "./OrigemReservaIndicador";
 import TrocaSuiteModal from "./TrocaSuiteModal";
+import AlterarPeriodoModal from "./AlterarPeriodoModal";
 
 type HospedeConferencia = {
   key: string;
@@ -89,6 +90,7 @@ export default function ReservaOperacaoSheet({
   const [executando, setExecutando] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [trocaSuiteVisible, setTrocaSuiteVisible] = useState(false);
+  const [alterarPeriodoVisible, setAlterarPeriodoVisible] = useState(false);
 
   const hojeOperacao = useMemo(
     () => formatInTimeZone(new Date(), HOSPEDAGEM_TZ, "yyyy-MM-dd"),
@@ -102,6 +104,7 @@ export default function ReservaOperacaoSheet({
       setConfirmMode(null);
       setErroAcao(null);
       setTrocaSuiteVisible(false);
+      setAlterarPeriodoVisible(false);
       return;
     }
 
@@ -237,6 +240,7 @@ export default function ReservaOperacaoSheet({
   const statusParaTroca = detalhe?.statusOriginal ?? statusDb;
   const mostrarTrocarSuite =
     statusParaTroca === "Confirmada" || statusParaTroca === "Hospedada";
+  const mostrarAlterarPeriodo = mostrarTrocarSuite;
   const idReservaSuiteTroca = detalhe?.suites?.[0]?.idReservaSuite ?? null;
 
   const dadosFinanceirosCheckin = detalhe ?? {
@@ -677,6 +681,20 @@ export default function ReservaOperacaoSheet({
                 </TouchableOpacity>
               ) : null}
 
+              {mostrarAlterarPeriodo ? (
+                <TouchableOpacity
+                  style={[
+                    styles.btnAcao,
+                    { backgroundColor: colors.greenEscuro },
+                  ]}
+                  onPress={() => setAlterarPeriodoVisible(true)}
+                  disabled={loading || executando}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnAcaoTexto}>Alterar Período</Text>
+                </TouchableOpacity>
+              ) : null}
+
               {mostrarNovaReserva ? (
                 <TouchableOpacity
                   style={[
@@ -739,6 +757,16 @@ export default function ReservaOperacaoSheet({
         onClose={() => setTrocaSuiteVisible(false)}
         onSucesso={() => {
           setTrocaSuiteVisible(false);
+          onClose();
+        }}
+      />
+
+      <AlterarPeriodoModal
+        visible={alterarPeriodoVisible}
+        idReservaHospedagem={reserva.idReservaHospedagem}
+        onClose={() => setAlterarPeriodoVisible(false)}
+        onSucesso={() => {
+          setAlterarPeriodoVisible(false);
           onClose();
         }}
       />
@@ -818,6 +846,29 @@ function HistoricoItem({ evento }: { evento: ReservaTimelineEvento }) {
           {evento.suiteDestino ? (
             <Text style={styles.histDetalhe}>{evento.suiteDestino}</Text>
           ) : null}
+          {evento.motivo?.trim() ? (
+            <Text style={styles.metaSuave}>Motivo: {evento.motivo.trim()}</Text>
+          ) : null}
+        </>
+      ) : null}
+      {evento.tipo === "alteracao_periodo" ? (
+        <>
+          <Text style={styles.metaSuave}>Check-in</Text>
+          <Text style={styles.histDetalhe}>
+            {formatDateTimeHospedagem(evento.checkinAnterior || "")}
+          </Text>
+          <Text style={styles.setaCentro}>↓</Text>
+          <Text style={styles.histDetalhe}>
+            {formatDateTimeHospedagem(evento.checkinNovo || "")}
+          </Text>
+          <Text style={[styles.metaSuave, { marginTop: 6 }]}>Check-out</Text>
+          <Text style={styles.histDetalhe}>
+            {formatDateTimeHospedagem(evento.checkoutAnterior || "")}
+          </Text>
+          <Text style={styles.setaCentro}>↓</Text>
+          <Text style={styles.histDetalhe}>
+            {formatDateTimeHospedagem(evento.checkoutNovo || "")}
+          </Text>
           {evento.motivo?.trim() ? (
             <Text style={styles.metaSuave}>Motivo: {evento.motivo.trim()}</Text>
           ) : null}
