@@ -25,6 +25,7 @@ import {
   Usuario,
 } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
+import { getValorFinalUnitarioIngresso } from "@/src/lib/ingressoPricing";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
 import { useNavigation } from "@react-navigation/native";
@@ -103,7 +104,10 @@ export default function Index() {
   const calculateTotal = () => {
     return state.items
       .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.valor;
+        return (
+          total +
+          item.qtde * getValorFinalUnitarioIngresso(item.eventoIngresso)
+        );
       }, 0)
       .toFixed(2);
   };

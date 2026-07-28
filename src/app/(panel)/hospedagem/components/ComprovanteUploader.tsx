@@ -9,11 +9,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
-import { api } from "@/src/lib/api";
+import { uploadFile, uploadsUrl } from "@/src/lib/upload";
 
 type Props = {
   value: string | null;
@@ -23,7 +22,7 @@ type Props = {
 const ACCEPT =
   "application/pdf,image/jpeg,image/png,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.heic";
 
-/** Reutiliza POST /upload (mesmo fluxo do ImageUploader), com PDF e imagens. */
+/** Reutiliza o fluxo único de upload (lib/upload). */
 export default function ComprovanteUploader({ value, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -35,17 +34,13 @@ export default function ComprovanteUploader({ value, onChange }: Props) {
   ) => {
     setUploading(true);
     try {
-      const response = await axios.post(
-        api.getBaseApi() + "/upload",
-        {
-          file: base64,
-          prefixo: "Comprovante",
-          nomeOriginal,
-          mimeType,
-        },
-        { headers: { "Content-Type": "application/json" } },
-      );
-      onChange(response.data.filename);
+      const { filename } = await uploadFile({
+        file: base64,
+        prefixo: "Comprovante",
+        nomeOriginal,
+        mimeType,
+      });
+      onChange(filename);
     } catch {
       Alert.alert("Erro", "Não foi possível enviar o comprovante.");
     } finally {
@@ -109,7 +104,7 @@ export default function ComprovanteUploader({ value, onChange }: Props) {
     event.target.value = "";
   };
 
-  const url = value ? `${api.getBaseApi()}/uploads/${value}` : null;
+  const url = uploadsUrl(value);
 
   return (
     <View style={styles.wrap}>

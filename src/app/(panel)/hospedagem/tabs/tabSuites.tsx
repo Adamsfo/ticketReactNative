@@ -40,6 +40,7 @@ import {
 import { ReservaOperacaoRef } from "@/src/lib/hospedagemOperacao";
 import { obterSaldoPendenteExibicao } from "@/src/lib/hospedagemPagamentoRecepcao";
 import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemContext";
+import { useHospedagemDesktopLayout } from "../useHospedagemDesktopLayout";
 
 const TZ = "America/Cuiaba";
 
@@ -293,6 +294,15 @@ function horaCheckinCurta(iso: string | null | undefined): string {
   }
 }
 
+function dataCheckinCurta(iso: string | null | undefined): string {
+  if (!iso) return "--/--";
+  try {
+    return formatInTimeZone(new Date(iso), TZ, "dd/MM");
+  } catch {
+    return "--/--";
+  }
+}
+
 /** Bloco clicável com seta (>) — mesmo padrão visual dos demais cards. */
 function BlocoReservaClicavel({
   titulo,
@@ -324,9 +334,11 @@ function BlocoReservaClicavel({
 function CardSuiteDuplaReserva({
   item,
   onAbrirReserva,
+  compact = false,
 }: {
   item: SuiteOperacionalCard;
   onAbrirReserva: (ref: ReservaOperacaoRef) => void;
+  compact?: boolean;
 }) {
   const proxima = item.proximaReservaResumo!;
   const chip = labelChipOrigemReserva({
@@ -340,14 +352,24 @@ function CardSuiteDuplaReserva({
   ).toUpperCase();
 
   return (
-    <View style={[styles.card, { borderLeftColor: cor }]}>
+    <View
+      style={[styles.card, compact && styles.cardDesktop, { borderLeftColor: cor }]}
+    >
       <View style={styles.cardBody}>
-        <Text style={styles.suiteNome}>
-          <Text style={{ color: cor }}>● </Text>
-          {item.nome}
-        </Text>
-        <View style={[styles.badge, { backgroundColor: cor }]}>
-          <Text style={styles.badgeTexto}>{badgeTexto}</Text>
+        <View style={compact ? styles.cardHeadDesktop : undefined}>
+          <Text style={[styles.suiteNome, compact && styles.suiteNomeDesktop]}>
+            <Text style={{ color: cor }}>● </Text>
+            {item.nome}
+          </Text>
+          <View
+            style={[
+              styles.badge,
+              compact && styles.badgeDesktop,
+              { backgroundColor: cor },
+            ]}
+          >
+            <Text style={styles.badgeTexto}>{badgeTexto}</Text>
+          </View>
         </View>
 
         <BlocoReservaClicavel
@@ -421,6 +443,7 @@ function CardSuite({
   filtroAtivo,
   dataSelecionada,
   hoje,
+  compact = false,
 }: {
   item: SuiteOperacionalCard;
   onPress: () => void;
@@ -428,6 +451,7 @@ function CardSuite({
   filtroAtivo: FiltroSuiteOperacional;
   dataSelecionada: string;
   hoje: string;
+  compact?: boolean;
 }) {
   const { openReceberSaldo } = useReceberSaldoHospedagem();
 
@@ -454,6 +478,7 @@ function CardSuite({
       <CardSuiteDuplaReserva
         item={item}
         onAbrirReserva={onAbrirReserva}
+        compact={compact}
       />
     );
   }
@@ -474,35 +499,65 @@ function CardSuite({
   const mostrarChipVerReserva =
     !modoLivreAposCheckout && botao === "ver_reserva";
 
+  const temPeriodo =
+    Boolean(item.checkin || item.checkout) &&
+    statusExibicao !== "LIVRE" &&
+    statusExibicao !== "Livre";
+
   return (
     <TouchableOpacity
-      style={[styles.card, { borderLeftColor: cor }]}
+      style={[styles.card, compact && styles.cardDesktop, { borderLeftColor: cor }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
       <View style={styles.cardRow}>
         <View style={styles.cardBody}>
-          <Text style={styles.suiteNome}>
-            <Text style={{ color: cor }}>● </Text>
-            {item.nome}
-          </Text>
-
-          <View style={[styles.badge, { backgroundColor: cor }]}>
-            <Text style={styles.badgeTexto}>{badgeTexto}</Text>
+          <View style={compact ? styles.cardHeadDesktop : undefined}>
+            <Text
+              style={[styles.suiteNome, compact && styles.suiteNomeDesktop]}
+              numberOfLines={compact ? 1 : undefined}
+            >
+              <Text style={{ color: cor }}>● </Text>
+              {item.nome}
+            </Text>
+            <View
+              style={[
+                styles.badge,
+                compact && styles.badgeDesktop,
+                { backgroundColor: cor },
+              ]}
+            >
+              <Text style={styles.badgeTexto}>{badgeTexto}</Text>
+            </View>
           </View>
 
           {statusExibicao === "LIVRE" || statusExibicao === "Livre" ? (
             <>
-              <Text style={styles.livreTitulo}>
+              <Text
+                style={[
+                  styles.livreTitulo,
+                  compact && styles.livreTituloDesktop,
+                ]}
+              >
                 {item.mensagemDisponibilidade || "Disponível para reserva"}
               </Text>
               {item.mensagemDisponibilidadeSecundaria ? (
-                <Text style={styles.disponivelSecundario}>
+                <Text
+                  style={[
+                    styles.disponivelSecundario,
+                    compact && styles.metaTightDesktop,
+                  ]}
+                >
                   {item.mensagemDisponibilidadeSecundaria}
                 </Text>
               ) : null}
               {mostrarChipNovaReserva ? (
-                <View style={styles.reservarChip}>
+                <View
+                  style={[
+                    styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
+                  ]}
+                >
                   <Text style={styles.reservarTexto}>Nova Reserva</Text>
                 </View>
               ) : null}
@@ -510,10 +565,52 @@ function CardSuite({
           ) : statusExibicao === "CHECKIN_HOJE" ? (
             <>
               {item.responsavel ? (
-                <Text style={styles.responsavel}>{item.responsavel}</Text>
+                <Text
+                  style={[
+                    styles.responsavel,
+                    compact && styles.responsavelDesktop,
+                  ]}
+                >
+                  {item.responsavel}
+                </Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              {item.mensagemDisponibilidade ? (
+              {compact && temPeriodo ? (
+                <View style={styles.metaColsDesktop}>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Entrada</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkin)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkin)}
+                    </Text>
+                  </View>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Saída</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkout)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkout)}
+                    </Text>
+                  </View>
+                  {item.mensagemDisponibilidade ? (
+                    <View style={styles.metaColDesktopFlex}>
+                      <Text style={styles.periodoLabel}>Status</Text>
+                      <Text
+                        style={[
+                          styles.destaqueHora,
+                          styles.destaqueHoraDesktop,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.mensagemDisponibilidade}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : item.mensagemDisponibilidade ? (
                 <Text style={styles.destaqueHora}>
                   {item.mensagemDisponibilidade}
                 </Text>
@@ -545,6 +642,7 @@ function CardSuite({
                 <View
                   style={[
                     styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
                     { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
                   ]}
                 >
@@ -555,19 +653,65 @@ function CardSuite({
           ) : statusExibicao === "HOSPEDADA" ? (
             <>
               {item.responsavel ? (
-                <Text style={styles.responsavel}>{item.responsavel}</Text>
+                <Text
+                  style={[
+                    styles.responsavel,
+                    compact && styles.responsavelDesktop,
+                  ]}
+                >
+                  {item.responsavel}
+                </Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              {item.mensagemDisponibilidade ? (
-                <Text style={styles.destaqueHora}>
-                  {item.mensagemDisponibilidade}
-                </Text>
-              ) : null}
-              {item.mensagemDisponibilidadeSecundaria ? (
-                <Text style={styles.disponivelSecundario}>
-                  {item.mensagemDisponibilidadeSecundaria}
-                </Text>
-              ) : null}
+              {compact && temPeriodo ? (
+                <View style={styles.metaColsDesktop}>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Entrada</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkin)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkin)}
+                    </Text>
+                  </View>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Saída</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkout)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkout)}
+                    </Text>
+                  </View>
+                  {item.mensagemDisponibilidade ? (
+                    <View style={styles.metaColDesktopFlex}>
+                      <Text style={styles.periodoLabel}>Status</Text>
+                      <Text
+                        style={[
+                          styles.destaqueHora,
+                          styles.destaqueHoraDesktop,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.mensagemDisponibilidade}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <>
+                  {item.mensagemDisponibilidade ? (
+                    <Text style={styles.destaqueHora}>
+                      {item.mensagemDisponibilidade}
+                    </Text>
+                  ) : null}
+                  {item.mensagemDisponibilidadeSecundaria ? (
+                    <Text style={styles.disponivelSecundario}>
+                      {item.mensagemDisponibilidadeSecundaria}
+                    </Text>
+                  ) : null}
+                </>
+              )}
               <ResumoFinanceiroRecepcao
                 dados={{
                   ...item,
@@ -579,6 +723,7 @@ function CardSuite({
                 <View
                   style={[
                     styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
                     { backgroundColor: CORES_STATUS_OPERACIONAL.hospedada },
                   ]}
                 >
@@ -591,19 +736,65 @@ function CardSuite({
           ) : statusExibicao === "CHECKOUT_HOJE" ? (
             <>
               {item.responsavel ? (
-                <Text style={styles.responsavel}>{item.responsavel}</Text>
+                <Text
+                  style={[
+                    styles.responsavel,
+                    compact && styles.responsavelDesktop,
+                  ]}
+                >
+                  {item.responsavel}
+                </Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              {item.mensagemDisponibilidade ? (
-                <Text style={styles.destaqueHora}>
-                  {item.mensagemDisponibilidade}
-                </Text>
-              ) : null}
-              {item.mensagemDisponibilidadeSecundaria ? (
-                <Text style={styles.disponivelSecundario}>
-                  {item.mensagemDisponibilidadeSecundaria}
-                </Text>
-              ) : null}
+              {compact && temPeriodo ? (
+                <View style={styles.metaColsDesktop}>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Entrada</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkin)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkin)}
+                    </Text>
+                  </View>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Saída</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkout)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkout)}
+                    </Text>
+                  </View>
+                  {item.mensagemDisponibilidade ? (
+                    <View style={styles.metaColDesktopFlex}>
+                      <Text style={styles.periodoLabel}>Status</Text>
+                      <Text
+                        style={[
+                          styles.destaqueHora,
+                          styles.destaqueHoraDesktop,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.mensagemDisponibilidade}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <>
+                  {item.mensagemDisponibilidade ? (
+                    <Text style={styles.destaqueHora}>
+                      {item.mensagemDisponibilidade}
+                    </Text>
+                  ) : null}
+                  {item.mensagemDisponibilidadeSecundaria ? (
+                    <Text style={styles.disponivelSecundario}>
+                      {item.mensagemDisponibilidadeSecundaria}
+                    </Text>
+                  ) : null}
+                </>
+              )}
               <ResumoFinanceiroRecepcao
                 dados={{
                   ...item,
@@ -615,19 +806,26 @@ function CardSuite({
                 <View
                   style={[
                     styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
                     { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
                   ]}
                 >
                   <Text style={styles.reservarTexto}>Realizar Check-out</Text>
                 </View>
               ) : mostrarChipNovaReserva ? (
-                <View style={styles.reservarChip}>
+                <View
+                  style={[
+                    styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
+                  ]}
+                >
                   <Text style={styles.reservarTexto}>Nova Reserva</Text>
                 </View>
               ) : mostrarChipVerReserva ? (
                 <View
                   style={[
                     styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
                     { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
                   ]}
                 >
@@ -638,16 +836,55 @@ function CardSuite({
           ) : (
             <>
               {item.responsavel ? (
-                <Text style={styles.responsavel}>{item.responsavel}</Text>
+                <Text
+                  style={[
+                    styles.responsavel,
+                    compact && styles.responsavelDesktop,
+                  ]}
+                >
+                  {item.responsavel}
+                </Text>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
+              {compact && temPeriodo ? (
+                <View style={styles.metaColsDesktop}>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Entrada</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkin)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkin)}
+                    </Text>
+                  </View>
+                  <View style={styles.metaColDesktop}>
+                    <Text style={styles.periodoLabel}>Saída</Text>
+                    <Text style={styles.periodoDataDesktop}>
+                      {dataCheckinCurta(item.checkout)}
+                    </Text>
+                    <Text style={styles.periodoHoraDesktop}>
+                      {horaCheckinCurta(item.checkout)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
               {item.mensagemDisponibilidade ? (
-                <Text style={styles.livreTitulo}>
+                <Text
+                  style={[
+                    styles.livreTitulo,
+                    compact && styles.livreTituloDesktop,
+                  ]}
+                >
                   {item.mensagemDisponibilidade}
                 </Text>
               ) : null}
               {item.mensagemDisponibilidadeSecundaria ? (
-                <Text style={styles.disponivelSecundario}>
+                <Text
+                  style={[
+                    styles.disponivelSecundario,
+                    compact && styles.metaTightDesktop,
+                  ]}
+                >
                   {item.mensagemDisponibilidadeSecundaria}
                 </Text>
               ) : null}
@@ -659,7 +896,9 @@ function CardSuite({
                 compact
               />
               {item.valorHospedagem != null ? (
-                <Text style={styles.valor}>
+                <Text
+                  style={[styles.valor, compact && styles.metaTightDesktop]}
+                >
                   Valor{" "}
                   <Text style={styles.valorNumero}>
                     {formatCurrency(Number(item.valorHospedagem))}
@@ -667,14 +906,21 @@ function CardSuite({
                 </Text>
               ) : null}
               {mostrarChipVerReserva ? (
-                <View style={styles.reservarChip}>
+                <View
+                  style={[
+                    styles.reservarChip,
+                    compact && styles.reservarChipDesktop,
+                  ]}
+                >
                   <Text style={styles.reservarTexto}>Ver Reserva</Text>
                 </View>
               ) : null}
             </>
           )}
         </View>
-        <Text style={styles.chevron}>{">"}</Text>
+        <Text style={[styles.chevron, compact && styles.chevronDesktop]}>
+          {">"}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -683,6 +929,7 @@ function CardSuite({
 export default function TabSuites() {
   const navigation = useNavigation() as any;
   const { openNovaReserva } = useNovaReservaRecepcao();
+  const { isDesktop, suiteColumns } = useHospedagemDesktopLayout();
   const hoje = useMemo(() => hojeStrCuiaba(), []);
   const [dataReferencia, setDataReferencia] = useState(hoje);
   const [mesVisivel, setMesVisivel] = useState(() => mesDeData(hoje));
@@ -841,8 +1088,13 @@ export default function TabSuites() {
         </View>
       ) : (
         <FlatList
+          key={`suites-cols-${suiteColumns}`}
           data={suites}
           keyExtractor={(item) => String(item.idEventoSuite || item.id)}
+          numColumns={suiteColumns}
+          columnWrapperStyle={
+            suiteColumns > 1 ? styles.columnWrapper : undefined
+          }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listaContent}
           refreshControl={
@@ -861,14 +1113,17 @@ export default function TabSuites() {
           }
           ListFooterComponent={<View style={{ height: 40 }} />}
           renderItem={({ item }) => (
-            <CardSuite
-              item={item}
-              filtroAtivo={filtro}
-              dataSelecionada={dataReferencia}
-              hoje={hoje}
-              onPress={() => abrirSuite(item)}
-              onAbrirReserva={abrirReserva}
-            />
+            <View style={suiteColumns > 1 ? styles.gridItem : undefined}>
+              <CardSuite
+                item={item}
+                filtroAtivo={filtro}
+                dataSelecionada={dataReferencia}
+                hoje={hoje}
+                compact={isDesktop}
+                onPress={() => abrirSuite(item)}
+                onAbrirReserva={abrirReserva}
+              />
+            </View>
           )}
         />
       )}
@@ -1011,6 +1266,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  cardDesktop: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 12,
+  },
+  columnWrapper: {
+    gap: 10,
+  },
+  gridItem: {
+    flex: 1,
+    maxWidth: "50%",
+  },
+  cardHeadDesktop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 2,
+  },
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1025,10 +1300,17 @@ const styles = StyleSheet.create({
     color: "#999",
     paddingLeft: 4,
   },
+  chevronDesktop: {
+    fontSize: 22,
+  },
   suiteNome: {
     fontSize: 18,
     fontWeight: "700",
     color: colors.cinza,
+  },
+  suiteNomeDesktop: {
+    fontSize: 15,
+    flex: 1,
   },
   badge: {
     alignSelf: "flex-start",
@@ -1036,6 +1318,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+  },
+  badgeDesktop: {
+    marginTop: 0,
+    alignSelf: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   badgeTexto: {
     color: "#fff",
@@ -1048,6 +1337,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.cinza,
+  },
+  livreTituloDesktop: {
+    marginTop: 6,
+    fontSize: 14,
+  },
+  responsavelDesktop: {
+    marginTop: 4,
+    fontSize: 14,
+  },
+  metaTightDesktop: {
+    marginTop: 4,
+  },
+  destaqueHoraDesktop: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  metaColsDesktop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  metaColDesktop: {
+    minWidth: 56,
+  },
+  metaColDesktopFlex: {
+    flex: 1,
+    minWidth: 0,
+  },
+  periodoDataDesktop: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  periodoHoraDesktop: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 1,
+  },
+  reservarChipDesktop: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    minHeight: 32,
+    borderRadius: 10,
   },
   disponivelSecundario: {
     marginTop: 4,

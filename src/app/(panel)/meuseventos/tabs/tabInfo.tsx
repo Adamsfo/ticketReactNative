@@ -36,6 +36,7 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import formatCurrency from "@/src/components/FormatCurrency";
 import { useRoute } from "@react-navigation/native";
 import ModalEventoIngresso from "../modalEventoIngresso";
+import ModalEventoSuite from "@/src/components/ModalEventoSuite";
 import { useNavigation } from "@react-navigation/native";
 import AddressPicker from "@/src/components/AddressPicker";
 import Select from "@/src/components/Select";
@@ -61,6 +62,8 @@ export default function MeusEventosInfo() {
   const [modalEventoIngressoVisible, setModalEventoIngressoVisible] =
     useState(false);
   const [idEventoIngresso, setIdEventoIngresso] = useState(0);
+  const [modalEventoSuiteVisible, setModalEventoSuiteVisible] = useState(false);
+  const [idEventoSuite, setIdEventoSuite] = useState(0);
   const [itemsProdutor, setItemsProdutor] = useState<
     { value: number; label: string }[]
   >([]);
@@ -244,6 +247,21 @@ export default function MeusEventosInfo() {
     getRegistrosIngressos({ filters: { idEvento: id } });
   };
 
+  const handleModalSuiteEdit = (suiteId: number) => {
+    setIdEventoSuite(suiteId);
+    setModalEventoSuiteVisible(true);
+  };
+
+  const handleModalSuiteNovo = () => {
+    setIdEventoSuite(0);
+    setModalEventoSuiteVisible(true);
+  };
+
+  const handleCloseModalEventoSuite = () => {
+    setModalEventoSuiteVisible(false);
+    getRegistrosSuites({ filters: { idEvento: id } });
+  };
+
   const onClose = () => {
     navigation.navigate("meusevento");
   };
@@ -405,7 +423,7 @@ export default function MeusEventosInfo() {
             {registrosEventoSuites.map((item: EventoSuite, index: number) => (
               <CustomGrid
                 key={index}
-                onItemPress={handleModalEdit}
+                onItemPress={handleModalSuiteEdit}
                 data={[
                   {
                     label: dataEventoSuites[0].label,
@@ -444,11 +462,10 @@ export default function MeusEventosInfo() {
                   },
                   {
                     label: dataEventoSuites[7].label,
-                    // content: formatCurrency(item.valorTotal.toString()),
                     id: item.id,
                     iconName: "check-square",
                     isButton: true,
-                    onPress: handleModalEdit,
+                    onPress: handleModalSuiteEdit,
                   },
                 ]}
               />
@@ -456,7 +473,7 @@ export default function MeusEventosInfo() {
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <TouchableOpacity
                 style={[styles.buttonNovoItem]}
-                onPress={handleModalNovo}
+                onPress={handleModalSuiteNovo}
               >
                 <Text style={styles.buttonText}>Novo</Text>
               </TouchableOpacity>
@@ -582,6 +599,12 @@ export default function MeusEventosInfo() {
           idEvento={id}
           visible={modalEventoIngressoVisible}
           onClose={handleCloseModalEventoIngresso}
+        />
+        <ModalEventoSuite
+          id={idEventoSuite}
+          idEvento={id}
+          visible={modalEventoSuiteVisible}
+          onClose={handleCloseModalEventoSuite}
         />
         <Footer />
       </ScrollView>

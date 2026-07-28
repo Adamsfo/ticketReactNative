@@ -8,9 +8,8 @@ import {
   Text,
   StyleSheet,
 } from "react-native";
-import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
-import { api } from "@/src/lib/api";
+import { uploadFile, uploadsUrl } from "@/src/lib/upload";
 
 interface ImageUploaderProps {
   value: string;
@@ -28,7 +27,7 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
     if (status !== "granted" || cameraStatus !== "granted") {
       Alert.alert(
         "Permissão Necessária",
-        "Habilite as permissões para continuar."
+        "Habilite as permissões para continuar.",
       );
       return false;
     }
@@ -59,36 +58,27 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
 
   const uploadImage = async (base64Image: string) => {
     setUploading(true);
-
-    axios
-      .post(
-        api.getBaseApi() + "/upload",
-        { file: base64Image, Codigo: "0" },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      )
-      .then((response) => {
-        console.log("Imagem enviada:", response.data.filename);
-        onChange(response.data.filename);
-        setUploading(false);
-      })
-      .catch((error) => {
-        setUploading(false);
-        Alert.alert("Erro", "Erro ao enviar imagem.");
-        console.error("Erro ao carregar arquivos:", error);
+    try {
+      const { filename } = await uploadFile({
+        file: base64Image,
+        Codigo: "0",
+        prefixo: "Upload",
       });
+      onChange(filename);
+    } catch (error) {
+      Alert.alert("Erro", "Erro ao enviar imagem.");
+      console.error("Erro ao carregar arquivos:", error);
+    } finally {
+      setUploading(false);
+    }
   };
+
+  const uri = uploadsUrl(value);
 
   return (
     <View style={styles.container}>
-      {value ? (
-        <Image
-          source={{ uri: api.getBaseApi() + "/uploads/" + value }}
-          style={styles.image}
-        />
+      {uri ? (
+        <Image source={{ uri }} style={styles.image} />
       ) : (
         <Text style={styles.placeholder}>Nenhuma imagem selecionada</Text>
       )}

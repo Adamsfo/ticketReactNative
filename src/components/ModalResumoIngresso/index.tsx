@@ -33,6 +33,7 @@ import ModalLogin from "@/src/app/(auth)/singin/ModalLogin";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { Switch } from "react-native-gesture-handler";
 import ModalCondicoesCompra from "../ModalCondicoesCompra";
+import { getValorFinalUnitarioIngresso } from "@/src/lib/ingressoPricing";
 
 const { width } = Dimensions.get("window");
 
@@ -78,7 +79,10 @@ export default function ModalResumoIngresso({
   const calculateValor = () => {
     return state.items
       .reduce((total, item) => {
-        return total + item.qtde * item.eventoIngresso.valor;
+        return (
+          total +
+          item.qtde * getValorFinalUnitarioIngresso(item.eventoIngresso)
+        );
       }, 0)
       .toFixed(2);
   };

@@ -24,6 +24,7 @@ import { api } from "@/src/lib/api";
 import KeenSliderNavigation from "@/src/components/CarouselWeb";
 import Footer from "@/src/components/Footer";
 import CardParceiro from "@/src/components/CardParceiro";
+import { getMenorValorFinalIngressos } from "@/src/lib/ingressoPricing";
 
 const { width } = Dimensions.get("window");
 
@@ -71,10 +72,8 @@ export default function Index() {
     );
     const registrosData = response.data ?? [];
 
-    const precos = registrosData.map((item) => item.preco);
-
-    const precoMin = Math.min(...precos);
-    return precoMin;
+    // Mesma base do checkout: EventoIngresso.valor (preço + taxas)
+    return getMenorValorFinalIngressos(registrosData);
   };
 
   const registrosParceiros = [

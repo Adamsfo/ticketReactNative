@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Platform,
   StyleSheet,
@@ -11,25 +11,41 @@ import StatusBarPage from "@/src/components/StatusBarPage";
 import BarMenu from "@/src/components/BarMenu";
 import ScreenContainer from "@/src/components/ScreenContainer";
 import colors from "@/src/constants/colors";
+import { useAuth } from "@/src/contexts_/AuthContext";
 import TabReservas from "./tabs/tabReservas";
 import TabSuites from "./tabs/tabSuites";
 import TabAgenda from "./tabs/tabAgenda";
+import TabHospedinMapeamento from "./tabs/tabHospedinMapeamento";
 import { HospedagemAdminRefreshProvider } from "./contexts/HospedagemAdminRefreshContext";
 import { NovaReservaRecepcaoProvider } from "./contexts/NovaReservaRecepcaoContext";
 import { ReceberSaldoHospedagemProvider } from "./contexts/ReceberSaldoHospedagemContext";
 import NovaReservaRecepcaoModal from "./components/NovaReservaRecepcaoModal";
 import ReceberSaldoHospedagemModal from "./components/ReceberSaldoHospedagemModal";
+import { useHospedagemDesktopLayout } from "./useHospedagemDesktopLayout";
 
-const TABS = [
-  { key: "suites", label: "🏨 Suítes" },
-  { key: "agenda", label: "📅 Agenda" },
-  { key: "reservas", label: "📋 Reservas" },
-] as const;
+const TABS_BASE = [
+  { key: "suites" as const, label: "🏨 Suítes" },
+  { key: "agenda" as const, label: "📅 Agenda" },
+  { key: "reservas" as const, label: "📋 Reservas" },
+];
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = "suites" | "agenda" | "reservas" | "hospedin";
 
 export default function HospedagemAdminPage() {
+  const { isAdministrador, isProdutor } = useAuth();
+  const { isDesktop } = useHospedagemDesktopLayout();
   const [activeTab, setActiveTab] = useState<TabKey>("suites");
+
+  /** Mesmo perfil que acessa o menu Hospedagem: admGeral ou Administrador do produtor. */
+  const podeMapaHospedin = isAdministrador || isProdutor;
+
+  const tabs = useMemo(() => {
+    if (!podeMapaHospedin) return TABS_BASE;
+    return [...TABS_BASE, { key: "hospedin" as const, label: "Mapa" }];
+  }, [podeMapaHospedin]);
+
+  const tabAtiva: TabKey =
+    !podeMapaHospedin && activeTab === "hospedin" ? "suites" : activeTab;
 
   return (
     <HospedagemAdminRefreshProvider>
@@ -42,12 +58,14 @@ export default function HospedagemAdminPage() {
             <StatusBarPage style="dark" />
             <BarMenu />
 
-            <ScreenContainer style={styles.container}>
+            <ScreenContainer
+              style={[styles.container, isDesktop && styles.containerDesktop]}
+            >
               <Text style={styles.titulo}>🏨 Hospedagem</Text>
 
               <View style={styles.tabsRow}>
-                {TABS.map((tab) => {
-                  const ativo = activeTab === tab.key;
+                {tabs.map((tab) => {
+                  const ativo = tabAtiva === tab.key;
                   return (
                     <TouchableOpacity
                       key={tab.key}
@@ -64,41 +82,53 @@ export default function HospedagemAdminPage() {
                 })}
               </View>
 
-              {/* Abas montadas em paralelo para receber refresh após operações */}
               <View style={styles.tabContent}>
                 <View
                   style={[
                     styles.tabPanel,
-                    activeTab === "suites"
+                    tabAtiva === "suites"
                       ? styles.tabPanelAtivo
                       : styles.tabPanelHidden,
                   ]}
-                  pointerEvents={activeTab === "suites" ? "auto" : "none"}
+                  pointerEvents={tabAtiva === "suites" ? "auto" : "none"}
                 >
                   <TabSuites />
                 </View>
                 <View
                   style={[
                     styles.tabPanel,
-                    activeTab === "agenda"
+                    tabAtiva === "agenda"
                       ? styles.tabPanelAtivo
                       : styles.tabPanelHidden,
                   ]}
-                  pointerEvents={activeTab === "agenda" ? "auto" : "none"}
+                  pointerEvents={tabAtiva === "agenda" ? "auto" : "none"}
                 >
                   <TabAgenda />
                 </View>
                 <View
                   style={[
                     styles.tabPanel,
-                    activeTab === "reservas"
+                    tabAtiva === "reservas"
                       ? styles.tabPanelAtivo
                       : styles.tabPanelHidden,
                   ]}
-                  pointerEvents={activeTab === "reservas" ? "auto" : "none"}
+                  pointerEvents={tabAtiva === "reservas" ? "auto" : "none"}
                 >
                   <TabReservas />
                 </View>
+                {podeMapaHospedin ? (
+                  <View
+                    style={[
+                      styles.tabPanel,
+                      tabAtiva === "hospedin"
+                        ? styles.tabPanelAtivo
+                        : styles.tabPanelHidden,
+                    ]}
+                    pointerEvents={tabAtiva === "hospedin" ? "auto" : "none"}
+                  >
+                    <TabHospedinMapeamento />
+                  </View>
+                ) : null}
               </View>
             </ScreenContainer>
           </LinearGradient>
@@ -116,6 +146,11 @@ const styles = StyleSheet.create({
   },
   container: {
     marginTop: Platform.OS === "web" ? 80 : 120,
+  },
+  containerDesktop: {
+    maxWidth: 1450,
+    width: "100%",
+    alignSelf: "center",
   },
   titulo: {
     fontSize: 24,

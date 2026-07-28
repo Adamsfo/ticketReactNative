@@ -103,9 +103,20 @@ export interface EventoSuite {
   valor: number;
   qtdeMinimaPessoas?: number;
   qtdeMaximaPessoas?: number;
-  status: Status;
+  status: Status | "PDV" | string;
   idCupomPromocional?: number;
   CupomPromocional_nome?: string;
+  Fotos?: EventoSuiteFoto[];
+}
+
+export interface EventoSuiteFoto {
+  id: number;
+  idEventoSuite: number;
+  arquivo: string;
+  ordem: number;
+  principal: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface EventoIngresso {
