@@ -19,7 +19,13 @@ export default function HospedagemDrawerLabel({
       void getSyncSummary()
         .then((resp) => {
           if (alive && resp.success && resp.data) {
-            setErros(Number(resp.data.erros || 0));
+            setErros(
+              Number(
+                resp.data.errosTotal ??
+                  Number(resp.data.erros || 0) +
+                    Number(resp.data.errosSemReserva || 0),
+              ),
+            );
           }
         })
         .catch(() => undefined);

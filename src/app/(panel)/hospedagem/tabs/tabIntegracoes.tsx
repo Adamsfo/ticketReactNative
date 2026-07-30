@@ -51,7 +51,11 @@ const TRIGGER_FILTROS: Array<{ key: TriggerFiltro; label: string }> = [
  * Dashboard genérico de integrações + Pendências (reprocessamento).
  */
 export default function TabIntegracoes() {
-  const { refreshSyncSummary } = useHospedagemAdminRefresh();
+  const {
+    refreshSyncSummary,
+    abrirPendenciasPedido,
+    limparAbrirPendenciasPedido,
+  } = useHospedagemAdminRefresh();
   const [sub, setSub] = useState<SubAba>("providers");
   const [itens, setItens] = useState<IntegrationProviderStatus[]>([]);
   const [summary, setSummary] = useState<SyncSummaryCounts | null>(null);
@@ -75,6 +79,13 @@ export default function TabIntegracoes() {
   const [historicoTrigger, setHistoricoTrigger] = useState<TriggerFiltro>("");
   const [detalheExec, setDetalheExec] =
     useState<IntegrationExecutionRow | null>(null);
+
+  useEffect(() => {
+    if (abrirPendenciasPedido) {
+      setSub("pendencias");
+      limparAbrirPendenciasPedido();
+    }
+  }, [abrirPendenciasPedido, limparAbrirPendenciasPedido]);
 
   const carregar = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -301,13 +312,30 @@ export default function TabIntegracoes() {
 
           <Text style={styles.blocoTitulo}>Estado atual</Text>
           <View style={styles.summaryRow}>
-            <Metric label="Erros" valor={summary.erros} destaque />
+            <Metric
+              label="Erros"
+              valor={
+                summary.errosTotal ??
+                summary.erros + (summary.errosSemReserva || 0)
+              }
+              destaque
+            />
             <Metric label="Críticos" valor={summary.criticos} />
             <Metric label="Alertas" valor={summary.alertas} />
             <Metric label="Pendentes" valor={summary.pendentes} />
             <Metric label="Processando" valor={summary.processando} />
             <Metric label="Aguardando" valor={summary.aguardandoSync} />
           </View>
+          {(summary.errosSemReserva || 0) > 0 ? (
+            <Text style={styles.ultimoErro}>
+              {summary.errosSemReserva} pendência
+              {summary.errosSemReserva === 1 ? "" : "s"} sem reserva criada
+              (veja a aba Pendências).
+              {summary.erros > 0
+                ? ` · ${summary.erros} com reserva na tela Reservas.`
+                : ""}
+            </Text>
+          ) : null}
           {summary.ultimoErro ? (
             <Text style={styles.ultimoErro}>
               Último erro: {summary.ultimoErro}

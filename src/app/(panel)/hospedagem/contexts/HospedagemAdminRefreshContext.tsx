@@ -17,16 +17,27 @@ type HospedagemAdminRefreshContextValue = {
   /** Notifica Agenda, Suítes e Reservas para atualizar dados. */
   notifyOperacaoConcluida: () => void;
   syncSummary: SyncSummaryCounts | null;
+  /** OPEN com reserva — alinhado ao filtro Reservas "Falhas sync". */
   syncErros: number;
+  /** OPEN sem reserva — só Integrações → Pendências. */
+  syncErrosSemReserva: number;
+  /** Badge / atenção total. */
+  syncErrosTotal: number;
   refreshSyncSummary: () => void;
   /** Quando true, a aba Reservas deve filtrar sync_erro. */
   filtroSyncErroPedido: boolean;
   pedirFiltroSyncErro: () => void;
   limparFiltroSyncErroPedido: () => void;
+  /** Quando true, abrir Integrações na sub-aba Pendências. */
+  abrirPendenciasPedido: boolean;
+  pedirAbrirPendencias: () => void;
+  limparAbrirPendenciasPedido: () => void;
 };
 
 const emptySummary: SyncSummaryCounts = {
   erros: 0,
+  errosSemReserva: 0,
+  errosTotal: 0,
   criticos: 0,
   alertas: 0,
   informativos: 0,
@@ -45,10 +56,15 @@ const HospedagemAdminRefreshContext =
     notifyOperacaoConcluida: () => undefined,
     syncSummary: null,
     syncErros: 0,
+    syncErrosSemReserva: 0,
+    syncErrosTotal: 0,
     refreshSyncSummary: () => undefined,
     filtroSyncErroPedido: false,
     pedirFiltroSyncErro: () => undefined,
     limparFiltroSyncErroPedido: () => undefined,
+    abrirPendenciasPedido: false,
+    pedirAbrirPendencias: () => undefined,
+    limparAbrirPendenciasPedido: () => undefined,
   });
 
 export function HospedagemAdminRefreshProvider({
@@ -61,6 +77,7 @@ export function HospedagemAdminRefreshProvider({
     null,
   );
   const [filtroSyncErroPedido, setFiltroSyncErroPedido] = useState(false);
+  const [abrirPendenciasPedido, setAbrirPendenciasPedido] = useState(false);
 
   const refreshSyncSummary = useCallback(() => {
     void getSyncSummary()
@@ -80,23 +97,37 @@ export function HospedagemAdminRefreshProvider({
     setRefreshVersion((v) => v + 1);
   }, []);
 
+  const syncErros = syncSummary?.erros ?? 0;
+  const syncErrosSemReserva = syncSummary?.errosSemReserva ?? 0;
+  const syncErrosTotal =
+    syncSummary?.errosTotal ?? syncErros + syncErrosSemReserva;
+
   const value = useMemo(
     () => ({
       refreshVersion,
       notifyOperacaoConcluida,
       syncSummary,
-      syncErros: syncSummary?.erros ?? 0,
+      syncErros,
+      syncErrosSemReserva,
+      syncErrosTotal,
       refreshSyncSummary,
       filtroSyncErroPedido,
       pedirFiltroSyncErro: () => setFiltroSyncErroPedido(true),
       limparFiltroSyncErroPedido: () => setFiltroSyncErroPedido(false),
+      abrirPendenciasPedido,
+      pedirAbrirPendencias: () => setAbrirPendenciasPedido(true),
+      limparAbrirPendenciasPedido: () => setAbrirPendenciasPedido(false),
     }),
     [
       refreshVersion,
       notifyOperacaoConcluida,
       syncSummary,
+      syncErros,
+      syncErrosSemReserva,
+      syncErrosTotal,
       refreshSyncSummary,
       filtroSyncErroPedido,
+      abrirPendenciasPedido,
     ],
   );
 

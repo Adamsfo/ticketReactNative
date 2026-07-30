@@ -37,7 +37,13 @@ function HospedagemAdminPageInner() {
   const { isAdministrador, isProdutor } = useAuth();
   const { isDesktop } = useHospedagemDesktopLayout();
   const [activeTab, setActiveTab] = useState<TabKey>("suites");
-  const { syncErros, pedirFiltroSyncErro } = useHospedagemAdminRefresh();
+  const {
+    syncErros,
+    syncErrosSemReserva,
+    syncErrosTotal,
+    pedirFiltroSyncErro,
+    pedirAbrirPendencias,
+  } = useHospedagemAdminRefresh();
 
   /** Mesmo perfil que acessa o menu Hospedagem: admGeral ou Administrador do produtor. */
   const podeMapaHospedin = isAdministrador || isProdutor;
@@ -60,6 +66,28 @@ function HospedagemAdminPageInner() {
       ? "suites"
       : activeTab;
 
+  const onVisualizarFalhas = () => {
+    // Com reserva Jango → Reservas / Falhas sync (mesma regra do contador.erros)
+    if (syncErros > 0) {
+      pedirFiltroSyncErro();
+      setActiveTab("reservas");
+      return;
+    }
+    // Sem reserva (internal_entity_id NULL) → Integrações / Pendências
+    if (syncErrosSemReserva > 0 && podeIntegracoes) {
+      pedirAbrirPendencias();
+      setActiveTab("integracoes");
+    }
+  };
+
+  const bannerVisivel = syncErrosTotal > 0;
+  const bannerTexto =
+    syncErros > 0
+      ? `🔴 Existem ${syncErros} reserva${syncErros === 1 ? "" : "s"} com falha de sincronização.`
+      : `🔴 Existem ${syncErrosSemReserva} pendência${
+          syncErrosSemReserva === 1 ? "" : "s"
+        } de integração (sem reserva criada).`;
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -73,22 +101,16 @@ function HospedagemAdminPageInner() {
       >
         <Text style={styles.titulo}>
           🏨 Hospedagem
-          {syncErros > 0 ? `  🔴 ${syncErros}` : ""}
+          {syncErrosTotal > 0 ? `  🔴 ${syncErrosTotal}` : ""}
         </Text>
 
-        {syncErros > 0 ? (
+        {bannerVisivel ? (
           <TouchableOpacity
             style={styles.alertaSync}
-            onPress={() => {
-              pedirFiltroSyncErro();
-              setActiveTab("reservas");
-            }}
+            onPress={onVisualizarFalhas}
             activeOpacity={0.85}
           >
-            <Text style={styles.alertaSyncTexto}>
-              🔴 Existem {syncErros} reserva
-              {syncErros === 1 ? "" : "s"} com falha de sincronização.
-            </Text>
+            <Text style={styles.alertaSyncTexto}>{bannerTexto}</Text>
             <Text style={styles.alertaSyncLink}>Clique para visualizar</Text>
           </TouchableOpacity>
         ) : null}

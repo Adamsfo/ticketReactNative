@@ -26,7 +26,12 @@ export type SyncIntegracaoResumo = {
 };
 
 export type SyncSummaryCounts = {
+  /** OPEN com ReservaHospedagem — mesma regra do filtro "Falhas sync". */
   erros: number;
+  /** OPEN sem reserva (internal_entity_id NULL) — só em Pendências. */
+  errosSemReserva?: number;
+  /** erros + errosSemReserva. */
+  errosTotal?: number;
   criticos: number;
   alertas: number;
   informativos: number;

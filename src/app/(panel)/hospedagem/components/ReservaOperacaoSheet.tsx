@@ -614,6 +614,19 @@ export default function ReservaOperacaoSheet({
                     ) : null}
                   </Secao>
 
+                  {/* Observações — campo oficial da reserva (visível na Operação) */}
+                  <Secao titulo="Observações">
+                    {String(detalhe?.observacoes || "").trim() ? (
+                      <Text style={styles.observacoesTexto}>
+                        {String(detalhe?.observacoes).trim()}
+                      </Text>
+                    ) : (
+                      <Text style={styles.observacoesVazio}>
+                        Observação não informada.
+                      </Text>
+                    )}
+                  </Secao>
+
                   {/* Origem — compacta; detalhes ficam na aba Integração */}
                   <Secao titulo="Origem">
                     <OrigemReservaIndicador
@@ -1326,6 +1339,16 @@ const styles = StyleSheet.create({
   vazio: {
     fontSize: 14,
     color: "#888",
+  },
+  observacoesTexto: {
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 20,
+  },
+  observacoesVazio: {
+    fontSize: 14,
+    color: "#888",
+    fontStyle: "italic",
   },
   hospedeItem: {
     backgroundColor: colors.branco,
