@@ -25,6 +25,7 @@ import {
 } from "@/src/lib/hospedagemAdmin";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
+import SyncStatusIndicator from "../components/SyncStatusIndicator";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 
 const FILTROS: Array<{
@@ -32,6 +33,7 @@ const FILTROS: Array<{
   label: string;
 }> = [
   { key: "todos", label: "Todas" },
+  { key: "sync_erro", label: "Falhas sync" },
   { key: "online", label: "Online" },
   { key: "atendente", label: "Atendente" },
   { key: "hoje", label: "Hoje" },
@@ -94,6 +96,12 @@ function CardReserva({
           <Text style={styles.responsavel}>{responsavel}</Text>
 
           <OrigemReservaIndicador dados={item} variante="card" />
+          {item.syncIntegracao?.uiStatus ? (
+            <SyncStatusIndicator
+              sync={item.syncIntegracao as any}
+              compact={false}
+            />
+          ) : null}
 
           <View style={styles.periodoRow}>
             <View style={styles.periodoCol}>
@@ -135,7 +143,11 @@ function CardReserva({
 
 export default function TabReservas() {
   const navigation = useNavigation() as any;
-  const { refreshVersion } = useHospedagemAdminRefresh();
+  const {
+    refreshVersion,
+    filtroSyncErroPedido,
+    limparFiltroSyncErroPedido,
+  } = useHospedagemAdminRefresh();
   const [buscaInput, setBuscaInput] = useState("");
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<FiltroRapidoReserva>("todos");
@@ -147,6 +159,13 @@ export default function TabReservas() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    if (filtroSyncErroPedido) {
+      setFiltro("sync_erro");
+      limparFiltroSyncErroPedido();
+    }
+  }, [filtroSyncErroPedido, limparFiltroSyncErroPedido]);
 
   useEffect(() => {
     const timer = setTimeout(() => setBusca(buscaInput.trim()), 400);

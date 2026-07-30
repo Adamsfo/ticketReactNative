@@ -15,7 +15,6 @@ import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { formatInTimeZone } from "date-fns-tz";
 import colors from "@/src/constants/colors";
-import formatCurrency from "@/src/components/FormatCurrency";
 import {
   DiaCalendarioSuites,
   FiltroSuiteOperacional,
@@ -330,6 +329,28 @@ function BlocoReservaClicavel({
   );
 }
 
+function MetaLinha({
+  icon,
+  children,
+  strong = false,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  children: React.ReactNode;
+  strong?: boolean;
+}) {
+  return (
+    <View style={styles.metaLinha}>
+      <Feather name={icon} size={13} color="#667085" style={styles.metaIcon} />
+      <Text
+        style={[styles.metaLinhaTexto, strong && styles.metaLinhaStrong]}
+        numberOfLines={1}
+      >
+        {children}
+      </Text>
+    </View>
+  );
+}
+
 /** Checkout A + Check-in B no mesmo dia — blocos independentes por reservaId. */
 function CardSuiteDuplaReserva({
   item,
@@ -353,21 +374,19 @@ function CardSuiteDuplaReserva({
 
   return (
     <View
-      style={[styles.card, compact && styles.cardDesktop, { borderLeftColor: cor }]}
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        { borderLeftColor: cor },
+      ]}
     >
-      <View style={styles.cardBody}>
-        <View style={compact ? styles.cardHeadDesktop : undefined}>
-          <Text style={[styles.suiteNome, compact && styles.suiteNomeDesktop]}>
+      <View style={styles.cardBodyFill}>
+        <View style={styles.cardHeadRow}>
+          <Text style={[styles.suiteNome, compact && styles.suiteNomeCompact]} numberOfLines={1}>
             <Text style={{ color: cor }}>● </Text>
             {item.nome}
           </Text>
-          <View
-            style={[
-              styles.badge,
-              compact && styles.badgeDesktop,
-              { backgroundColor: cor },
-            ]}
-          >
+          <View style={[styles.badge, styles.badgeCompact, { backgroundColor: cor }]}>
             <Text style={styles.badgeTexto}>{badgeTexto}</Text>
           </View>
         </View>
@@ -395,12 +414,12 @@ function CardSuiteDuplaReserva({
             });
           }}
         >
-          <Text style={styles.blocoNome}>
+          <MetaLinha icon="user" strong>
             {item.responsavel?.trim() || "Hóspede"}
-          </Text>
-          <Text style={styles.blocoMeta}>
+          </MetaLinha>
+          <MetaLinha icon="log-out">
             Sai às {horaCheckinCurta(item.checkout)}
-          </Text>
+          </MetaLinha>
         </BlocoReservaClicavel>
 
         <View style={styles.blocoSeparador} />
@@ -421,14 +440,16 @@ function CardSuiteDuplaReserva({
             });
           }}
         >
-          <Text style={styles.blocoNome}>
+          <MetaLinha icon="user" strong>
             {proxima.responsavel?.trim() || "Hóspede"}
-          </Text>
-          <Text style={styles.blocoMeta}>
+          </MetaLinha>
+          <MetaLinha icon="clock">
             Check-in às {horaCheckinCurta(proxima.checkin)}
-          </Text>
+          </MetaLinha>
           {chip ? (
-            <Text style={styles.blocoOrigem}>{chip.texto}</Text>
+            <Text style={styles.blocoOrigem} numberOfLines={1}>
+              {chip.texto}
+            </Text>
           ) : null}
         </BlocoReservaClicavel>
       </View>
@@ -499,428 +520,182 @@ function CardSuite({
   const mostrarChipVerReserva =
     !modoLivreAposCheckout && botao === "ver_reserva";
 
-  const temPeriodo =
-    Boolean(item.checkin || item.checkout) &&
-    statusExibicao !== "LIVRE" &&
-    statusExibicao !== "Livre";
+  const livre =
+    statusExibicao === "LIVRE" || statusExibicao === "Livre";
+  const proxima = item.proximaReservaResumo;
+
+  const chipAcao = (() => {
+    if (mostrarChipNovaReserva) {
+      return { label: "Nova Reserva", cor: CORES_STATUS_OPERACIONAL.livre };
+    }
+    if (mostrarChipCheckin) {
+      return {
+        label: "Realizar Check-in",
+        cor: CORES_STATUS_OPERACIONAL.livre,
+      };
+    }
+    if (mostrarChipCheckout) {
+      return {
+        label: "Realizar Check-out",
+        cor:
+          statusExibicao === "HOSPEDADA"
+            ? CORES_STATUS_OPERACIONAL.hospedada
+            : CORES_STATUS_OPERACIONAL.aguardandoAcao,
+      };
+    }
+    if (mostrarChipVerReserva) {
+      return {
+        label: "Ver Reserva",
+        cor:
+          statusExibicao === "HOSPEDADA"
+            ? CORES_STATUS_OPERACIONAL.hospedada
+            : CORES_STATUS_OPERACIONAL.aguardandoAcao,
+      };
+    }
+    return null;
+  })();
 
   return (
     <TouchableOpacity
-      style={[styles.card, compact && styles.cardDesktop, { borderLeftColor: cor }]}
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        { borderLeftColor: cor },
+      ]}
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={styles.cardRow}>
-        <View style={styles.cardBody}>
-          <View style={compact ? styles.cardHeadDesktop : undefined}>
-            <Text
-              style={[styles.suiteNome, compact && styles.suiteNomeDesktop]}
-              numberOfLines={compact ? 1 : undefined}
-            >
-              <Text style={{ color: cor }}>● </Text>
-              {item.nome}
+      <View style={styles.cardBodyFill}>
+        <View style={styles.cardHeadRow}>
+          <Text
+            style={[styles.suiteNome, compact && styles.suiteNomeCompact]}
+            numberOfLines={1}
+          >
+            <Text style={{ color: cor }}>● </Text>
+            {item.nome}
+          </Text>
+          <View
+            style={[
+              styles.badge,
+              compact && styles.badgeCompact,
+              { backgroundColor: cor },
+            ]}
+          >
+            <Text style={styles.badgeTexto} numberOfLines={1}>
+              {badgeTexto}
             </Text>
-            <View
-              style={[
-                styles.badge,
-                compact && styles.badgeDesktop,
-                { backgroundColor: cor },
-              ]}
-            >
-              <Text style={styles.badgeTexto}>{badgeTexto}</Text>
-            </View>
           </View>
+        </View>
 
-          {statusExibicao === "LIVRE" || statusExibicao === "Livre" ? (
+        <View style={styles.cardContent}>
+          {livre ? (
             <>
-              <Text
-                style={[
-                  styles.livreTitulo,
-                  compact && styles.livreTituloDesktop,
-                ]}
-              >
+              <Text style={styles.livreTituloCompact} numberOfLines={2}>
                 {item.mensagemDisponibilidade || "Disponível para reserva"}
               </Text>
               {item.mensagemDisponibilidadeSecundaria ? (
-                <Text
-                  style={[
-                    styles.disponivelSecundario,
-                    compact && styles.metaTightDesktop,
-                  ]}
-                >
+                <Text style={styles.metaSecundario} numberOfLines={1}>
                   {item.mensagemDisponibilidadeSecundaria}
                 </Text>
-              ) : null}
-              {mostrarChipNovaReserva ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>Nova Reserva</Text>
-                </View>
-              ) : null}
-            </>
-          ) : statusExibicao === "CHECKIN_HOJE" ? (
-            <>
-              {item.responsavel ? (
-                <Text
-                  style={[
-                    styles.responsavel,
-                    compact && styles.responsavelDesktop,
-                  ]}
-                >
-                  {item.responsavel}
-                </Text>
-              ) : null}
-              <OrigemReservaIndicador dados={item} variante="card" />
-              {compact && temPeriodo ? (
-                <View style={styles.metaColsDesktop}>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Entrada</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkin)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkin)}
-                    </Text>
-                  </View>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Saída</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkout)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkout)}
-                    </Text>
-                  </View>
-                  {item.mensagemDisponibilidade ? (
-                    <View style={styles.metaColDesktopFlex}>
-                      <Text style={styles.periodoLabel}>Status</Text>
-                      <Text
-                        style={[
-                          styles.destaqueHora,
-                          styles.destaqueHoraDesktop,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {item.mensagemDisponibilidade}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : item.mensagemDisponibilidade ? (
-                <Text style={styles.destaqueHora}>
-                  {item.mensagemDisponibilidade}
-                </Text>
-              ) : null}
-              <ResumoFinanceiroRecepcao
-                dados={{
-                  ...item,
-                  valorTotal: item.valorHospedagem ?? item.valorTotal,
-                }}
-                compact
-                mostrarReceberSaldo
-                onReceberSaldo={() => {
-                  if (!item.idReservaHospedagem) return;
-                  const dados = {
-                    ...item,
-                    valorTotal: item.valorHospedagem ?? item.valorTotal,
-                  };
-                  openReceberSaldo({
-                    idReservaHospedagem: item.idReservaHospedagem,
-                    saldoPendente: obterSaldoPendenteExibicao(dados),
-                    valorTotal: dados.valorTotal,
-                    valorPago: item.valorPago,
-                    suiteNome: item.nome,
-                    responsavel: item.responsavel,
-                  });
-                }}
-              />
-              {mostrarChipCheckin ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                    { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>Realizar Check-in</Text>
-                </View>
-              ) : null}
-            </>
-          ) : statusExibicao === "HOSPEDADA" ? (
-            <>
-              {item.responsavel ? (
-                <Text
-                  style={[
-                    styles.responsavel,
-                    compact && styles.responsavelDesktop,
-                  ]}
-                >
-                  {item.responsavel}
-                </Text>
-              ) : null}
-              <OrigemReservaIndicador dados={item} variante="card" />
-              {compact && temPeriodo ? (
-                <View style={styles.metaColsDesktop}>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Entrada</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkin)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkin)}
-                    </Text>
-                  </View>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Saída</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkout)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkout)}
-                    </Text>
-                  </View>
-                  {item.mensagemDisponibilidade ? (
-                    <View style={styles.metaColDesktopFlex}>
-                      <Text style={styles.periodoLabel}>Status</Text>
-                      <Text
-                        style={[
-                          styles.destaqueHora,
-                          styles.destaqueHoraDesktop,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {item.mensagemDisponibilidade}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : (
-                <>
-                  {item.mensagemDisponibilidade ? (
-                    <Text style={styles.destaqueHora}>
-                      {item.mensagemDisponibilidade}
-                    </Text>
-                  ) : null}
-                  {item.mensagemDisponibilidadeSecundaria ? (
-                    <Text style={styles.disponivelSecundario}>
-                      {item.mensagemDisponibilidadeSecundaria}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-              <ResumoFinanceiroRecepcao
-                dados={{
-                  ...item,
-                  valorTotal: item.valorHospedagem ?? item.valorTotal,
-                }}
-                compact
-              />
-              {mostrarChipVerReserva || mostrarChipCheckout ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                    { backgroundColor: CORES_STATUS_OPERACIONAL.hospedada },
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>
-                    {mostrarChipCheckout ? "Realizar Check-out" : "Ver Reserva"}
-                  </Text>
-                </View>
-              ) : null}
-            </>
-          ) : statusExibicao === "CHECKOUT_HOJE" ? (
-            <>
-              {item.responsavel ? (
-                <Text
-                  style={[
-                    styles.responsavel,
-                    compact && styles.responsavelDesktop,
-                  ]}
-                >
-                  {item.responsavel}
-                </Text>
-              ) : null}
-              <OrigemReservaIndicador dados={item} variante="card" />
-              {compact && temPeriodo ? (
-                <View style={styles.metaColsDesktop}>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Entrada</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkin)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkin)}
-                    </Text>
-                  </View>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Saída</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkout)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkout)}
-                    </Text>
-                  </View>
-                  {item.mensagemDisponibilidade ? (
-                    <View style={styles.metaColDesktopFlex}>
-                      <Text style={styles.periodoLabel}>Status</Text>
-                      <Text
-                        style={[
-                          styles.destaqueHora,
-                          styles.destaqueHoraDesktop,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {item.mensagemDisponibilidade}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : (
-                <>
-                  {item.mensagemDisponibilidade ? (
-                    <Text style={styles.destaqueHora}>
-                      {item.mensagemDisponibilidade}
-                    </Text>
-                  ) : null}
-                  {item.mensagemDisponibilidadeSecundaria ? (
-                    <Text style={styles.disponivelSecundario}>
-                      {item.mensagemDisponibilidadeSecundaria}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-              <ResumoFinanceiroRecepcao
-                dados={{
-                  ...item,
-                  valorTotal: item.valorHospedagem ?? item.valorTotal,
-                }}
-                compact
-              />
-              {mostrarChipCheckout ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                    { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>Realizar Check-out</Text>
-                </View>
-              ) : mostrarChipNovaReserva ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>Nova Reserva</Text>
-                </View>
-              ) : mostrarChipVerReserva ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                    { backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao },
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>Ver Reserva</Text>
-                </View>
               ) : null}
             </>
           ) : (
             <>
               {item.responsavel ? (
-                <Text
-                  style={[
-                    styles.responsavel,
-                    compact && styles.responsavelDesktop,
-                  ]}
-                >
+                <MetaLinha icon="user" strong>
                   {item.responsavel}
-                </Text>
+                </MetaLinha>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              {compact && temPeriodo ? (
-                <View style={styles.metaColsDesktop}>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Entrada</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkin)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkin)}
-                    </Text>
-                  </View>
-                  <View style={styles.metaColDesktop}>
-                    <Text style={styles.periodoLabel}>Saída</Text>
-                    <Text style={styles.periodoDataDesktop}>
-                      {dataCheckinCurta(item.checkout)}
-                    </Text>
-                    <Text style={styles.periodoHoraDesktop}>
-                      {horaCheckinCurta(item.checkout)}
-                    </Text>
-                  </View>
-                </View>
+              {statusExibicao === "CHECKIN_HOJE" && item.checkin ? (
+                <MetaLinha icon="log-in">
+                  Entra às {horaCheckinCurta(item.checkin)}
+                </MetaLinha>
               ) : null}
-              {item.mensagemDisponibilidade ? (
-                <Text
-                  style={[
-                    styles.livreTitulo,
-                    compact && styles.livreTituloDesktop,
-                  ]}
-                >
+              {statusExibicao === "CHECKOUT_HOJE" && item.checkout ? (
+                <MetaLinha icon="log-out">
+                  Sai às {horaCheckinCurta(item.checkout)}
+                </MetaLinha>
+              ) : null}
+              {(statusExibicao === "HOSPEDADA" ||
+                statusExibicao === "RESERVADA") &&
+              (item.checkin || item.checkout) ? (
+                <MetaLinha icon="calendar">
+                  {[
+                    item.checkin ? dataCheckinCurta(item.checkin) : null,
+                    item.checkout ? dataCheckinCurta(item.checkout) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" → ")}
+                </MetaLinha>
+              ) : null}
+              {item.mensagemDisponibilidade &&
+              statusExibicao !== "CHECKOUT_HOJE" &&
+              statusExibicao !== "CHECKIN_HOJE" ? (
+                <Text style={styles.metaSecundario} numberOfLines={1}>
                   {item.mensagemDisponibilidade}
                 </Text>
               ) : null}
-              {item.mensagemDisponibilidadeSecundaria ? (
-                <Text
-                  style={[
-                    styles.disponivelSecundario,
-                    compact && styles.metaTightDesktop,
-                  ]}
-                >
-                  {item.mensagemDisponibilidadeSecundaria}
-                </Text>
+              {statusExibicao === "CHECKOUT_HOJE" &&
+              (proxima?.responsavel || proxima?.checkin) ? (
+                <>
+                  <Text style={styles.proximaLabel}>Próxima</Text>
+                  {proxima.responsavel ? (
+                    <MetaLinha icon="calendar">{proxima.responsavel}</MetaLinha>
+                  ) : null}
+                  {proxima.checkin ? (
+                    <MetaLinha icon="clock">
+                      {horaCheckinCurta(proxima.checkin)}
+                    </MetaLinha>
+                  ) : null}
+                </>
               ) : null}
-              <ResumoFinanceiroRecepcao
-                dados={{
-                  ...item,
-                  valorTotal: item.valorHospedagem ?? item.valorTotal,
-                }}
-                compact
-              />
-              {item.valorHospedagem != null ? (
-                <Text
-                  style={[styles.valor, compact && styles.metaTightDesktop]}
-                >
-                  Valor{" "}
-                  <Text style={styles.valorNumero}>
-                    {formatCurrency(Number(item.valorHospedagem))}
-                  </Text>
-                </Text>
-              ) : null}
-              {mostrarChipVerReserva ? (
-                <View
-                  style={[
-                    styles.reservarChip,
-                    compact && styles.reservarChipDesktop,
-                  ]}
-                >
-                  <Text style={styles.reservarTexto}>Ver Reserva</Text>
-                </View>
+              {!compact ? (
+                <ResumoFinanceiroRecepcao
+                  dados={{
+                    ...item,
+                    valorTotal: item.valorHospedagem ?? item.valorTotal,
+                  }}
+                  compact
+                  mostrarReceberSaldo={statusExibicao === "CHECKIN_HOJE"}
+                  onReceberSaldo={
+                    statusExibicao === "CHECKIN_HOJE"
+                      ? () => {
+                          if (!item.idReservaHospedagem) return;
+                          const dados = {
+                            ...item,
+                            valorTotal: item.valorHospedagem ?? item.valorTotal,
+                          };
+                          openReceberSaldo({
+                            idReservaHospedagem: item.idReservaHospedagem,
+                            saldoPendente: obterSaldoPendenteExibicao(dados),
+                            valorTotal: dados.valorTotal,
+                            valorPago: item.valorPago,
+                            suiteNome: item.nome,
+                            responsavel: item.responsavel,
+                          });
+                        }
+                      : undefined
+                  }
+                />
               ) : null}
             </>
           )}
         </View>
-        <Text style={[styles.chevron, compact && styles.chevronDesktop]}>
-          {">"}
-        </Text>
+
+        {chipAcao ? (
+          <View
+            style={[
+              styles.reservarChip,
+              styles.reservarChipCompact,
+              { backgroundColor: chipAcao.cor },
+            ]}
+          >
+            <Text style={styles.reservarTexto}>{chipAcao.label}</Text>
+          </View>
+        ) : (
+          <View style={styles.chipSpacer} />
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -929,7 +704,8 @@ function CardSuite({
 export default function TabSuites() {
   const navigation = useNavigation() as any;
   const { openNovaReserva } = useNovaReservaRecepcao();
-  const { isDesktop, suiteColumns } = useHospedagemDesktopLayout();
+  const { suiteColumns } = useHospedagemDesktopLayout();
+  const cardsCompactos = suiteColumns > 1;
   const hoje = useMemo(() => hojeStrCuiaba(), []);
   const [dataReferencia, setDataReferencia] = useState(hoje);
   const [mesVisivel, setMesVisivel] = useState(() => mesDeData(hoje));
@@ -1119,7 +895,7 @@ export default function TabSuites() {
                 filtroAtivo={filtro}
                 dataSelecionada={dataReferencia}
                 hoje={hoje}
-                compact={isDesktop}
+                compact={cardsCompactos}
                 onPress={() => abrirSuite(item)}
                 onAbrirReserva={abrirReserva}
               />
@@ -1256,35 +1032,48 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 5,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderLeftWidth: 4,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+    flex: 1,
+    minHeight: 148,
   },
-  cardDesktop: {
+  cardCompact: {
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 10,
+    paddingHorizontal: 11,
+    marginBottom: 0,
     borderRadius: 12,
+    minHeight: 156,
   },
   columnWrapper: {
     gap: 10,
+    alignItems: "stretch",
+    marginBottom: 10,
   },
   gridItem: {
     flex: 1,
-    maxWidth: "50%",
+    minWidth: 0,
   },
-  cardHeadDesktop: {
+  cardHeadRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    marginBottom: 2,
+    marginBottom: 4,
+  },
+  cardBodyFill: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  cardContent: {
+    flexGrow: 1,
+    gap: 2,
   },
   cardRow: {
     flexDirection: "row",
@@ -1304,91 +1093,92 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   suiteNome: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.cinza,
-  },
-  suiteNomeDesktop: {
-    fontSize: 15,
     flex: 1,
+    minWidth: 0,
+  },
+  suiteNomeCompact: {
+    fontSize: 14,
   },
   badge: {
     alignSelf: "flex-start",
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  badgeDesktop: {
-    marginTop: 0,
-    alignSelf: "center",
+    marginTop: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    maxWidth: "48%",
+  },
+  badgeCompact: {
+    marginTop: 0,
+    alignSelf: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    flexShrink: 0,
   },
   badgeTexto: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 12,
-    letterSpacing: 0.3,
+    fontSize: 10,
+    letterSpacing: 0.2,
   },
   livreTitulo: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: 10,
+    fontSize: 15,
     fontWeight: "600",
     color: colors.cinza,
   },
-  livreTituloDesktop: {
-    marginTop: 6,
-    fontSize: 14,
-  },
-  responsavelDesktop: {
-    marginTop: 4,
-    fontSize: 14,
-  },
-  metaTightDesktop: {
-    marginTop: 4,
-  },
-  destaqueHoraDesktop: {
+  livreTituloCompact: {
     marginTop: 2,
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#475467",
+    lineHeight: 18,
   },
-  metaColsDesktop: {
+  metaLinha: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 14,
-    marginTop: 6,
-    marginBottom: 2,
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
   },
-  metaColDesktop: {
-    minWidth: 56,
-  },
-  metaColDesktopFlex: {
-    flex: 1,
-    minWidth: 0,
-  },
-  periodoDataDesktop: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.cinza,
-  },
-  periodoHoraDesktop: {
-    fontSize: 12,
-    color: "#666",
+  metaIcon: {
     marginTop: 1,
   },
-  reservarChipDesktop: {
+  metaLinhaTexto: {
+    flex: 1,
+    fontSize: 13,
+    color: "#475467",
+  },
+  metaLinhaStrong: {
+    fontWeight: "700",
+    color: colors.cinza,
+    fontSize: 14,
+  },
+  metaSecundario: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#667085",
+  },
+  proximaLabel: {
+    marginTop: 6,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#98A2B3",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  chipSpacer: {
+    minHeight: 28,
+  },
+  reservarChipCompact: {
     marginTop: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    minHeight: 32,
-    borderRadius: 10,
-  },
-  disponivelSecundario: {
-    marginTop: 4,
-    fontSize: 14,
-    color: "#555",
+    minHeight: 30,
+    borderRadius: 9,
+    alignSelf: "flex-start",
   },
   proximaBox: {
     marginTop: 10,

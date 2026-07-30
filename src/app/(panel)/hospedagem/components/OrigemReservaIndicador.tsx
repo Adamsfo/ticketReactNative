@@ -3,7 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { formatDateTimeHospedagem } from "@/src/lib/hospedagemStatusOperacional";
 
 export type DadosOrigemReserva = {
-  origemReserva?: "SITE" | "ATENDENTE" | "CLIENTE" | string | null;
+  origemReserva?: "SITE" | "ATENDENTE" | "CLIENTE" | "HOSPEDIN" | string | null;
+  canalVenda?: string | null;
   nomeUsuarioCriacao?: string | null;
   idUsuarioCriacao?: number | null;
   dataCriacao?: string | Date | null;
@@ -16,7 +17,9 @@ export function normalizarOrigemReserva(
     valorPago?: number | null;
     formaPagamentoRecepcao?: string | null;
   },
-): "CLIENTE" | "ATENDENTE" {
+): "CLIENTE" | "ATENDENTE" | "HOSPEDIN" | string {
+  const raw = String(origem || "").toUpperCase();
+  if (raw === "HOSPEDIN") return "HOSPEDIN";
   // Produção: CLIENTE | ATENDENTE. SITE legado = cliente online.
   if (origem === "ATENDENTE") return "ATENDENTE";
   if (
@@ -36,7 +39,26 @@ export function labelChipOrigemReserva(
   if (!dados) return null;
   const raw = String(dados.origemReserva || "").toUpperCase();
   const nome = dados.nomeUsuarioCriacao?.trim() || "Atendente";
+  const canal = String(dados.canalVenda || "").trim().toUpperCase();
 
+  if (raw === "HOSPEDIN") {
+    const canalLabel =
+      canal === "BOOKING"
+        ? "Booking.com"
+        : canal === "AIRBNB"
+          ? "Airbnb"
+          : canal === "EXPEDIA"
+            ? "Expedia"
+            : canal === "SITE"
+              ? "Site"
+              : canal
+                ? dados.canalVenda
+                : null;
+    return {
+      texto: canalLabel ? `🔗 Hospedin · ${canalLabel}` : "🔗 Hospedin",
+      atendente: false,
+    };
+  }
   if (raw === "BOOKING") {
     return { texto: "🌐 Booking.com", atendente: false };
   }
@@ -59,10 +81,10 @@ export function labelChipOrigemReserva(
     return { texto: `🧑‍💼 Criada por ${nome}`, atendente: true };
   }
   if (raw === "SITE" || raw === "CLIENTE" || raw === "LINK_CLIENTE" || !raw) {
-    const canal = normalizarOrigemReserva(dados.origemReserva, {
+    const canalNorm = normalizarOrigemReserva(dados.origemReserva, {
       idUsuarioCriacao: dados.idUsuarioCriacao,
     });
-    if (canal === "ATENDENTE") {
+    if (canalNorm === "ATENDENTE") {
       return { texto: `🧑‍💼 Criada por ${nome}`, atendente: true };
     }
     return { texto: "💻 Site", atendente: false };
@@ -124,6 +146,19 @@ export default function OrigemReservaIndicador({
   }
 
   if (variante === "sheet") {
+    if (origem === "HOSPEDIN") {
+      const canalTxt = dados.canalVenda
+        ? String(dados.canalVenda).trim()
+        : null;
+      return (
+        <View style={styles.sheetBox}>
+          <Text style={styles.sheetValor}>Hospedin</Text>
+          {canalTxt ? (
+            <Text style={styles.sheetSub}>Canal: {canalTxt}</Text>
+          ) : null}
+        </View>
+      );
+    }
     return (
       <View style={styles.sheetBox}>
         {origem === "ATENDENTE" ? (
@@ -145,6 +180,23 @@ export default function OrigemReservaIndicador({
   }
 
   // detalhe
+  if (origem === "HOSPEDIN") {
+    return (
+      <View style={styles.detalheBox}>
+        <Text style={styles.detalheTitulo}>Origem da reserva</Text>
+        <Text style={styles.detalheValor}>🔗 Integração Hospedin</Text>
+        {dados.canalVenda ? (
+          <>
+            <Text style={[styles.detalheLabel, { marginTop: 8 }]}>
+              Canal de venda
+            </Text>
+            <Text style={styles.detalheSub}>{dados.canalVenda}</Text>
+          </>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.detalheBox}>
       <Text style={styles.detalheTitulo}>Origem da reserva</Text>

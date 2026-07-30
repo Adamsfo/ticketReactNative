@@ -47,6 +47,9 @@ import {
 import OrigemReservaIndicador, {
   labelChipOrigemReserva,
 } from "./OrigemReservaIndicador";
+import ReservaOrigemIntegracaoPanel, {
+  labelCanalVenda,
+} from "./ReservaOrigemIntegracaoPanel";
 import TrocaSuiteModal from "./TrocaSuiteModal";
 import AlterarPeriodoModal from "./AlterarPeriodoModal";
 
@@ -91,6 +94,9 @@ export default function ReservaOperacaoSheet({
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [trocaSuiteVisible, setTrocaSuiteVisible] = useState(false);
   const [alterarPeriodoVisible, setAlterarPeriodoVisible] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState<"operacao" | "integracao">(
+    "operacao",
+  );
 
   const hojeOperacao = useMemo(
     () => formatInTimeZone(new Date(), HOSPEDAGEM_TZ, "yyyy-MM-dd"),
@@ -105,12 +111,14 @@ export default function ReservaOperacaoSheet({
       setErroAcao(null);
       setTrocaSuiteVisible(false);
       setAlterarPeriodoVisible(false);
+      setAbaAtiva("operacao");
       return;
     }
 
     let cancelado = false;
     setLoading(true);
     setErroAcao(null);
+    setAbaAtiva("operacao");
 
     getReservaAdminDetalhe(reserva.idReservaHospedagem, dataSelecionada)
       .then((resp) => {
@@ -287,6 +295,15 @@ export default function ReservaOperacaoSheet({
   const suiteNomeExibicao =
     detalhe?.suites?.[0]?.nome ?? reserva?.suiteNome ?? "Suíte";
 
+  const isOrigemHospedin =
+    String(detalhe?.origemReserva || "").toUpperCase() === "HOSPEDIN";
+  const mostrarAbaIntegracao =
+    (isOrigemHospedin || Boolean(detalhe?.syncIntegracao)) &&
+    !loading &&
+    Boolean(detalhe);
+  const syncErro =
+    String(detalhe?.syncIntegracao?.uiStatus || "").toUpperCase() === "ERRO";
+
   if (!reserva) return null;
 
   const corStatus = corStatusOperacionalPadrao(statusOp);
@@ -394,6 +411,86 @@ export default function ReservaOperacaoSheet({
               </Text>
             </View>
 
+            {isOrigemHospedin && detalhe ? (
+              <View style={styles.seloOrigemRow}>
+                <View style={styles.seloOrigem}>
+                  <Text style={styles.seloOrigemTexto}>Origem: Hospedin</Text>
+                </View>
+                {detalhe.canalVenda ? (
+                  <View style={[styles.seloOrigem, styles.seloCanal]}>
+                    <Text style={styles.seloCanalTexto}>
+                      Canal: {labelCanalVenda(detalhe.canalVenda)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {mostrarAbaIntegracao ? (
+              <View style={styles.abasRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.aba,
+                    abaAtiva === "operacao" && styles.abaAtiva,
+                  ]}
+                  onPress={() => setAbaAtiva("operacao")}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.abaTexto,
+                      abaAtiva === "operacao" && styles.abaTextoAtivo,
+                    ]}
+                  >
+                    Operação
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.aba,
+                    abaAtiva === "integracao" && styles.abaAtiva,
+                  ]}
+                  onPress={() => setAbaAtiva("integracao")}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.abaTexto,
+                      abaAtiva === "integracao" && styles.abaTextoAtivo,
+                    ]}
+                  >
+                    Integração
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {syncErro && detalhe?.syncIntegracao ? (
+              <View style={styles.bannerErro}>
+                <Text style={styles.bannerErroTitulo}>
+                  🔴 Esta reserva possui falhas de sincronização.
+                </Text>
+                {detalhe.syncIntegracao.lastSyncAt ? (
+                  <Text style={styles.bannerErroTexto}>
+                    Última tentativa:{" "}
+                    {formatDateTimeHospedagem(
+                      detalhe.syncIntegracao.lastSyncAt,
+                    )}
+                  </Text>
+                ) : null}
+                {detalhe.syncIntegracao.lastError ? (
+                  <Text style={styles.bannerErroTexto}>
+                    Motivo: {detalhe.syncIntegracao.lastError}
+                  </Text>
+                ) : null}
+                {detalhe.syncIntegracao.errorSeverityLabel ? (
+                  <Text style={styles.bannerErroTexto}>
+                    Severidade: {detalhe.syncIntegracao.errorSeverityLabel}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
@@ -404,6 +501,22 @@ export default function ReservaOperacaoSheet({
                   size="small"
                   color={colors.azul}
                   style={styles.loader}
+                />
+              ) : mostrarAbaIntegracao &&
+                abaAtiva === "integracao" &&
+                detalhe ? (
+                <ReservaOrigemIntegracaoPanel
+                  detalhe={detalhe}
+                  sync={detalhe.syncIntegracao}
+                  onReprocessado={() => {
+                    void getReservaAdminDetalhe(
+                      reserva.idReservaHospedagem,
+                      dataSelecionada,
+                    ).then((resp) => {
+                      if (resp.success && resp.data) setDetalhe(resp.data);
+                    });
+                    notifyOperacaoConcluida();
+                  }}
                 />
               ) : (
                 <View style={styles.blocos}>
@@ -501,12 +614,23 @@ export default function ReservaOperacaoSheet({
                     ) : null}
                   </Secao>
 
-                  {/* Origem */}
+                  {/* Origem — compacta; detalhes ficam na aba Integração */}
                   <Secao titulo="Origem">
                     <OrigemReservaIndicador
                       dados={detalhe ?? undefined}
                       variante="sheet"
                     />
+                    {mostrarAbaIntegracao ? (
+                      <TouchableOpacity
+                        onPress={() => setAbaAtiva("integracao")}
+                        style={styles.linkAbaOrigem}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.linkAbaOrigemTexto}>
+                          Ver detalhes da integração
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </Secao>
 
                   {/* Próxima reserva */}
@@ -622,6 +746,8 @@ export default function ReservaOperacaoSheet({
                 <Text style={styles.erroAcao}>{erroAcao}</Text>
               ) : null}
 
+              {!(mostrarAbaIntegracao && abaAtiva === "integracao") ? (
+                <>
               <Text style={styles.acoesTitulo}>Ações</Text>
 
               {mostrarBotaoCheckin ? (
@@ -705,6 +831,8 @@ export default function ReservaOperacaoSheet({
                 >
                   <Text style={styles.btnAcaoTexto}>Nova Reserva</Text>
                 </TouchableOpacity>
+              ) : null}
+                </>
               ) : null}
             </ScrollView>
           </Pressable>
@@ -1028,6 +1156,81 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 11,
     letterSpacing: 0.4,
+  },
+  seloOrigemRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 10,
+  },
+  seloOrigem: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0, 115, 230, 0.1)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  seloOrigemTexto: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0073E6",
+  },
+  seloCanal: {
+    backgroundColor: "rgba(2, 122, 58, 0.1)",
+  },
+  seloCanalTexto: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#027a3a",
+  },
+  bannerErro: {
+    backgroundColor: "rgba(185, 28, 28, 0.1)",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    gap: 4,
+  },
+  bannerErroTitulo: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#b91c1c",
+  },
+  bannerErroTexto: {
+    fontSize: 12,
+    color: "#7f1d1d",
+  },
+  abasRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  aba: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#f3f4f6",
+  },
+  abaAtiva: {
+    backgroundColor: "rgba(0, 115, 230, 0.12)",
+  },
+  abaTexto: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6b7280",
+  },
+  abaTextoAtivo: {
+    color: "#0073E6",
+    fontWeight: "700",
+  },
+  linkAbaOrigem: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  linkAbaOrigemTexto: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0073E6",
   },
   loader: {
     marginVertical: 24,

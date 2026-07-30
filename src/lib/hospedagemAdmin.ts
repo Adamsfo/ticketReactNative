@@ -19,6 +19,7 @@ export type FiltroRapidoReserva =
   | "aguardando_pagamento"
   | "online"
   | "atendente"
+  | "sync_erro"
   | "todos"
   | null;
 
@@ -89,6 +90,20 @@ export type ReservaAdminCard = {
   dataHoraCheckinReal?: string | null;
   dataHoraCheckoutRealizado?: string | null;
   suites?: Array<{ nome: string; quantidade: number }>;
+  syncIntegracao?: {
+    uiStatus?: string | null;
+    syncStatus?: string | null;
+    syncAction?: string | null;
+    lastError?: string | null;
+    errorCode?: string | null;
+    errorSeverity?: string | null;
+    errorSeverityLabel?: string | null;
+    lastSyncAt?: string | null;
+    lastSuccessAt?: string | null;
+    retryCount?: number;
+    provider?: string;
+    externalId?: string;
+  } | null;
 };
 
 export type SuiteOperacionalCard = {
@@ -250,7 +265,10 @@ export type ReservaAdminDetalhe = {
   formaPagamentoRecepcao?: string | null;
   observacaoPagamento?: string | null;
   comprovantePagamento?: string | null;
-  origemReserva?: "SITE" | "ATENDENTE" | "CLIENTE" | null;
+  origemReserva?: "SITE" | "ATENDENTE" | "CLIENTE" | "HOSPEDIN" | string | null;
+  idExterno?: string | null;
+  codigoExterno?: string | null;
+  canalVenda?: string | null;
   idUsuarioCriacao?: number | null;
   nomeUsuarioCriacao?: string | null;
   dataCriacao?: string | null;
@@ -312,6 +330,82 @@ export type ReservaAdminDetalhe = {
     dataTransacao?: string;
   } | null;
   timeline?: ReservaTimelineEvento[];
+  /** Metadados da integração (só quando origem Hospedin / IDs externos). */
+  origemIntegracao?: ReservaOrigemIntegracao | null;
+  /** Estado de sync derivado de integration_sync_state. */
+  syncIntegracao?: {
+    uiStatus?: string | null;
+    syncStatus?: string | null;
+    syncAction?: string | null;
+    lastError?: string | null;
+    errorCode?: string | null;
+    errorSeverity?: string | null;
+    errorSeverityLabel?: string | null;
+    lastSyncAt?: string | null;
+    lastSuccessAt?: string | null;
+    retryCount?: number;
+    provider?: string;
+    externalId?: string;
+    nextRetryAt?: string | null;
+  } | null;
+};
+
+export type ReservaOrigemIntegracaoIdentificador = {
+  id: number;
+  provider: string;
+  tipo: string;
+  valor: string;
+};
+
+export type ReservaOrigemIntegracaoFinanceira = {
+  provider: string;
+  moeda?: string | null;
+  total?: number | null;
+  received?: number | null;
+  toReceive?: number | null;
+  daily?: number | null;
+  totalDaily?: number | null;
+  discount?: number | null;
+  product?: number | null;
+  service?: number | null;
+  itemsCount?: number | null;
+  paymentFromOta?: boolean | null;
+  statusPagamento?: string | null;
+  formaPagamento?: string | null;
+  origemPagamento?: string | null;
+  responsavelPagamento?: string | null;
+  syncedAt?: string | null;
+  aviso?: string;
+};
+
+export type ReservaOrigemIntegracaoDocumento = {
+  id: number;
+  idReservaHospede: number;
+  hospedeNome?: string | null;
+  hospedeTipo?: string | null;
+  provider?: string | null;
+  tipo: string;
+  numero: string;
+  paisEmissao?: string | null;
+  observacao?: string | null;
+};
+
+export type ReservaOrigemIntegracaoPayload = {
+  id: number;
+  provider: string;
+  kind: string;
+  externalId?: string | null;
+  payloadHash: string;
+  capturedAt: string;
+  payloadJson: unknown;
+};
+
+export type ReservaOrigemIntegracao = {
+  identificadores: ReservaOrigemIntegracaoIdentificador[];
+  financeira: ReservaOrigemIntegracaoFinanceira | null;
+  documentos: ReservaOrigemIntegracaoDocumento[];
+  payloads: ReservaOrigemIntegracaoPayload[];
+  ultimaSincronizacao?: string | null;
 };
 
 export type MetaReservasAdmin = {

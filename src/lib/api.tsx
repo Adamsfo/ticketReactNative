@@ -54,7 +54,7 @@ class Api {
 
   public async request<T>(
     endpoint: string,
-    method: "GET" | "POST" | "PUT" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     body?: any,
     params?: QueryParams,
   ): Promise<ApiResponse<T>> {

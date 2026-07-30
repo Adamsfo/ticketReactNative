@@ -14,9 +14,11 @@ export type HospedinSuiteMapping = {
   id: number;
   provider: string;
   place_id: number;
-  id_evento_suite: number;
+  id_evento_suite: number | null;
   id_evento: number | null;
   ativo: boolean;
+  /** LINKED | IGNORED — UNMAPPED = sem linha ativa */
+  mapping_status?: string | null;
   notes: string | null;
   mapped_at: string;
   mapped_by: number | null;
@@ -42,6 +44,7 @@ export type HospedinUnmappedPlace = {
 export type PlaceSuiteResolved =
   | {
       found: true;
+      status?: "LINKED";
       placeId: number;
       idEventoSuite: number;
       idEvento: number | null;
@@ -51,9 +54,13 @@ export type PlaceSuiteResolved =
     }
   | {
       found: false;
+      status?: "IGNORED" | "UNMAPPED";
       placeId: number | null;
       reason: string;
       message: string;
+      mapId?: number;
+      mappedAt?: string;
+      mappedBy?: number | null;
     };
 
 export async function listHospedinSuiteMappings(params?: {
@@ -199,6 +206,42 @@ export async function activateHospedinSuiteMapping(
   }
   const row = unwrapMappingResponse(resp.data ?? resp);
   if (!row) throw new Error("Resposta inválida ao reativar vínculo.");
+  return row;
+}
+
+export async function ignoreHospedinSuiteMapping(input: {
+  placeId: number;
+  notes?: string | null;
+}): Promise<HospedinSuiteMapping> {
+  const resp = await api.request<HospedinSuiteMapping>(
+    "/api/integrations/hospedin/mappings/suites/ignore",
+    "POST",
+    {
+      placeId: input.placeId,
+      notes: input.notes ?? null,
+    },
+  );
+  if (resp?.success === false) {
+    throw new Error(resp.message || "Falha ao ignorar suíte.");
+  }
+  const row = unwrapMappingResponse(resp.data ?? resp);
+  if (!row) throw new Error("Resposta inválida ao ignorar suíte.");
+  return row;
+}
+
+export async function unignoreHospedinSuiteMapping(
+  id: number,
+): Promise<HospedinSuiteMapping> {
+  const resp = await api.request<HospedinSuiteMapping>(
+    `/api/integrations/hospedin/mappings/suites/${id}/unignore`,
+    "POST",
+    {},
+  );
+  if (resp?.success === false) {
+    throw new Error(resp.message || "Falha ao reativar suíte ignorada.");
+  }
+  const row = unwrapMappingResponse(resp.data ?? resp);
+  if (!row) throw new Error("Resposta inválida ao reativar suíte.");
   return row;
 }
 

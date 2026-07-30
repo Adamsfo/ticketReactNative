@@ -16,12 +16,14 @@ import TabReservas from "./tabs/tabReservas";
 import TabSuites from "./tabs/tabSuites";
 import TabAgenda from "./tabs/tabAgenda";
 import TabHospedinMapeamento from "./tabs/tabHospedinMapeamento";
+import TabIntegracoes from "./tabs/tabIntegracoes";
 import { HospedagemAdminRefreshProvider } from "./contexts/HospedagemAdminRefreshContext";
 import { NovaReservaRecepcaoProvider } from "./contexts/NovaReservaRecepcaoContext";
 import { ReceberSaldoHospedagemProvider } from "./contexts/ReceberSaldoHospedagemContext";
 import NovaReservaRecepcaoModal from "./components/NovaReservaRecepcaoModal";
 import ReceberSaldoHospedagemModal from "./components/ReceberSaldoHospedagemModal";
 import { useHospedagemDesktopLayout } from "./useHospedagemDesktopLayout";
+import { useHospedagemAdminRefresh } from "./contexts/HospedagemAdminRefreshContext";
 
 const TABS_BASE = [
   { key: "suites" as const, label: "🏨 Suítes" },
@@ -29,111 +31,161 @@ const TABS_BASE = [
   { key: "reservas" as const, label: "📋 Reservas" },
 ];
 
-type TabKey = "suites" | "agenda" | "reservas" | "hospedin";
+type TabKey = "suites" | "agenda" | "reservas" | "hospedin" | "integracoes";
 
-export default function HospedagemAdminPage() {
+function HospedagemAdminPageInner() {
   const { isAdministrador, isProdutor } = useAuth();
   const { isDesktop } = useHospedagemDesktopLayout();
   const [activeTab, setActiveTab] = useState<TabKey>("suites");
+  const { syncErros, pedirFiltroSyncErro } = useHospedagemAdminRefresh();
 
   /** Mesmo perfil que acessa o menu Hospedagem: admGeral ou Administrador do produtor. */
   const podeMapaHospedin = isAdministrador || isProdutor;
+  const podeIntegracoes = isAdministrador || isProdutor;
 
   const tabs = useMemo(() => {
-    if (!podeMapaHospedin) return TABS_BASE;
-    return [...TABS_BASE, { key: "hospedin" as const, label: "Mapa" }];
-  }, [podeMapaHospedin]);
+    const extra: Array<{ key: TabKey; label: string }> = [];
+    if (podeMapaHospedin) {
+      extra.push({ key: "hospedin", label: "Mapa" });
+    }
+    if (podeIntegracoes) {
+      extra.push({ key: "integracoes", label: "Integrações" });
+    }
+    return [...TABS_BASE, ...extra];
+  }, [podeMapaHospedin, podeIntegracoes]);
 
   const tabAtiva: TabKey =
-    !podeMapaHospedin && activeTab === "hospedin" ? "suites" : activeTab;
+    (!podeMapaHospedin && activeTab === "hospedin") ||
+    (!podeIntegracoes && activeTab === "integracoes")
+      ? "suites"
+      : activeTab;
 
+  return (
+    <LinearGradient
+      colors={[colors.branco, colors.laranjado]}
+      style={styles.gradient}
+    >
+      <StatusBarPage style="dark" />
+      <BarMenu />
+
+      <ScreenContainer
+        style={[styles.container, isDesktop && styles.containerDesktop]}
+      >
+        <Text style={styles.titulo}>
+          🏨 Hospedagem
+          {syncErros > 0 ? `  🔴 ${syncErros}` : ""}
+        </Text>
+
+        {syncErros > 0 ? (
+          <TouchableOpacity
+            style={styles.alertaSync}
+            onPress={() => {
+              pedirFiltroSyncErro();
+              setActiveTab("reservas");
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.alertaSyncTexto}>
+              🔴 Existem {syncErros} reserva
+              {syncErros === 1 ? "" : "s"} com falha de sincronização.
+            </Text>
+            <Text style={styles.alertaSyncLink}>Clique para visualizar</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <View style={styles.tabsRow}>
+          {tabs.map((tab) => {
+            const ativo = tabAtiva === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tab, ativo && styles.tabAtiva]}
+                onPress={() => setActiveTab(tab.key)}
+              >
+                <Text
+                  style={[styles.tabTexto, ativo && styles.tabTextoAtivo]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.tabContent}>
+          <View
+            style={[
+              styles.tabPanel,
+              tabAtiva === "suites"
+                ? styles.tabPanelAtivo
+                : styles.tabPanelHidden,
+            ]}
+            pointerEvents={tabAtiva === "suites" ? "auto" : "none"}
+          >
+            <TabSuites />
+          </View>
+          <View
+            style={[
+              styles.tabPanel,
+              tabAtiva === "agenda"
+                ? styles.tabPanelAtivo
+                : styles.tabPanelHidden,
+            ]}
+            pointerEvents={tabAtiva === "agenda" ? "auto" : "none"}
+          >
+            <TabAgenda />
+          </View>
+          <View
+            style={[
+              styles.tabPanel,
+              tabAtiva === "reservas"
+                ? styles.tabPanelAtivo
+                : styles.tabPanelHidden,
+            ]}
+            pointerEvents={tabAtiva === "reservas" ? "auto" : "none"}
+          >
+            <TabReservas />
+          </View>
+          {podeMapaHospedin ? (
+            <View
+              style={[
+                styles.tabPanel,
+                tabAtiva === "hospedin"
+                  ? styles.tabPanelAtivo
+                  : styles.tabPanelHidden,
+              ]}
+              pointerEvents={tabAtiva === "hospedin" ? "auto" : "none"}
+            >
+              <TabHospedinMapeamento />
+            </View>
+          ) : null}
+          {podeIntegracoes ? (
+            <View
+              style={[
+                styles.tabPanel,
+                tabAtiva === "integracoes"
+                  ? styles.tabPanelAtivo
+                  : styles.tabPanelHidden,
+              ]}
+              pointerEvents={tabAtiva === "integracoes" ? "auto" : "none"}
+            >
+              <TabIntegracoes />
+            </View>
+          ) : null}
+        </View>
+      </ScreenContainer>
+      <NovaReservaRecepcaoModal />
+      <ReceberSaldoHospedagemModal />
+    </LinearGradient>
+  );
+}
+
+export default function HospedagemAdminPage() {
   return (
     <HospedagemAdminRefreshProvider>
       <NovaReservaRecepcaoProvider>
         <ReceberSaldoHospedagemProvider>
-          <LinearGradient
-            colors={[colors.branco, colors.laranjado]}
-            style={styles.gradient}
-          >
-            <StatusBarPage style="dark" />
-            <BarMenu />
-
-            <ScreenContainer
-              style={[styles.container, isDesktop && styles.containerDesktop]}
-            >
-              <Text style={styles.titulo}>🏨 Hospedagem</Text>
-
-              <View style={styles.tabsRow}>
-                {tabs.map((tab) => {
-                  const ativo = tabAtiva === tab.key;
-                  return (
-                    <TouchableOpacity
-                      key={tab.key}
-                      style={[styles.tab, ativo && styles.tabAtiva]}
-                      onPress={() => setActiveTab(tab.key)}
-                    >
-                      <Text
-                        style={[styles.tabTexto, ativo && styles.tabTextoAtivo]}
-                      >
-                        {tab.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <View style={styles.tabContent}>
-                <View
-                  style={[
-                    styles.tabPanel,
-                    tabAtiva === "suites"
-                      ? styles.tabPanelAtivo
-                      : styles.tabPanelHidden,
-                  ]}
-                  pointerEvents={tabAtiva === "suites" ? "auto" : "none"}
-                >
-                  <TabSuites />
-                </View>
-                <View
-                  style={[
-                    styles.tabPanel,
-                    tabAtiva === "agenda"
-                      ? styles.tabPanelAtivo
-                      : styles.tabPanelHidden,
-                  ]}
-                  pointerEvents={tabAtiva === "agenda" ? "auto" : "none"}
-                >
-                  <TabAgenda />
-                </View>
-                <View
-                  style={[
-                    styles.tabPanel,
-                    tabAtiva === "reservas"
-                      ? styles.tabPanelAtivo
-                      : styles.tabPanelHidden,
-                  ]}
-                  pointerEvents={tabAtiva === "reservas" ? "auto" : "none"}
-                >
-                  <TabReservas />
-                </View>
-                {podeMapaHospedin ? (
-                  <View
-                    style={[
-                      styles.tabPanel,
-                      tabAtiva === "hospedin"
-                        ? styles.tabPanelAtivo
-                        : styles.tabPanelHidden,
-                    ]}
-                    pointerEvents={tabAtiva === "hospedin" ? "auto" : "none"}
-                  >
-                    <TabHospedinMapeamento />
-                  </View>
-                ) : null}
-              </View>
-            </ScreenContainer>
-          </LinearGradient>
-          <NovaReservaRecepcaoModal />
-          <ReceberSaldoHospedagemModal />
+          <HospedagemAdminPageInner />
         </ReceberSaldoHospedagemProvider>
       </NovaReservaRecepcaoProvider>
     </HospedagemAdminRefreshProvider>
@@ -158,6 +210,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 12,
     color: colors.cinza,
+  },
+  alertaSync: {
+    backgroundColor: "rgba(185, 28, 28, 0.1)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    gap: 4,
+  },
+  alertaSyncTexto: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#b91c1c",
+  },
+  alertaSyncLink: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0073E6",
   },
   tabsRow: {
     flexDirection: "row",

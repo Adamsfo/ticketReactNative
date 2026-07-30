@@ -30,11 +30,13 @@ import {
   HospedinImportResult,
   HospedinSuiteMapping,
   HospedinUnmappedPlace,
+  ignoreHospedinSuiteMapping,
   importHospedinPlaceTypes,
   importHospedinPlaces,
   listHospedinSuiteMappings,
   listHospedinUnmappedPlaces,
   resolveHospedinPlaceSuite,
+  unignoreHospedinSuiteMapping,
   updateHospedinSuiteMapping,
 } from "@/src/lib/hospedinMapping";
 import { useHospedagemDesktopLayout } from "../useHospedagemDesktopLayout";
@@ -45,7 +47,22 @@ import { EventoSuite } from "@/src/types/geral";
 const TZ = "America/Cuiaba";
 const LAST_IMPORT_KEY = "hospedin_last_places_import_at";
 
-type FiltroLista = "todos" | "vinculados" | "sem_vinculo";
+type FiltroLista = "todos" | "vinculados" | "sem_vinculo" | "ignoradas";
+
+function isIgnoredMapping(m: HospedinSuiteMapping): boolean {
+  return (
+    m.ativo &&
+    String(m.mapping_status || "").toUpperCase() === "IGNORED"
+  );
+}
+
+function isLinkedMapping(m: HospedinSuiteMapping): boolean {
+  return (
+    m.ativo &&
+    String(m.mapping_status || "LINKED").toUpperCase() === "LINKED" &&
+    m.id_evento_suite != null
+  );
+}
 
 type VinculoDraft = {
   mode: "create" | "edit";
@@ -168,26 +185,33 @@ export default function TabHospedinMapeamento() {
   );
 
   const indicadores = useMemo(() => {
-    const vinculadas = mappings.filter((m) => m.ativo).length;
+    const vinculadas = mappings.filter(isLinkedMapping).length;
+    const ignoradas = mappings.filter(isIgnoredMapping).length;
     const semVinculo = unmapped.length;
     return {
-      total: vinculadas + semVinculo,
+      total: vinculadas + semVinculo + ignoradas,
       vinculadas,
       semVinculo,
+      ignoradas,
     };
   }, [mappings, unmapped]);
 
   const mappedPlaceIds = useMemo(
     () =>
-      new Set(mappings.filter((m) => m.ativo).map((m) => Number(m.place_id))),
+      new Set(
+        mappings
+          .filter((m) => m.ativo)
+          .map((m) => Number(m.place_id)),
+      ),
     [mappings],
   );
 
   const suitesOcupadas = useMemo(() => {
     const set = new Set<number>();
     for (const m of mappings) {
-      if (!m.ativo) continue;
+      if (!isLinkedMapping(m)) continue;
       if (draft?.mode === "edit" && m.id === draft.mappingId) continue;
+      if (m.id_evento_suite == null) continue;
       set.add(Number(m.id_evento_suite));
     }
     return set;
@@ -205,15 +229,32 @@ export default function TabHospedinMapeamento() {
   const linhas = useMemo(() => {
     type Linha =
       | { key: string; tipo: "vinculado"; mapping: HospedinSuiteMapping }
+      | { key: string; tipo: "ignorado"; mapping: HospedinSuiteMapping }
       | { key: string; tipo: "livre"; place: HospedinUnmappedPlace };
 
     const out: Linha[] = [];
-    if (filtro !== "sem_vinculo") {
+    if (filtro === "todos" || filtro === "vinculados") {
       for (const m of mappings) {
+        if (isIgnoredMapping(m)) continue;
+        // Após unignore: linha inativa IGNORED não aparece (place volta a Sem vínculo).
+        if (
+          !m.ativo &&
+          String(m.mapping_status || "").toUpperCase() === "IGNORED"
+        ) {
+          continue;
+        }
+        if (filtro === "vinculados" && !isLinkedMapping(m) && m.ativo) continue;
+        if (filtro === "vinculados" && !m.ativo) continue;
         out.push({ key: `m-${m.id}`, tipo: "vinculado", mapping: m });
       }
     }
-    if (filtro !== "vinculados") {
+    if (filtro === "todos" || filtro === "ignoradas") {
+      for (const m of mappings) {
+        if (!isIgnoredMapping(m)) continue;
+        out.push({ key: `i-${m.id}`, tipo: "ignorado", mapping: m });
+      }
+    }
+    if (filtro === "todos" || filtro === "sem_vinculo") {
       for (const p of unmapped) {
         if (mappedPlaceIds.has(Number(p.placeId))) continue;
         out.push({ key: `u-${p.placeId}`, tipo: "livre", place: p });
@@ -446,6 +487,40 @@ export default function TabHospedinMapeamento() {
     }
   };
 
+  const ignorarSuite = async (place: HospedinUnmappedPlace) => {
+    const ok = await confirmAsync(
+      "Ignorar suíte",
+      `Ignorar "${place.nome}" (place_id ${place.placeId})?\n\nReservas dessa suíte não gerarão pendências nem erros de sincronização.`,
+    );
+    if (!ok) return;
+    setSaving(true);
+    try {
+      await ignoreHospedinSuiteMapping({ placeId: place.placeId });
+      await carregar();
+    } catch (e: any) {
+      alertMsg("Erro", e?.message || "Falha ao ignorar suíte.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reativarIgnorada = async (m: HospedinSuiteMapping) => {
+    const ok = await confirmAsync(
+      "Reativar suíte",
+      `Reativar "${m.place_nome || `place #${m.place_id}`}"?\n\nEla voltará a aparecer como Sem vínculo e exigirá mapeamento.`,
+    );
+    if (!ok) return;
+    setSaving(true);
+    try {
+      await unignoreHospedinSuiteMapping(m.id);
+      await carregar();
+    } catch (e: any) {
+      alertMsg("Erro", e?.message || "Falha ao reativar suíte.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!podeMapaHospedin) {
     return (
       <View style={styles.center}>
@@ -534,6 +609,12 @@ export default function TabHospedinMapeamento() {
           </Text>
           <Text style={styles.indLabel}>Sem vínculo</Text>
         </View>
+        <View style={[styles.indCard, isDesktop && styles.indCardDesktop]}>
+          <Text style={[styles.indValue, isDesktop && styles.indValueDesktop]}>
+            {indicadores.ignoradas}
+          </Text>
+          <Text style={styles.indLabel}>Ignoradas</Text>
+        </View>
         <View
           style={[
             styles.indCard,
@@ -557,6 +638,7 @@ export default function TabHospedinMapeamento() {
             ["todos", "Todos"],
             ["vinculados", "Vinculados"],
             ["sem_vinculo", "Sem vínculo"],
+            ["ignoradas", "Ignoradas"],
           ] as const
         ).map(([key, label]) => (
           <TouchableOpacity
@@ -615,6 +697,53 @@ export default function TabHospedinMapeamento() {
           </Text>
         }
         renderItem={({ item }) => {
+          if (item.tipo === "ignorado") {
+            const m = item.mapping;
+            return (
+              <View style={suiteColumns > 1 ? styles.gridItem : undefined}>
+                <View
+                  style={[
+                    styles.card,
+                    isDesktop && styles.cardDesktop,
+                    styles.cardIgnorado,
+                  ]}
+                >
+                  <View style={styles.cardHead}>
+                    <Text style={styles.badgeIgnorado}>Ignorada</Text>
+                    <Text style={styles.meta}>map #{m.id}</Text>
+                  </View>
+                  <Text style={styles.title}>
+                    {m.place_nome || `Hospedin place #${m.place_id}`}
+                  </Text>
+                  <Text style={styles.meta}>place_id: {m.place_id}</Text>
+                  <Text style={styles.metaMuted}>
+                    Fora da operação Jango — sem pendências de sync.
+                  </Text>
+                  {m.mapped_at ? (
+                    <Text style={styles.meta}>
+                      Ignorada em {formatDateTime(m.mapped_at)}
+                      {m.mapped_by != null ? ` · usuário #${m.mapped_by}` : ""}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={[
+                      styles.actions,
+                      isDesktop && styles.actionsDesktop,
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={[styles.btnPrim, isDesktop && styles.btnDesktop]}
+                      onPress={() => reativarIgnorada(m)}
+                      disabled={busy}
+                    >
+                      <Text style={styles.btnPrimText}>Reativar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            );
+          }
+
           if (item.tipo === "vinculado") {
             const m = item.mapping;
             return (
@@ -777,6 +906,13 @@ export default function TabHospedinMapeamento() {
                     disabled={busy}
                   >
                     <Text style={styles.btnSecText}>Vincular existente</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.btnMuted, isDesktop && styles.btnDesktop]}
+                    onPress={() => ignorarSuite(p)}
+                    disabled={busy}
+                  >
+                    <Text style={styles.btnMutedText}>Ignorar suíte</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1008,7 +1144,7 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     flex: 1,
-    maxWidth: "50%",
+    minWidth: 0,
   },
   card: {
     backgroundColor: "#fff",
@@ -1075,8 +1211,28 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: "hidden",
   },
+  badgeIgnorado: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#475467",
+    backgroundColor: "#F2F4F7",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  cardIgnorado: {
+    backgroundColor: "#F9FAFB",
+    borderColor: "#E4E7EC",
+  },
   title: { fontSize: 15, fontWeight: "700", color: "#222" },
   meta: { fontSize: 12, color: colors.cinza, marginTop: 2 },
+  metaMuted: {
+    fontSize: 12,
+    color: "#667085",
+    marginTop: 6,
+    lineHeight: 16,
+  },
   arrow: { marginVertical: 4, color: colors.laranjado, fontWeight: "700" },
   sugestao: {
     marginTop: 8,
@@ -1121,6 +1277,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   btnDangerText: { color: "#B42318", fontWeight: "700", fontSize: 13 },
+  btnMuted: {
+    backgroundColor: "#F2F4F7",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  btnMutedText: { color: "#475467", fontWeight: "600", fontSize: 13 },
   muted: { color: colors.cinza, fontSize: 13, textAlign: "center" },
   erro: { color: "#B42318", marginBottom: 8, fontSize: 13 },
   sucessoBox: {

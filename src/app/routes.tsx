@@ -14,6 +14,7 @@ import MeusEventos from "./(panel)/meuseventos/page";
 import MeusEventosEdit from "./(panel)/meuseventos/pageEdit";
 import MeusEventoNewIngresso from "./(panel)/meuseventos/pageNewIngresso";
 import HospedagemAdmin from "./(panel)/hospedagem/page";
+import HospedagemDrawerLabel from "./(panel)/hospedagem/components/HospedagemDrawerLabel";
 import HospedagemReservaDetalhe from "./(panel)/hospedagem/reservaDetalhe/page";
 import HospedagemSuiteDetalhe from "./(panel)/hospedagem/suiteDetalhe/page";
 import Produtor from "./(panel)/produtor/page";
@@ -141,7 +142,13 @@ function Routes() {
           <Drawer.Screen
             name="hospedagem"
             component={HospedagemAdmin}
-            options={{ headerShown: false, title: "🏨 Hospedagem" }}
+            options={{
+              headerShown: false,
+              title: "🏨 Hospedagem",
+              drawerLabel: ({ color }) => (
+                <HospedagemDrawerLabel color={color} />
+              ),
+            }}
           />
           <Drawer.Screen
             name="produtor"
@@ -263,7 +270,13 @@ function Routes() {
           <Drawer.Screen
             name="hospedagem"
             component={HospedagemAdmin}
-            options={{ headerShown: false, title: "🏨 Hospedagem" }}
+            options={{
+              headerShown: false,
+              title: "🏨 Hospedagem",
+              drawerLabel: ({ color }) => (
+                <HospedagemDrawerLabel color={color} />
+              ),
+            }}
           />
           <Drawer.Screen
             name="cupompromocional"
@@ -375,7 +388,13 @@ function Routes() {
           <Drawer.Screen
             name="hospedagem"
             component={HospedagemAdmin}
-            options={{ headerShown: false, title: "🏨 Hospedagem" }}
+            options={{
+              headerShown: false,
+              title: "🏨 Hospedagem",
+              drawerLabel: ({ color }) => (
+                <HospedagemDrawerLabel color={color} />
+              ),
+            }}
           />
           <Drawer.Screen
             name="validador"
