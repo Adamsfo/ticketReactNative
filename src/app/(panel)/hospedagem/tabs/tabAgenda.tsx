@@ -52,6 +52,16 @@ const RANGES: Array<{ key: AgendaRange; label: string }> = [
   { key: 30, label: "30 dias" },
 ];
 
+function textoAtualizadoHa(lastRefreshAt: number, agora: number): string {
+  const seg = Math.max(0, Math.floor((agora - lastRefreshAt) / 1000));
+  if (seg < 5) return "Atualizado agora";
+  if (seg < 60) return `Atualizado há ${seg} s`;
+  const min = Math.floor(seg / 60);
+  if (min < 60) return `Atualizado há ${min} min`;
+  const h = Math.floor(min / 60);
+  return `Atualizado há ${h} h`;
+}
+
 const LEGENDA: Array<{ cor: string; label: string }> = [
   { cor: HOSPEDAGEM_STATUS_COLORS.livre, label: "Livre" },
   { cor: HOSPEDAGEM_STATUS_COLORS.hospedada, label: "Hospedada" },
@@ -74,7 +84,13 @@ function BarraReserva({
   diasVisiveis: string[];
   onPress: () => void;
 }) {
-  const geom = calcularGeometriaBarra(barra.inicio, barra.fim, diasVisiveis);
+  const geom = calcularGeometriaBarra(
+    barra.inicio,
+    barra.fim,
+    diasVisiveis,
+    AGENDA_DAY_WIDTH,
+    barra.diasOcupados,
+  );
   if (!geom) return null;
 
   const cor = corBarraReservaAgenda(barra.status);
@@ -215,7 +231,9 @@ export default function TabAgenda() {
   const [reservaOperacao, setReservaOperacao] =
     useState<ReservaOperacaoRef | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
-  const { refreshVersion } = useHospedagemAdminRefresh();
+  const { refreshVersion, requestRefresh, lastRefreshAt } =
+    useHospedagemAdminRefresh();
+  const [agoraTick, setAgoraTick] = useState(() => Date.now());
 
   const hScrollRef = useRef<ScrollView>(null);
   const leftVRef = useRef<FlatList>(null);
@@ -249,6 +267,12 @@ export default function TabAgenda() {
     },
     [dataInicio, range],
   );
+
+  useEffect(() => {
+    if (lastRefreshAt == null) return;
+    const id = setInterval(() => setAgoraTick(Date.now()), 5_000);
+    return () => clearInterval(id);
+  }, [lastRefreshAt]);
 
   useFocusEffect(
     useCallback(() => {
@@ -365,22 +389,52 @@ export default function TabAgenda() {
       </View>
 
       <View style={styles.rangeRow}>
-        {RANGES.map((r) => {
-          const ativo = range === r.key;
-          return (
-            <TouchableOpacity
-              key={r.key}
-              style={[styles.rangeChip, ativo && styles.rangeChipAtivo]}
-              onPress={() => setRange(r.key)}
-            >
-              <Text
-                style={[styles.rangeTexto, ativo && styles.rangeTextoAtivo]}
+        <View style={styles.rangeChipsWrap}>
+          {RANGES.map((r) => {
+            const ativo = range === r.key;
+            return (
+              <TouchableOpacity
+                key={r.key}
+                style={[styles.rangeChip, ativo && styles.rangeChipAtivo]}
+                onPress={() => setRange(r.key)}
               >
-                {r.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <Text
+                  style={[styles.rangeTexto, ativo && styles.rangeTextoAtivo]}
+                >
+                  {r.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.refreshBox}>
+          {lastRefreshAt != null ? (
+            <Text style={styles.refreshMeta} numberOfLines={1}>
+              {textoAtualizadoHa(lastRefreshAt, agoraTick)}
+            </Text>
+          ) : null}
+          <TouchableOpacity
+            style={[
+              styles.refreshBtn,
+              refreshing && styles.refreshBtnDisabled,
+            ]}
+            onPress={() => {
+              if (refreshing) return;
+              requestRefresh();
+            }}
+            disabled={refreshing}
+            accessibilityLabel="Atualizar agora"
+            // @ts-expect-error title = tooltip no web
+            title={Platform.OS === "web" ? "Atualizar agora" : undefined}
+            hitSlop={8}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.azul} />
+            ) : (
+              <Feather name="refresh-cw" size={18} color={colors.azul} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.legendaRow}>
@@ -572,8 +626,14 @@ const styles = StyleSheet.create({
   },
   rangeRow: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    gap: 6,
     marginBottom: 6,
+  },
+  rangeChipsWrap: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
   },
   rangeChip: {
     flex: 1,
@@ -592,6 +652,29 @@ const styles = StyleSheet.create({
   },
   rangeTextoAtivo: {
     color: colors.branco,
+  },
+  refreshBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 2,
+    flexShrink: 0,
+  },
+  refreshMeta: {
+    fontSize: 11,
+    color: "#888",
+    maxWidth: 110,
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  refreshBtnDisabled: {
+    opacity: 0.55,
   },
   legendaRow: {
     flexDirection: "row",

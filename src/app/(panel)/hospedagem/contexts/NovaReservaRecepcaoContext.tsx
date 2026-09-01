@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { useHospedagemEditLock } from "./HospedagemAdminRefreshContext";
 
 /** Prefill só de contexto operacional — nunca horários de reserva anterior. */
 export type NovaReservaPrefill = {
@@ -23,6 +24,11 @@ type Ctx = {
 };
 
 const NovaReservaRecepcaoContext = createContext<Ctx | null>(null);
+
+function NovaReservaEditLockBridge({ visible }: { visible: boolean }) {
+  useHospedagemEditLock(visible);
+  return null;
+}
 
 export function NovaReservaRecepcaoProvider({
   children,
@@ -61,6 +67,7 @@ export function NovaReservaRecepcaoProvider({
 
   return (
     <NovaReservaRecepcaoContext.Provider value={value}>
+      <NovaReservaEditLockBridge visible={visible} />
       {children}
     </NovaReservaRecepcaoContext.Provider>
   );

@@ -27,12 +27,9 @@ import {
   postReenviarLinkPagamentoReserva,
   ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
-import {
-  deveExibirFinanceiroRecepcao,
-  obterSaldoPendenteExibicao,
-} from "@/src/lib/hospedagemPagamentoRecepcao";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
+import AlertaPossivelPagamentoOta from "../components/AlertaPossivelPagamentoOta";
 import {
   ReceberSaldoHospedagemProvider,
   useReceberSaldoHospedagem,
@@ -377,23 +374,40 @@ function HospedagemReservaDetalheContent() {
                       {formatCurrency(reserva.valorTotal)}
                     </Text>
                   </View>
-                  {deveExibirFinanceiroRecepcao(reserva) ? (
-                    <ResumoFinanceiroRecepcao
-                      dados={reserva}
-                      mostrarReceberSaldo
-                      onReceberSaldo={() => {
-                        openReceberSaldo({
-                          idReservaHospedagem: reserva.idReservaHospedagem,
-                          saldoPendente: obterSaldoPendenteExibicao(reserva),
-                          valorTotal: reserva.valorTotal,
-                          valorPago: reserva.valorPago,
-                          suiteNome: reserva.suites?.[0]?.nome,
-                          responsavel:
-                            reserva.responsavel || reserva.nomeResponsavel,
-                          onSuccess: () => carregar(true),
-                        });
-                      }}
-                    />
+                  <ResumoFinanceiroRecepcao
+                    dados={reserva}
+                    mostrarReceberSaldo
+                    onReceberSaldo={() => {
+                      openReceberSaldo({
+                        idReservaHospedagem: reserva.idReservaHospedagem,
+                        saldoPendente: Number(reserva.saldoPendente ?? 0),
+                        valorTotal: reserva.valorTotal,
+                        valorPago: reserva.valorPago,
+                        suiteNome: reserva.suites?.[0]?.nome,
+                        responsavel:
+                          reserva.responsavel || reserva.nomeResponsavel,
+                        onSuccess: () => carregar(true),
+                        possivelPagamentoOta: Boolean(
+                          reserva.possivelPagamentoOta,
+                        ),
+                        possivelPagamentoOtaTrecho:
+                          reserva.possivelPagamentoOtaTrecho ?? null,
+                        canalVendaLabel:
+                          reserva.canalVendaLabel ||
+                          reserva.canalVenda ||
+                          null,
+                      });
+                    }}
+                  />
+                  {reserva.possivelPagamentoOta ? (
+                    <View style={{ marginTop: 10 }}>
+                      <AlertaPossivelPagamentoOta
+                        canalLabel={
+                          reserva.canalVendaLabel || reserva.canalVenda
+                        }
+                        trecho={reserva.possivelPagamentoOtaTrecho}
+                      />
+                    </View>
                   ) : null}
                   <View style={styles.linhaResumo}>
                     <Text style={styles.meta}>Subtotal</Text>

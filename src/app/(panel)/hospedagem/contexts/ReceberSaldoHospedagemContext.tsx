@@ -5,6 +5,8 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { Alert } from "react-native";
+import { useHospedagemEditLock } from "./HospedagemAdminRefreshContext";
 
 export type ReceberSaldoTarget = {
   idReservaHospedagem: number;
@@ -15,6 +17,10 @@ export type ReceberSaldoTarget = {
   responsavel?: string | null;
   /** Callback local (ex.: detalhe da reserva fora do provider de refresh). */
   onSuccess?: () => void;
+  /** Indicador operacional de possível pagamento via OTA. */
+  possivelPagamentoOta?: boolean;
+  possivelPagamentoOtaTrecho?: string | null;
+  canalVendaLabel?: string | null;
 };
 
 type Ctx = {
@@ -26,6 +32,11 @@ type Ctx = {
 
 const ReceberSaldoHospedagemContext = createContext<Ctx | null>(null);
 
+function ReceberSaldoEditLockBridge({ visible }: { visible: boolean }) {
+  useHospedagemEditLock(visible);
+  return null;
+}
+
 export function ReceberSaldoHospedagemProvider({
   children,
 }: {
@@ -35,8 +46,25 @@ export function ReceberSaldoHospedagemProvider({
   const [target, setTarget] = useState<ReceberSaldoTarget | null>(null);
 
   const openReceberSaldo = useCallback((t: ReceberSaldoTarget) => {
-    setTarget(t);
-    setVisible(true);
+    const abrir = () => {
+      setTarget(t);
+      setVisible(true);
+    };
+
+    if (!t.possivelPagamentoOta) {
+      abrir();
+      return;
+    }
+
+    const canal = t.canalVendaLabel ? `\n\nCanal: ${t.canalVendaLabel}` : "";
+    Alert.alert(
+      "Possível pagamento via OTA",
+      `Esta reserva possui indicação de pagamento via OTA.${canal}\n\nCaso confirme que o pagamento foi realizado pela plataforma, utilize a forma de pagamento:\n\n"Recebido pela OTA"\n\nAssim esse valor NÃO será lançado no caixa.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Continuar", onPress: abrir },
+      ],
+    );
   }, []);
 
   const closeReceberSaldo = useCallback(() => {
@@ -51,6 +79,7 @@ export function ReceberSaldoHospedagemProvider({
 
   return (
     <ReceberSaldoHospedagemContext.Provider value={value}>
+      <ReceberSaldoEditLockBridge visible={visible} />
       {children}
     </ReceberSaldoHospedagemContext.Provider>
   );

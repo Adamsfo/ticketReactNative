@@ -6,9 +6,7 @@ import {
   COR_RECEBIDO,
   COR_SALDO_PENDENTE,
   DadosFinanceirosReserva,
-  deveExibirFinanceiroRecepcao,
   labelFormaPagamentoRecepcao,
-  obterSaldoPendenteExibicao,
 } from "@/src/lib/hospedagemPagamentoRecepcao";
 
 type Props = {
@@ -20,7 +18,25 @@ type Props = {
 };
 
 /**
- * Resumo financeiro da recepção (somente ATENDENTE + saldo > 0).
+ * Exibe resumo só para contexto de recepção + saldo pendente da API.
+ * Não recalcula financeiro — usa saldoPendente/valorPago retornados pelo backend.
+ */
+function deveExibirResumoApi(
+  dados: DadosFinanceirosReserva | null | undefined,
+): boolean {
+  if (!dados) return false;
+  const origemRaw = String(dados.origemReserva ?? "");
+  const origemAtendente =
+    origemRaw === "ATENDENTE" ||
+    Number(dados.idUsuarioCriacao ?? 0) > 0 ||
+    Number(dados.valorPago ?? 0) > 0 ||
+    Boolean(dados.formaPagamentoRecepcao);
+  if (!origemAtendente) return false;
+  return Number(dados.saldoPendente ?? 0) > 0.009;
+}
+
+/**
+ * Resumo financeiro da recepção (somente ATENDENTE + saldo > 0 da API).
  * Mesma regra em Suítes, Agenda/Sheet, Detalhes e Check-in.
  */
 export default function ResumoFinanceiroRecepcao({
@@ -29,12 +45,12 @@ export default function ResumoFinanceiroRecepcao({
   onReceberSaldo,
   compact = false,
 }: Props) {
-  if (!deveExibirFinanceiroRecepcao(dados) || !dados) {
+  if (!deveExibirResumoApi(dados) || !dados) {
     return null;
   }
 
   const valorPago = Number(dados.valorPago ?? 0);
-  const saldo = obterSaldoPendenteExibicao(dados);
+  const saldo = Number(dados.saldoPendente ?? 0);
   const forma =
     dados.formaPagamentoLabel ||
     labelFormaPagamentoRecepcao(dados.formaPagamentoRecepcao);

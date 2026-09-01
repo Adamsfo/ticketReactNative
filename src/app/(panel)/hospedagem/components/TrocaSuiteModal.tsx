@@ -131,9 +131,10 @@ export default function TrocaSuiteModal({
         setErro(resp.message || "Não foi possível trocar a suíte.");
         return;
       }
-      notifyOperacaoConcluida();
+      // Fecha sheet/modal antes (libera edit lock) e só então dispara o refresh.
       onSucesso?.();
       onClose();
+      notifyOperacaoConcluida();
     } catch {
       setErro("Erro ao trocar a suíte.");
     } finally {

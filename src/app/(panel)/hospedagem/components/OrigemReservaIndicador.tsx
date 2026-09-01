@@ -32,6 +32,40 @@ export function normalizarOrigemReserva(
   return "CLIENTE";
 }
 
+/**
+ * Rótulo de canal de venda para UI.
+ * Hospedin + UNKNOWN/vazio → "Hospedin" (criada direto na Hospedin).
+ */
+export function labelCanalVenda(
+  canal?: string | null,
+  origem?: string | null,
+): string {
+  const raw = String(canal || "").trim().toUpperCase();
+  const origemNorm = String(origem || "").trim().toUpperCase();
+
+  if (
+    origemNorm === "HOSPEDIN" &&
+    (!raw || raw === "UNKNOWN" || raw === "DESCONHECIDO")
+  ) {
+    return "Hospedin";
+  }
+
+  if (!raw) return "—";
+  const map: Record<string, string> = {
+    BOOKING: "Booking.com",
+    AIRBNB: "Airbnb",
+    EXPEDIA: "Expedia",
+    SITE: "Site",
+    DIRECT: "Direto",
+    UNKNOWN: "Desconhecido",
+    TELEFONE: "Telefone",
+    BALCAO: "Balcão",
+    "BALCÃO": "Balcão",
+    HOSPEDIN: "Hospedin",
+  };
+  return map[raw] || String(canal).trim() || raw;
+}
+
 /** Chip compacto de origem (card / resumo próxima reserva). */
 export function labelChipOrigemReserva(
   dados: DadosOrigemReserva | null | undefined,
@@ -39,23 +73,11 @@ export function labelChipOrigemReserva(
   if (!dados) return null;
   const raw = String(dados.origemReserva || "").toUpperCase();
   const nome = dados.nomeUsuarioCriacao?.trim() || "Atendente";
-  const canal = String(dados.canalVenda || "").trim().toUpperCase();
 
   if (raw === "HOSPEDIN") {
-    const canalLabel =
-      canal === "BOOKING"
-        ? "Booking.com"
-        : canal === "AIRBNB"
-          ? "Airbnb"
-          : canal === "EXPEDIA"
-            ? "Expedia"
-            : canal === "SITE"
-              ? "Site"
-              : canal
-                ? dados.canalVenda
-                : null;
+    const canalLabel = labelCanalVenda(dados.canalVenda, "HOSPEDIN");
     return {
-      texto: canalLabel ? `🔗 Hospedin · ${canalLabel}` : "🔗 Hospedin",
+      texto: `🔗 Hospedin · ${canalLabel}`,
       atendente: false,
     };
   }
@@ -147,15 +169,11 @@ export default function OrigemReservaIndicador({
 
   if (variante === "sheet") {
     if (origem === "HOSPEDIN") {
-      const canalTxt = dados.canalVenda
-        ? String(dados.canalVenda).trim()
-        : null;
+      const canalTxt = labelCanalVenda(dados.canalVenda, "HOSPEDIN");
       return (
         <View style={styles.sheetBox}>
           <Text style={styles.sheetValor}>Hospedin</Text>
-          {canalTxt ? (
-            <Text style={styles.sheetSub}>Canal: {canalTxt}</Text>
-          ) : null}
+          <Text style={styles.sheetSub}>Canal: {canalTxt}</Text>
         </View>
       );
     }
@@ -185,14 +203,12 @@ export default function OrigemReservaIndicador({
       <View style={styles.detalheBox}>
         <Text style={styles.detalheTitulo}>Origem da reserva</Text>
         <Text style={styles.detalheValor}>🔗 Integração Hospedin</Text>
-        {dados.canalVenda ? (
-          <>
-            <Text style={[styles.detalheLabel, { marginTop: 8 }]}>
-              Canal de venda
-            </Text>
-            <Text style={styles.detalheSub}>{dados.canalVenda}</Text>
-          </>
-        ) : null}
+        <Text style={[styles.detalheLabel, { marginTop: 8 }]}>
+          Canal de venda
+        </Text>
+        <Text style={styles.detalheSub}>
+          {labelCanalVenda(dados.canalVenda, "HOSPEDIN")}
+        </Text>
       </View>
     );
   }

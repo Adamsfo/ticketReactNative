@@ -27,29 +27,15 @@ import {
   labelUiStatus,
   runEntitySyncNow,
 } from "@/src/lib/integrationsAdmin";
+import { labelCanalVenda } from "./OrigemReservaIndicador";
+
+export { labelCanalVenda };
 
 type Props = {
   detalhe: ReservaAdminDetalhe;
   sync?: ReservaAdminDetalhe["syncIntegracao"];
   onReprocessado?: () => void;
 };
-
-export function labelCanalVenda(canal?: string | null): string {
-  const raw = String(canal || "").trim().toUpperCase();
-  if (!raw) return "—";
-  const map: Record<string, string> = {
-    BOOKING: "Booking.com",
-    AIRBNB: "Airbnb",
-    EXPEDIA: "Expedia",
-    SITE: "Site",
-    DIRECT: "Direto",
-    UNKNOWN: "Desconhecido",
-    TELEFONE: "Telefone",
-    BALCAO: "Balcão",
-    "BALCÃO": "Balcão",
-  };
-  return map[raw] || canal || raw;
-}
 
 export function labelTipoIdentificador(tipo: string): string {
   const raw = String(tipo || "").toUpperCase();
@@ -310,7 +296,7 @@ export default function ReservaOrigemIntegracaoPanel({
         <LinhaInfo label="Origem" valor="Hospedin" />
         <LinhaInfo
           label="Canal de venda"
-          valor={labelCanalVenda(detalhe.canalVenda)}
+          valor={labelCanalVenda(detalhe.canalVenda, detalhe.origemReserva)}
         />
         {detalhe.idExterno ? (
           <LinhaInfo label="ID externo" valor={String(detalhe.idExterno)} />

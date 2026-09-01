@@ -5,6 +5,8 @@ export type FormaPagamentoRecepcao =
   | "CartaoDebito"
   | "Transferencia"
   | "LinkPagamento"
+  | "Antecipado"
+  | "RECEBIDO_OTA"
   | "Outro";
 
 /** Valores de produção: CLIENTE | ATENDENTE. SITE = legado. */
@@ -24,8 +26,24 @@ export const FORMAS_PAGAMENTO_RECEPCAO: Array<{
   { value: "CartaoDebito", label: "Cartão Débito" },
   { value: "Transferencia", label: "Transferência" },
   { value: "LinkPagamento", label: "Link de Pagamento" },
+  { value: "Antecipado", label: "Antecipado" },
+  { value: "RECEBIDO_OTA", label: "Recebido pela OTA" },
   { value: "Outro", label: "Outro" },
 ];
+
+/** Formas que não entram no caixa / fechamento do operador. */
+export const FORMAS_PAGAMENTO_FORA_DO_CAIXA: FormaPagamentoRecepcao[] = [
+  "RECEBIDO_OTA",
+];
+
+export function isFormaPagamentoForaDoCaixa(
+  forma: string | null | undefined,
+): boolean {
+  return (
+    typeof forma === "string" &&
+    (FORMAS_PAGAMENTO_FORA_DO_CAIXA as string[]).includes(forma)
+  );
+}
 
 export const MSG_VALOR_PAGO_MAIOR =
   "O valor recebido não pode ser maior que o valor da reserva.";

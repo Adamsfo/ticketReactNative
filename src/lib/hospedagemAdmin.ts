@@ -265,10 +265,17 @@ export type ReservaAdminDetalhe = {
   formaPagamentoRecepcao?: string | null;
   observacaoPagamento?: string | null;
   comprovantePagamento?: string | null;
+  observacoes?: string | null;
+  observacaoImportada?: string | null;
+  observacaoOperador?: string | null;
   origemReserva?: "SITE" | "ATENDENTE" | "CLIENTE" | "HOSPEDIN" | string | null;
   idExterno?: string | null;
   codigoExterno?: string | null;
   canalVenda?: string | null;
+  canalVendaLabel?: string | null;
+  /** Indicador operacional: note sugere pagamento pela OTA. */
+  possivelPagamentoOta?: boolean;
+  possivelPagamentoOtaTrecho?: string | null;
   idUsuarioCriacao?: number | null;
   nomeUsuarioCriacao?: string | null;
   dataCriacao?: string | null;
@@ -311,11 +318,20 @@ export type ReservaAdminDetalhe = {
     dataPagamento: string;
     formaPagamento: string;
     formaPagamentoLabel?: string;
+    contaNoCaixa?: boolean;
+    categoriaFinanceira?: string | null;
     comprovante?: string | null;
     observacao?: string | null;
     idUsuario?: number;
     usuario?: string | null;
   }>;
+  /** Totais separados: caixa do hotel vs informativo OTA. */
+  resumoPagamentosCaixa?: {
+    totalCaixa: number;
+    totalRecebidoOta: number;
+    porFormaCaixa: Array<{ forma: string; label: string; total: number }>;
+    porFormaOta: Array<{ forma: string; label: string; total: number }>;
+  } | null;
   movimentacoesSuite?: ReservaSuiteMovimentacaoItem[];
   pagamento?: {
     id: number;
@@ -493,23 +509,37 @@ export async function getReservaAdminDetalhe(
   );
 }
 
+/** Token leve para o RefreshManager (polling sem recarregar listas). */
+export async function getHospedagemRefreshVersion(): Promise<
+  ApiResponse<{ version: string }>
+> {
+  return api.request<{ version: string }>(
+    `/hospedagem/refresh-version`,
+    "GET",
+  );
+}
+
 /** Check-in operacional: Confirmada → Hospedada. */
 export async function postRealizarCheckin(
   idReservaHospedagem: number,
+  dataHora?: string | null,
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/checkin`,
     "POST",
+    dataHora ? { dataHora } : null,
   );
 }
 
 /** Check-out operacional: Hospedada → CheckOutRealizado. */
 export async function postRealizarCheckout(
   idReservaHospedagem: number,
+  dataHora?: string | null,
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/checkout`,
     "POST",
+    dataHora ? { dataHora } : null,
   );
 }
 
@@ -583,6 +613,18 @@ export async function postAlterarPeriodoReserva(
     `/hospedagem/reservas/${idReservaHospedagem}/alterar-periodo`,
     "POST",
     body,
+  );
+}
+
+/** Atualiza observações operacionais (auto-save onBlur). */
+export async function patchObservacoesReserva(
+  idReservaHospedagem: number,
+  observacoes: string,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/observacoes`,
+    "PATCH",
+    { observacoes },
   );
 }
 

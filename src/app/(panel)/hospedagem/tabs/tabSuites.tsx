@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -42,6 +44,16 @@ import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemCon
 import { useHospedagemDesktopLayout } from "../useHospedagemDesktopLayout";
 
 const TZ = "America/Cuiaba";
+
+function textoAtualizadoHa(lastRefreshAt: number, agora: number): string {
+  const seg = Math.max(0, Math.floor((agora - lastRefreshAt) / 1000));
+  if (seg < 5) return "Atualizado agora";
+  if (seg < 60) return `Atualizado há ${seg} s`;
+  const min = Math.floor(seg / 60);
+  if (min < 60) return `Atualizado há ${min} min`;
+  const h = Math.floor(min / 60);
+  return `Atualizado há ${h} h`;
+}
 
 const MESES_PT = [
   "Janeiro",
@@ -351,6 +363,9 @@ function MetaLinha({
   );
 }
 
+const MSG_CHECKIN_AGUARDA_CHECKOUT =
+  "É necessário realizar o check-out do hóspede atual antes de efetuar o check-in da próxima reserva.";
+
 /** Checkout A + Check-in B no mesmo dia — blocos independentes por reservaId. */
 function CardSuiteDuplaReserva({
   item,
@@ -367,6 +382,165 @@ function CardSuiteDuplaReserva({
     idUsuarioCriacao: proxima.idUsuarioCriacao,
     nomeUsuarioCriacao: proxima.nomeUsuarioCriacao,
   });
+
+  const atualHospedado =
+    String(item.statusReserva || "").toUpperCase() === "HOSPEDADA" ||
+    Boolean(item.dataHoraCheckinReal);
+
+  const cor = corStatusOperacionalPadrao(
+    atualHospedado ? "HOSPEDADA" : "CHECKOUT_HOJE",
+  );
+  const badgeTexto = atualHospedado
+    ? "HOSPEDADO"
+    : (
+        item.badgeLabel || badgeStatusOperacional("CHECKOUT_HOJE")
+      ).toUpperCase();
+
+  const abrirAtual = () => {
+    if (!item.idReservaHospedagem) return;
+    onAbrirReserva({
+      idReservaHospedagem: item.idReservaHospedagem,
+      suiteNome: item.nome,
+      inicio: item.checkin,
+      fim: item.checkout,
+      status: item.status,
+      statusReserva: item.statusReserva ?? item.status,
+      dataHoraCheckinReal: item.dataHoraCheckinReal,
+      responsavel: item.responsavel,
+      adultos: item.adultos,
+      criancas: item.criancas,
+      valorTotal: item.valorHospedagem,
+      valorPago: item.valorPago,
+      saldoPendente: item.saldoPendente,
+      idEvento: item.idEvento,
+      idEventoSuite: item.idEventoSuite,
+    });
+  };
+
+  const abrirProxima = () => {
+    onAbrirReserva({
+      idReservaHospedagem: proxima.id,
+      suiteNome: item.nome,
+      inicio: proxima.checkin,
+      fim: proxima.checkout ?? null,
+      status: proxima.status ?? "Confirmada",
+      statusReserva: proxima.status ?? "Confirmada",
+      responsavel: proxima.responsavel,
+      idEvento: item.idEvento,
+      idEventoSuite: item.idEventoSuite,
+    });
+  };
+
+  const onPressCheckinProxima = () => {
+    if (atualHospedado) {
+      Alert.alert("Check-in bloqueado", MSG_CHECKIN_AGUARDA_CHECKOUT);
+      return;
+    }
+    abrirProxima();
+  };
+
+  return (
+    <View
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        { borderLeftColor: cor },
+      ]}
+    >
+      <View style={styles.cardBodyFill}>
+        <View style={styles.cardHeadRow}>
+          <Text
+            style={[styles.suiteNome, compact && styles.suiteNomeCompact]}
+            numberOfLines={1}
+          >
+            <Text style={{ color: cor }}>● </Text>
+            {item.nome}
+          </Text>
+          <View
+            style={[styles.badge, styles.badgeCompact, { backgroundColor: cor }]}
+          >
+            <Text style={styles.badgeTexto}>{badgeTexto}</Text>
+          </View>
+        </View>
+
+        <BlocoReservaClicavel
+          titulo={atualHospedado ? "Hospedado" : "Checkout hoje"}
+          onPress={abrirAtual}
+        >
+          <MetaLinha icon="user" strong>
+            {item.responsavel?.trim() || "Hóspede"}
+          </MetaLinha>
+          <MetaLinha icon="log-out">
+            Sai às {horaCheckinCurta(item.checkout)}
+          </MetaLinha>
+        </BlocoReservaClicavel>
+        {atualHospedado ? (
+          <TouchableOpacity
+            onPress={abrirAtual}
+            activeOpacity={0.85}
+            style={styles.novaReservaBtnAlign}
+          >
+            <View
+              style={[
+                styles.reservarChip,
+                styles.reservarChipCompact,
+                styles.reservarChipCentered,
+                { backgroundColor: CORES_STATUS_OPERACIONAL.hospedada },
+              ]}
+            >
+              <Text style={styles.reservarTexto}>Realizar Check-out</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
+        <View style={styles.blocoSeparador} />
+
+        <BlocoReservaClicavel titulo="Próxima reserva" onPress={abrirProxima}>
+          <MetaLinha icon="user" strong>
+            {proxima.responsavel?.trim() || "Hóspede"}
+          </MetaLinha>
+          <MetaLinha icon="clock">
+            Check-in às {horaCheckinCurta(proxima.checkin)}
+          </MetaLinha>
+          {chip ? (
+            <Text style={styles.blocoOrigem} numberOfLines={1}>
+              {chip.texto}
+            </Text>
+          ) : null}
+        </BlocoReservaClicavel>
+        <TouchableOpacity
+          onPress={onPressCheckinProxima}
+          activeOpacity={0.85}
+          style={styles.novaReservaBtnAlign}
+        >
+          <View
+            style={[
+              styles.reservarChip,
+              styles.reservarChipCompact,
+              styles.reservarChipCentered,
+              { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
+            ]}
+          >
+            <Text style={styles.reservarTexto}>Realizar Check-in</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+/** Checkout hoje + vaga para nova reserva — mesmo layout de Checkout + Próxima reserva. */
+function CardSuiteCheckoutComNovaReserva({
+  item,
+  onAbrirReserva,
+  onNovaReserva,
+  compact = false,
+}: {
+  item: SuiteOperacionalCard;
+  onAbrirReserva: (ref: ReservaOperacaoRef) => void;
+  onNovaReserva: () => void;
+  compact?: boolean;
+}) {
   const cor = corStatusOperacionalPadrao("CHECKOUT_HOJE");
   const badgeTexto = (
     item.badgeLabel || badgeStatusOperacional("CHECKOUT_HOJE")
@@ -382,11 +556,16 @@ function CardSuiteDuplaReserva({
     >
       <View style={styles.cardBodyFill}>
         <View style={styles.cardHeadRow}>
-          <Text style={[styles.suiteNome, compact && styles.suiteNomeCompact]} numberOfLines={1}>
+          <Text
+            style={[styles.suiteNome, compact && styles.suiteNomeCompact]}
+            numberOfLines={1}
+          >
             <Text style={{ color: cor }}>● </Text>
             {item.nome}
           </Text>
-          <View style={[styles.badge, styles.badgeCompact, { backgroundColor: cor }]}>
+          <View
+            style={[styles.badge, styles.badgeCompact, { backgroundColor: cor }]}
+          >
             <Text style={styles.badgeTexto}>{badgeTexto}</Text>
           </View>
         </View>
@@ -424,34 +603,31 @@ function CardSuiteDuplaReserva({
 
         <View style={styles.blocoSeparador} />
 
-        <BlocoReservaClicavel
-          titulo="Próxima reserva"
-          onPress={() => {
-            onAbrirReserva({
-              idReservaHospedagem: proxima.id,
-              suiteNome: item.nome,
-              inicio: proxima.checkin,
-              fim: proxima.checkout ?? null,
-              status: proxima.status ?? "Confirmada",
-              statusReserva: proxima.status ?? "Confirmada",
-              responsavel: proxima.responsavel,
-              idEvento: item.idEvento,
-              idEventoSuite: item.idEventoSuite,
-            });
-          }}
-        >
-          <MetaLinha icon="user" strong>
-            {proxima.responsavel?.trim() || "Hóspede"}
-          </MetaLinha>
-          <MetaLinha icon="clock">
-            Check-in às {horaCheckinCurta(proxima.checkin)}
-          </MetaLinha>
-          {chip ? (
-            <Text style={styles.blocoOrigem} numberOfLines={1}>
-              {chip.texto}
-            </Text>
-          ) : null}
-        </BlocoReservaClicavel>
+        <View style={styles.blocoReserva}>
+          <View style={styles.blocoReservaRow}>
+            <View style={styles.blocoReservaConteudo}>
+              <Text style={styles.blocoTitulo}>
+                Disponível para nova reserva hoje
+              </Text>
+              <TouchableOpacity
+                onPress={onNovaReserva}
+                activeOpacity={0.85}
+                style={styles.novaReservaBtnAlign}
+              >
+                <View
+                  style={[
+                    styles.reservarChip,
+                    styles.reservarChipCompact,
+                    styles.reservarChipCentered,
+                    { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
+                  ]}
+                >
+                  <Text style={styles.reservarTexto}>Nova Reserva</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -461,18 +637,22 @@ function CardSuite({
   item,
   onPress,
   onAbrirReserva,
+  onNovaReserva,
   filtroAtivo,
   dataSelecionada,
   hoje,
   compact = false,
+  desktopLayout = false,
 }: {
   item: SuiteOperacionalCard;
   onPress: () => void;
   onAbrirReserva: (ref: ReservaOperacaoRef) => void;
+  onNovaReserva: () => void;
   filtroAtivo: FiltroSuiteOperacional;
   dataSelecionada: string;
   hoje: string;
   compact?: boolean;
+  desktopLayout?: boolean;
 }) {
   const { openReceberSaldo } = useReceberSaldoHospedagem();
 
@@ -487,18 +667,42 @@ function CardSuite({
     modoLivreAposCheckout ? "LIVRE" : badgeApi || item.status || "LIVRE"
   ) as string;
 
+  const isCheckoutHoje =
+    badgeApi === "CHECKOUT_HOJE" ||
+    item.checkoutHoje === true ||
+    item.status === "CheckOutHoje" ||
+    statusExibicao === "CHECKOUT_HOJE";
+
   const modoDupla =
     Boolean(item.modoDuplaReserva) &&
     Boolean(item.proximaReservaResumo?.id) &&
     Boolean(item.idReservaHospedagem) &&
     item.proximaReservaResumo!.id !== item.idReservaHospedagem &&
-    statusExibicao === "CHECKOUT_HOJE";
+    isCheckoutHoje;
 
   if (modoDupla) {
     return (
       <CardSuiteDuplaReserva
         item={item}
         onAbrirReserva={onAbrirReserva}
+        compact={compact}
+      />
+    );
+  }
+
+  /** CHECKOUT HOJE sem outra entrada no mesmo dia → layout Checkout + Nova Reserva. */
+  const modoCheckoutComNovaReserva =
+    isCheckoutHoje &&
+    Boolean(item.idReservaHospedagem) &&
+    dataSelecionada >= hoje &&
+    item.bloqueadaPorCheckinNaData !== true;
+
+  if (modoCheckoutComNovaReserva) {
+    return (
+      <CardSuiteCheckoutComNovaReserva
+        item={item}
+        onAbrirReserva={onAbrirReserva}
+        onNovaReserva={onNovaReserva}
         compact={compact}
       />
     );
@@ -560,12 +764,18 @@ function CardSuite({
       style={[
         styles.card,
         compact && styles.cardCompact,
+        desktopLayout && styles.cardDesktopPin,
         { borderLeftColor: cor },
       ]}
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={styles.cardBodyFill}>
+      <View
+        style={[
+          styles.cardBodyFill,
+          desktopLayout && styles.cardBodyFillDesktop,
+        ]}
+      >
         <View style={styles.cardHeadRow}>
           <Text
             style={[styles.suiteNome, compact && styles.suiteNomeCompact]}
@@ -587,8 +797,12 @@ function CardSuite({
           </View>
         </View>
 
-        <View style={styles.cardContent}>
-          {livre ? (
+        <View
+          style={[
+            styles.cardContent,
+            desktopLayout && styles.cardContentDesktop,
+          ]}
+        >          {livre ? (
             <>
               <Text style={styles.livreTituloCompact} numberOfLines={2}>
                 {item.mensagemDisponibilidade || "Disponível para reserva"}
@@ -685,16 +899,29 @@ function CardSuite({
 
         {chipAcao ? (
           <View
-            style={[
-              styles.reservarChip,
-              styles.reservarChipCompact,
-              { backgroundColor: chipAcao.cor },
-            ]}
+            style={
+              desktopLayout ? styles.cardAcaoFooterDesktop : undefined
+            }
           >
-            <Text style={styles.reservarTexto}>{chipAcao.label}</Text>
+            <View
+              style={[
+                styles.reservarChip,
+                styles.reservarChipCompact,
+                (desktopLayout || chipAcao.label === "Nova Reserva") &&
+                  styles.reservarChipCentered,
+                { backgroundColor: chipAcao.cor },
+              ]}
+            >
+              <Text style={styles.reservarTexto}>{chipAcao.label}</Text>
+            </View>
           </View>
         ) : (
-          <View style={styles.chipSpacer} />
+          <View
+            style={[
+              styles.chipSpacer,
+              desktopLayout && styles.chipSpacerDesktop,
+            ]}
+          />
         )}
       </View>
     </TouchableOpacity>
@@ -706,6 +933,8 @@ export default function TabSuites() {
   const { openNovaReserva } = useNovaReservaRecepcao();
   const { suiteColumns } = useHospedagemDesktopLayout();
   const cardsCompactos = suiteColumns > 1;
+  /** Desktop (≥3 cols / ≥1200px): botões fixos na base do card. */
+  const desktopLayout = suiteColumns >= 3;
   const hoje = useMemo(() => hojeStrCuiaba(), []);
   const [dataReferencia, setDataReferencia] = useState(hoje);
   const [mesVisivel, setMesVisivel] = useState(() => mesDeData(hoje));
@@ -720,7 +949,15 @@ export default function TabSuites() {
   const [reservaOperacao, setReservaOperacao] =
     useState<ReservaOperacaoRef | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
-  const { refreshVersion } = useHospedagemAdminRefresh();
+  const { refreshVersion, requestRefresh, lastRefreshAt } =
+    useHospedagemAdminRefresh();
+  const [agoraTick, setAgoraTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (lastRefreshAt == null) return;
+    const id = setInterval(() => setAgoraTick(Date.now()), 5_000);
+    return () => clearInterval(id);
+  }, [lastRefreshAt]);
 
   const carregar = useCallback(
     async (isRefresh = false) => {
@@ -765,13 +1002,26 @@ export default function TabSuites() {
   };
 
   const abrirSuite = (item: SuiteOperacionalCard) => {
-    // Modo duplo: só pelos botões dos blocos (nunca abrir reserva ambígua pelo card).
+    // Modo duplo / checkout+nova reserva: só pelos blocos (nunca ambíguo pelo card).
     if (
       item.modoDuplaReserva &&
       item.proximaReservaResumo?.id &&
       item.idReservaHospedagem &&
       item.proximaReservaResumo.id !== item.idReservaHospedagem
     ) {
+      return;
+    }
+
+    const badge = String(item.badge || item.status || "").toUpperCase();
+    const checkoutComNovaReserva =
+      (badge === "CHECKOUT_HOJE" ||
+        item.status === "CheckOutHoje" ||
+        item.checkoutHoje === true) &&
+      Boolean(item.idReservaHospedagem) &&
+      (item.acoesDisponiveis?.reservar === true ||
+        item.botaoPrincipal === "nova_reserva" ||
+        item.disponivelHojeAposCheckout === true);
+    if (checkoutComNovaReserva) {
       return;
     }
 
@@ -833,29 +1083,59 @@ export default function TabSuites() {
         }}
       />
 
-      <FlatList
-        horizontal
-        data={FILTROS}
-        keyExtractor={(item) => item.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtrosScroll}
-        style={styles.filtrosWrap}
-        renderItem={({ item }) => {
-          const ativo = filtro === item.key;
-          return (
-            <TouchableOpacity
-              style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
-              onPress={() => setFiltro(item.key)}
-            >
-              <Text
-                style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
+      <View style={styles.filtrosRow}>
+        <FlatList
+          horizontal
+          data={FILTROS}
+          keyExtractor={(item) => item.key}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtrosScroll}
+          style={styles.filtrosWrap}
+          renderItem={({ item }) => {
+            const ativo = filtro === item.key;
+            return (
+              <TouchableOpacity
+                style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
+                onPress={() => setFiltro(item.key)}
               >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
+                <Text
+                  style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+        <View style={styles.refreshBox}>
+          {lastRefreshAt != null ? (
+            <Text style={styles.refreshMeta} numberOfLines={1}>
+              {textoAtualizadoHa(lastRefreshAt, agoraTick)}
+            </Text>
+          ) : null}
+          <TouchableOpacity
+            style={[
+              styles.refreshBtn,
+              refreshing && styles.refreshBtnDisabled,
+            ]}
+            onPress={() => {
+              if (refreshing) return;
+              requestRefresh();
+            }}
+            disabled={refreshing}
+            accessibilityLabel="Atualizar agora"
+            // @ts-expect-error title = tooltip no web
+            title={Platform.OS === "web" ? "Atualizar agora" : undefined}
+            hitSlop={8}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.azul} />
+            ) : (
+              <Feather name="refresh-cw" size={18} color={colors.azul} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {loading && !refreshing ? (
         <View style={styles.estadoBox}>
@@ -889,15 +1169,29 @@ export default function TabSuites() {
           }
           ListFooterComponent={<View style={{ height: 40 }} />}
           renderItem={({ item }) => (
-            <View style={suiteColumns > 1 ? styles.gridItem : undefined}>
+            <View
+              style={[
+                suiteColumns > 1 ? styles.gridItem : undefined,
+                desktopLayout && styles.gridItemDesktop,
+              ]}
+            >
               <CardSuite
                 item={item}
                 filtroAtivo={filtro}
                 dataSelecionada={dataReferencia}
                 hoje={hoje}
                 compact={cardsCompactos}
+                desktopLayout={desktopLayout}
                 onPress={() => abrirSuite(item)}
                 onAbrirReserva={abrirReserva}
+                onNovaReserva={() => {
+                  if (!item.idEvento) return;
+                  openNovaReserva({
+                    idEvento: item.idEvento,
+                    idEventoSuite: item.idEventoSuite ?? item.id,
+                    checkinDate: dataReferencia,
+                  });
+                }}
               />
             </View>
           )}
@@ -997,14 +1291,43 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
   },
-  filtrosWrap: {
-    maxHeight: 48,
+  filtrosRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
-    flexGrow: 0,
+    gap: 6,
+  },
+  filtrosWrap: {
+    flex: 1,
+    maxHeight: 48,
+    flexGrow: 1,
   },
   filtrosScroll: {
     paddingRight: 8,
     alignItems: "center",
+  },
+  refreshBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 2,
+    flexShrink: 0,
+  },
+  refreshMeta: {
+    fontSize: 11,
+    color: "#888",
+    maxWidth: 110,
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  refreshBtnDisabled: {
+    opacity: 0.55,
   },
   filtroChip: {
     backgroundColor: "rgba(255,255,255,0.85)",
@@ -1051,6 +1374,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 156,
   },
+  cardDesktopPin: {
+    alignSelf: "stretch",
+    height: "100%",
+  },
   columnWrapper: {
     gap: 10,
     alignItems: "stretch",
@@ -1059,6 +1386,9 @@ const styles = StyleSheet.create({
   gridItem: {
     flex: 1,
     minWidth: 0,
+  },
+  gridItemDesktop: {
+    alignSelf: "stretch",
   },
   cardHeadRow: {
     flexDirection: "row",
@@ -1071,9 +1401,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
   },
+  cardBodyFillDesktop: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
   cardContent: {
     flexGrow: 1,
     gap: 2,
+  },
+  cardContentDesktop: {
+    flex: 1,
+    flexGrow: 1,
+    minHeight: 0,
+  },
+  cardAcaoFooterDesktop: {
+    width: "100%",
+    alignItems: "center",
   },
   cardRow: {
     flexDirection: "row",
@@ -1171,6 +1514,9 @@ const styles = StyleSheet.create({
   },
   chipSpacer: {
     minHeight: 28,
+  },
+  chipSpacerDesktop: {
+    minHeight: 38,
   },
   reservarChipCompact: {
     marginTop: 8,
@@ -1281,6 +1627,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 44,
     justifyContent: "center",
+  },
+  reservarChipCentered: {
+    alignSelf: "center",
+  },
+  novaReservaBtnAlign: {
+    alignSelf: "center",
   },
   reservarTexto: {
     color: "#fff",

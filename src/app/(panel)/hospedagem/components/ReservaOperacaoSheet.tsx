@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -7,16 +7,21 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { parseISO } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import colors from "@/src/constants/colors";
 import formatCurrency from "@/src/components/FormatCurrency";
+import DatePickerComponente from "@/src/components/DatePickerComponente";
+import TimePickerComponente from "@/src/components/TimePickerComponente";
 import {
   getReservaAdminDetalhe,
+  patchObservacoesReserva,
   ReservaAdminDetalhe,
   ReservaTimelineEvento,
 } from "@/src/lib/hospedagemAdmin";
@@ -34,22 +39,23 @@ import {
   formatarIdadeAnos,
 } from "@/src/lib/hospedagemHospedes";
 import { HOSPEDAGEM_TZ } from "@/src/lib/hospedagemStatusOperacional";
-import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
+import {
+  useHospedagemAdminRefresh,
+  useHospedagemEditLock,
+} from "../contexts/HospedagemAdminRefreshContext";
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
 import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemContext";
 import {
-  bloqueiaCheckinPorSaldoPendente,
   COR_RECEBIDO,
   COR_SALDO_PENDENTE,
   MSG_CHECKIN_BLOQUEADO_SALDO,
-  obterSaldoPendenteExibicao,
 } from "@/src/lib/hospedagemPagamentoRecepcao";
 import OrigemReservaIndicador, {
+  labelCanalVenda,
   labelChipOrigemReserva,
 } from "./OrigemReservaIndicador";
-import ReservaOrigemIntegracaoPanel, {
-  labelCanalVenda,
-} from "./ReservaOrigemIntegracaoPanel";
+import AlertaPossivelPagamentoOta from "./AlertaPossivelPagamentoOta";
+import ReservaOrigemIntegracaoPanel from "./ReservaOrigemIntegracaoPanel";
 import TrocaSuiteModal from "./TrocaSuiteModal";
 import AlterarPeriodoModal from "./AlterarPeriodoModal";
 
@@ -73,6 +79,19 @@ type Props = {
 
 type ConfirmMode = "checkin" | "checkout" | null;
 
+function combineDateTimeOperacao(date: Date, time: Date): Date {
+  const wall = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    time.getHours(),
+    time.getMinutes(),
+    0,
+    0,
+  );
+  return fromZonedTime(wall, HOSPEDAGEM_TZ);
+}
+
 /**
  * Central operacional da hospedagem (Agenda + Suítes).
  * Um único GET de detalhe alimenta resumo, financeiro, hóspedes, histórico e ações.
@@ -83,19 +102,34 @@ export default function ReservaOperacaoSheet({
   onClose,
   dataReferencia,
 }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
+  /** Layout em duas colunas apenas no desktop largo. */
+  const isDesktopLayout = windowWidth >= 1200;
   const { notifyOperacaoConcluida, refreshVersion } =
     useHospedagemAdminRefresh();
+  useHospedagemEditLock(visible);
   const { openNovaReserva } = useNovaReservaRecepcao();
   const { openReceberSaldo } = useReceberSaldoHospedagem();
   const [detalhe, setDetalhe] = useState<ReservaAdminDetalhe | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirmMode, setConfirmMode] = useState<ConfirmMode>(null);
+  const [operacaoDate, setOperacaoDate] = useState(() => new Date());
+  const [operacaoTime, setOperacaoTime] = useState(() => new Date());
+  const [erroConfirmacao, setErroConfirmacao] = useState<string | null>(null);
   const [executando, setExecutando] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [trocaSuiteVisible, setTrocaSuiteVisible] = useState(false);
   const [alterarPeriodoVisible, setAlterarPeriodoVisible] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<"operacao" | "integracao">(
     "operacao",
+  );
+  const [observacoesTexto, setObservacoesTexto] = useState("");
+  const [observacoesSalvas, setObservacoesSalvas] = useState("");
+  const [observacoesSalvando, setObservacoesSalvando] = useState(false);
+  const [observacoesSalvoOk, setObservacoesSalvoOk] = useState(false);
+  const [observacoesErro, setObservacoesErro] = useState<string | null>(null);
+  const observacoesSalvoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
   );
 
   const hojeOperacao = useMemo(
@@ -112,6 +146,15 @@ export default function ReservaOperacaoSheet({
       setTrocaSuiteVisible(false);
       setAlterarPeriodoVisible(false);
       setAbaAtiva("operacao");
+      setObservacoesTexto("");
+      setObservacoesSalvas("");
+      setObservacoesSalvando(false);
+      setObservacoesSalvoOk(false);
+      setObservacoesErro(null);
+      if (observacoesSalvoTimerRef.current) {
+        clearTimeout(observacoesSalvoTimerRef.current);
+        observacoesSalvoTimerRef.current = null;
+      }
       return;
     }
 
@@ -139,6 +182,60 @@ export default function ReservaOperacaoSheet({
     dataSelecionada,
     refreshVersion,
   ]);
+
+  useEffect(() => {
+    if (!detalhe) return;
+    const merged =
+      detalhe.observacoes ??
+      [detalhe.observacaoImportada, detalhe.observacaoOperador]
+        .filter((parte) => String(parte || "").length > 0)
+        .join("\n\n");
+    setObservacoesTexto(merged);
+    setObservacoesSalvas(merged);
+    setObservacoesSalvoOk(false);
+    setObservacoesErro(null);
+  }, [detalhe?.id, detalhe?.observacoes]);
+
+  const salvarObservacoes = async () => {
+    if (!reserva?.idReservaHospedagem || observacoesSalvando) return;
+    if (observacoesTexto === observacoesSalvas) return;
+
+    setObservacoesSalvando(true);
+    setObservacoesSalvoOk(false);
+    setObservacoesErro(null);
+
+    try {
+      const resp = await patchObservacoesReserva(
+        reserva.idReservaHospedagem,
+        observacoesTexto,
+      );
+      if (resp.success && resp.data) {
+        const detalheAtualizado =
+          (resp.data as { data?: ReservaAdminDetalhe }).data ??
+          (resp.data as ReservaAdminDetalhe);
+        const salvo = detalheAtualizado.observacoes ?? observacoesTexto;
+        setDetalhe(detalheAtualizado);
+        setObservacoesTexto(salvo);
+        setObservacoesSalvas(salvo);
+        setObservacoesSalvoOk(true);
+        if (observacoesSalvoTimerRef.current) {
+          clearTimeout(observacoesSalvoTimerRef.current);
+        }
+        observacoesSalvoTimerRef.current = setTimeout(() => {
+          setObservacoesSalvoOk(false);
+          observacoesSalvoTimerRef.current = null;
+        }, 3000);
+      } else {
+        setObservacoesErro(
+          resp.message || "Não foi possível salvar as observações.",
+        );
+      }
+    } catch {
+      setObservacoesErro("Não foi possível salvar as observações.");
+    } finally {
+      setObservacoesSalvando(false);
+    }
+  };
 
   const statusDb =
     detalhe?.status ?? reserva?.statusReserva ?? reserva?.status ?? "";
@@ -251,14 +348,16 @@ export default function ReservaOperacaoSheet({
   const mostrarAlterarPeriodo = mostrarTrocarSuite;
   const idReservaSuiteTroca = detalhe?.suites?.[0]?.idReservaSuite ?? null;
 
-  const dadosFinanceirosCheckin = detalhe ?? {
-    valorTotal: reserva?.valorTotal,
-    valorPago: reserva?.valorPago,
-    saldoPendente: reserva?.saldoPendente,
-  };
-  const bloqueadoPorSaldo = bloqueiaCheckinPorSaldoPendente(
-    dadosFinanceirosCheckin,
+  // Financeiro: exclusivamente valores resolvidos pela API (resolverFinanceiroReserva).
+  const valorTotal = Number(detalhe?.valorTotal ?? reserva?.valorTotal ?? 0);
+  const valorPago = Number(detalhe?.valorPago ?? reserva?.valorPago ?? 0);
+  const saldoPendente = Number(
+    detalhe?.saldoPendente ?? reserva?.saldoPendente ?? 0,
   );
+  const situacaoFinanceira = String(
+    detalhe?.situacaoFinanceira ?? "Pendente",
+  );
+  const bloqueadoPorSaldo = saldoPendente > 0.009;
 
   const podeExecutarCheckin =
     mostrarBotaoCheckin && !bloqueadoPorSaldo && !executando && !loading;
@@ -267,22 +366,6 @@ export default function ReservaOperacaoSheet({
   const adultos = detalhe?.suites?.[0]?.adultos ?? reserva?.adultos ?? 0;
   const criancas = detalhe?.suites?.[0]?.criancas ?? reserva?.criancas ?? 0;
   const noites = Number(detalhe?.noites ?? 0);
-  const valorTotal = Number(detalhe?.valorTotal ?? reserva?.valorTotal ?? 0);
-  const valorPago = Number(detalhe?.valorPago ?? reserva?.valorPago ?? 0);
-  const saldoPendente = obterSaldoPendenteExibicao(
-    detalhe ?? {
-      valorTotal: reserva?.valorTotal,
-      valorPago: reserva?.valorPago,
-      saldoPendente: reserva?.saldoPendente,
-    },
-  );
-  const situacaoFinanceira =
-    detalhe?.situacaoFinanceira ??
-    (saldoPendente <= 0.009
-      ? "Quitada"
-      : valorPago > 0.009
-        ? "Parcial"
-        : "Pendente");
 
   const pagamentos = detalhe?.pagamentos ?? [];
   const movimentacoes = detalhe?.movimentacoesSuite ?? [];
@@ -296,7 +379,13 @@ export default function ReservaOperacaoSheet({
     detalhe?.suites?.[0]?.nome ?? reserva?.suiteNome ?? "Suíte";
 
   const isOrigemHospedin =
-    String(detalhe?.origemReserva || "").toUpperCase() === "HOSPEDIN";
+    String(
+      detalhe?.origemReserva || reserva?.origemReserva || "",
+    ).toUpperCase() === "HOSPEDIN";
+  /** Hospedin: sempre permitir receber (financeiro importado é incompleto). Demais: regra atual. */
+  const mostrarBotaoReceberSaldo =
+    isOrigemHospedin ||
+    (mostrarBotaoCheckin && saldoPendente > 0.009);
   const mostrarAbaIntegracao =
     (isOrigemHospedin || Boolean(detalhe?.syncIntegracao)) &&
     !loading &&
@@ -321,6 +410,14 @@ export default function ReservaOperacaoSheet({
     });
   };
 
+  const abrirConfirmacao = (mode: "checkin" | "checkout") => {
+    const agora = new Date();
+    setOperacaoDate(agora);
+    setOperacaoTime(agora);
+    setErroConfirmacao(null);
+    setConfirmMode(mode);
+  };
+
   const confirmarOperacao = async () => {
     if (!reserva.idReservaHospedagem || !confirmMode) return;
     const mode = confirmMode;
@@ -329,13 +426,36 @@ export default function ReservaOperacaoSheet({
       setErroAcao(MSG_CHECKIN_BLOQUEADO_SALDO);
       return;
     }
+
+    const dataHora = combineDateTimeOperacao(operacaoDate, operacaoTime);
+    const agora = new Date();
+    if (dataHora.getTime() > agora.getTime() + 60_000) {
+      setErroConfirmacao("Não é permitido informar data/hora futura.");
+      return;
+    }
+    if (mode === "checkout") {
+      const checkinReal =
+        detalhe?.dataHoraCheckinReal || reserva.dataHoraCheckinReal;
+      if (checkinReal) {
+        const ci = new Date(checkinReal);
+        if (!Number.isNaN(ci.getTime()) && dataHora.getTime() < ci.getTime()) {
+          setErroConfirmacao(
+            "A data/hora do check-out não pode ser anterior ao check-in.",
+          );
+          return;
+        }
+      }
+    }
+
     setExecutando(true);
     setErroAcao(null);
+    setErroConfirmacao(null);
     try {
+      const iso = dataHora.toISOString();
       const resp =
         mode === "checkin"
-          ? await executarCheckinOperacional(reserva.idReservaHospedagem)
-          : await executarCheckoutOperacional(reserva.idReservaHospedagem);
+          ? await executarCheckinOperacional(reserva.idReservaHospedagem, iso)
+          : await executarCheckoutOperacional(reserva.idReservaHospedagem, iso);
 
       if (!resp.success) {
         setErroAcao(
@@ -394,8 +514,14 @@ export default function ReservaOperacaoSheet({
         animationType="slide"
         onRequestClose={onClose}
       >
-        <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable
+          style={[styles.backdrop, isDesktopLayout && styles.backdropDesktop]}
+          onPress={onClose}
+        >
+          <Pressable
+            style={[styles.sheet, isDesktopLayout && styles.sheetDesktop]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.handle} />
 
             <View style={styles.headerRow}>
@@ -416,13 +542,15 @@ export default function ReservaOperacaoSheet({
                 <View style={styles.seloOrigem}>
                   <Text style={styles.seloOrigemTexto}>Origem: Hospedin</Text>
                 </View>
-                {detalhe.canalVenda ? (
-                  <View style={[styles.seloOrigem, styles.seloCanal]}>
-                    <Text style={styles.seloCanalTexto}>
-                      Canal: {labelCanalVenda(detalhe.canalVenda)}
-                    </Text>
-                  </View>
-                ) : null}
+                <View style={[styles.seloOrigem, styles.seloCanal]}>
+                  <Text style={styles.seloCanalTexto}>
+                    Canal:{" "}
+                    {labelCanalVenda(
+                      detalhe.canalVenda,
+                      detalhe.origemReserva,
+                    )}
+                  </Text>
+                </View>
               </View>
             ) : null}
 
@@ -520,186 +648,326 @@ export default function ReservaOperacaoSheet({
                 />
               ) : (
                 <View style={styles.blocos}>
-                  {/* Resumo */}
-                  <Secao titulo="Resumo">
-                    {responsavel ? (
-                      <Linha label="Responsável" valor={responsavel} />
-                    ) : null}
-                    {(adultos > 0 || criancas > 0) && (
-                      <Linha
-                        label="Ocupantes"
-                        valor={`${adultos} ${adultos === 1 ? "adulto" : "adultos"}${
-                          criancas > 0
-                            ? ` · ${criancas} ${criancas === 1 ? "criança" : "crianças"}`
-                            : ""
-                        }`}
-                      />
-                    )}
-                    <Linha label="Status" valor={badgeLabel} />
-                    {mensagemOp ? (
-                      <Linha label="Situação" valor={mensagemOp} />
-                    ) : null}
-                    {mensagemOpSec ? (
-                      <Text style={styles.hint}>{mensagemOpSec}</Text>
-                    ) : null}
-                  </Secao>
-
-                  {/* Período */}
-                  <Secao titulo="Período">
-                    <Text style={styles.periodoLabel}>Check-in</Text>
-                    <Text style={styles.periodoValor}>
-                      {checkinIso
-                        ? formatDateTimeHospedagem(checkinIso)
-                        : "—"}
-                    </Text>
-                    <Text style={styles.seta}>↓</Text>
-                    <Text style={styles.periodoLabel}>Check-out</Text>
-                    <Text style={styles.periodoValor}>
-                      {checkoutIso
-                        ? formatDateTimeHospedagem(checkoutIso)
-                        : "—"}
-                    </Text>
-                    {noites > 0 ? (
-                      <Text style={styles.diarias}>
-                        {noites === 1 ? "1 diária" : `${noites} diárias`}
-                      </Text>
-                    ) : null}
-                  </Secao>
-
-                  {/* Financeiro */}
-                  <Secao titulo="Financeiro">
-                    <Linha
-                      label="Total"
-                      valor={formatCurrency(valorTotal)}
-                    />
-                    <Linha
-                      label="Recebido"
-                      valor={formatCurrency(valorPago)}
-                      valorStyle={{ color: COR_RECEBIDO }}
-                    />
-                    <Linha
-                      label="Saldo"
-                      valor={formatCurrency(saldoPendente)}
-                      valorStyle={{
-                        color:
-                          saldoPendente > 0.009
-                            ? COR_SALDO_PENDENTE
-                            : COR_RECEBIDO,
-                      }}
-                    />
-                    <Linha
-                      label="Situação"
-                      valor={situacaoFinanceira}
-                    />
-                    {mostrarBotaoCheckin && saldoPendente > 0.009 ? (
-                      <TouchableOpacity
-                        style={styles.btnReceberSaldo}
-                        onPress={() => {
-                          if (!reserva.idReservaHospedagem) return;
-                          openReceberSaldo({
-                            idReservaHospedagem: reserva.idReservaHospedagem,
-                            saldoPendente,
-                            valorTotal,
-                            valorPago,
-                            suiteNome: suiteNomeExibicao,
-                            responsavel: responsavel || undefined,
-                          });
-                        }}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.btnReceberSaldoTexto}>
-                          Receber Saldo
-                        </Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </Secao>
-
-                  {/* Observações — campo oficial da reserva (visível na Operação) */}
-                  <Secao titulo="Observações">
-                    {String(detalhe?.observacoes || "").trim() ? (
-                      <Text style={styles.observacoesTexto}>
-                        {String(detalhe?.observacoes).trim()}
-                      </Text>
-                    ) : (
-                      <Text style={styles.observacoesVazio}>
-                        Observação não informada.
-                      </Text>
-                    )}
-                  </Secao>
-
-                  {/* Origem — compacta; detalhes ficam na aba Integração */}
-                  <Secao titulo="Origem">
-                    <OrigemReservaIndicador
-                      dados={detalhe ?? undefined}
-                      variante="sheet"
-                    />
-                    {mostrarAbaIntegracao ? (
-                      <TouchableOpacity
-                        onPress={() => setAbaAtiva("integracao")}
-                        style={styles.linkAbaOrigem}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.linkAbaOrigemTexto}>
-                          Ver detalhes da integração
-                        </Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </Secao>
-
-                  {/* Próxima reserva */}
-                  {mostrarProximaReserva && proximaReserva ? (
-                    <Secao titulo="Próxima reserva">
-                      <ProximaReservaBloco resumo={proximaReserva} />
-                    </Secao>
-                  ) : null}
-
-                  {/* Hóspedes */}
-                  <Secao titulo="Hóspedes">
-                    {hospedesConferencia.length === 0 ? (
-                      <Text style={styles.vazio}>
-                        Nenhum hóspede cadastrado nesta reserva.
-                      </Text>
-                    ) : (
-                      hospedesConferencia.map((h) => (
-                        <View key={h.key} style={styles.hospedeItem}>
-                          <Text style={styles.hospedeRotulo}>
-                            {h.emoji} {h.rotulo}
-                            {h.isResponsavel ? " · Responsável" : ""}
-                          </Text>
-                          <Text style={styles.hospedeNome}>{h.nome}</Text>
-                          <HospedeMeta
-                            dataNascimento={h.dataNascimento}
-                            referenciaIdade={referenciaIdade}
-                            mostrarIdade={h.isCrianca}
+                  {/* Resumo | Período */}
+                  <View
+                    style={
+                      isDesktopLayout ? styles.gridRow : styles.gridStack
+                    }
+                  >
+                    <View
+                      style={
+                        isDesktopLayout ? styles.gridCell : undefined
+                      }
+                    >
+                      <Secao titulo="Resumo" stretch={isDesktopLayout}>
+                        {responsavel ? (
+                          <Linha label="Responsável" valor={responsavel} />
+                        ) : null}
+                        {(adultos > 0 || criancas > 0) && (
+                          <Linha
+                            label="Ocupantes"
+                            valor={`${adultos} ${adultos === 1 ? "adulto" : "adultos"}${
+                              criancas > 0
+                                ? ` · ${criancas} ${criancas === 1 ? "criança" : "crianças"}`
+                                : ""
+                            }`}
                           />
-                        </View>
-                      ))
-                    )}
-                  </Secao>
+                        )}
+                        <Linha label="Status" valor={badgeLabel} />
+                        {mensagemOp ? (
+                          <Linha label="Situação" valor={mensagemOp} />
+                        ) : null}
+                        {mensagemOpSec ? (
+                          <Text style={styles.hint}>{mensagemOpSec}</Text>
+                        ) : null}
+                      </Secao>
+                    </View>
+                    <View
+                      style={
+                        isDesktopLayout ? styles.gridCell : undefined
+                      }
+                    >
+                      <Secao titulo="Período" stretch={isDesktopLayout}>
+                        <Text style={styles.periodoLabel}>Check-in</Text>
+                        <Text style={styles.periodoValor}>
+                          {checkinIso
+                            ? formatDateTimeHospedagem(checkinIso)
+                            : "—"}
+                        </Text>
+                        <Text style={styles.seta}>↓</Text>
+                        <Text style={styles.periodoLabel}>Check-out</Text>
+                        <Text style={styles.periodoValor}>
+                          {checkoutIso
+                            ? formatDateTimeHospedagem(checkoutIso)
+                            : "—"}
+                        </Text>
+                        {noites > 0 ? (
+                          <Text style={styles.diarias}>
+                            {noites === 1 ? "1 diária" : `${noites} diárias`}
+                          </Text>
+                        ) : null}
+                      </Secao>
+                    </View>
+                  </View>
 
-                  {/* Pagamentos */}
-                  {pagamentos.length > 0 ? (
-                    <Secao titulo="Pagamentos">
-                      {pagamentos.map((p, idx) => (
-                        <View key={p.id}>
-                          {idx > 0 ? (
-                            <Text style={styles.setaCentro}>↓</Text>
-                          ) : null}
-                          <Text style={styles.pagForma}>
-                            {p.formaPagamentoLabel || p.formaPagamento}
-                          </Text>
-                          <Text style={styles.pagValor}>
-                            {formatCurrency(Number(p.valor))}
-                          </Text>
-                          <Text style={styles.pagHora}>
-                            {formatHoraCurta(p.dataPagamento)}
-                          </Text>
+                  {/* Financeiro | Observações */}
+                  <View
+                    style={
+                      isDesktopLayout ? styles.gridRow : styles.gridStack
+                    }
+                  >
+                    <View
+                      style={
+                        isDesktopLayout ? styles.gridCell : undefined
+                      }
+                    >
+                      <Secao titulo="Financeiro" stretch={isDesktopLayout}>
+                        {detalhe?.possivelPagamentoOta ? (
+                          <AlertaPossivelPagamentoOta
+                            canalLabel={
+                              detalhe.canalVendaLabel || detalhe.canalVenda
+                            }
+                            trecho={detalhe.possivelPagamentoOtaTrecho}
+                          />
+                        ) : null}
+                        <Linha
+                          label="Total"
+                          valor={formatCurrency(valorTotal)}
+                        />
+                        <Linha
+                          label="Recebido"
+                          valor={formatCurrency(valorPago)}
+                          valorStyle={{ color: COR_RECEBIDO }}
+                        />
+                        <Linha
+                          label="Saldo"
+                          valor={formatCurrency(saldoPendente)}
+                          valorStyle={{
+                            color:
+                              saldoPendente > 0.009
+                                ? COR_SALDO_PENDENTE
+                                : COR_RECEBIDO,
+                          }}
+                        />
+                        <Linha
+                          label="Situação"
+                          valor={situacaoFinanceira}
+                        />
+                        {detalhe?.resumoPagamentosCaixa &&
+                        detalhe.resumoPagamentosCaixa.totalRecebidoOta >
+                          0.009 ? (
+                          <Linha
+                            label="Recebido pela OTA"
+                            valor={formatCurrency(
+                              detalhe.resumoPagamentosCaixa.totalRecebidoOta,
+                            )}
+                            valorStyle={{ color: "#8a5a00" }}
+                          />
+                        ) : null}
+                        {mostrarBotaoReceberSaldo ? (
+                          <TouchableOpacity
+                            style={styles.btnReceberSaldo}
+                            onPress={() => {
+                              if (!reserva.idReservaHospedagem) return;
+                              openReceberSaldo({
+                                idReservaHospedagem:
+                                  reserva.idReservaHospedagem,
+                                saldoPendente,
+                                valorTotal,
+                                valorPago,
+                                suiteNome: suiteNomeExibicao,
+                                responsavel: responsavel || undefined,
+                                possivelPagamentoOta: Boolean(
+                                  detalhe?.possivelPagamentoOta,
+                                ),
+                                possivelPagamentoOtaTrecho:
+                                  detalhe?.possivelPagamentoOtaTrecho ?? null,
+                                canalVendaLabel:
+                                  detalhe?.canalVendaLabel ||
+                                  detalhe?.canalVenda ||
+                                  null,
+                              });
+                            }}
+                            activeOpacity={0.85}
+                          >
+                            <Text style={styles.btnReceberSaldoTexto}>
+                              Receber Saldo
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </Secao>
+                    </View>
+                    <View
+                      style={
+                        isDesktopLayout ? styles.gridCell : undefined
+                      }
+                    >
+                      <Secao titulo="Observações" stretch={isDesktopLayout}>
+                        <View
+                          style={
+                            isDesktopLayout
+                              ? styles.observacoesWrapDesktop
+                              : undefined
+                          }
+                        >
+                          <TextInput
+                            style={[
+                              styles.observacoesInput,
+                              isDesktopLayout &&
+                                styles.observacoesInputDesktop,
+                            ]}
+                            value={observacoesTexto}
+                            onChangeText={(texto) => {
+                              setObservacoesTexto(texto);
+                              setObservacoesSalvoOk(false);
+                              setObservacoesErro(null);
+                            }}
+                            onBlur={() => {
+                              void salvarObservacoes();
+                            }}
+                            placeholder="Observação não informada."
+                            placeholderTextColor="#888"
+                            multiline
+                            numberOfLines={isDesktopLayout ? undefined : 5}
+                            textAlignVertical="top"
+                            scrollEnabled
+                          />
+                          <View style={styles.observacoesStatusRow}>
+                            {observacoesSalvando ? (
+                              <Text style={styles.observacoesStatusTexto}>
+                                Salvando...
+                              </Text>
+                            ) : observacoesSalvoOk ? (
+                              <Text style={styles.observacoesStatusSalvo}>
+                                ✓ Salvo
+                              </Text>
+                            ) : observacoesErro ? (
+                              <Text style={styles.observacoesStatusErro}>
+                                {observacoesErro}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
-                      ))}
-                    </Secao>
-                  ) : null}
+                      </Secao>
+                    </View>
+                  </View>
 
-                  {/* Trocas de suíte */}
+                  {/* Origem | Próxima reserva */}
+                  <View
+                    style={
+                      isDesktopLayout ? styles.gridRow : styles.gridStack
+                    }
+                  >
+                    <View
+                      style={
+                        isDesktopLayout
+                          ? mostrarProximaReserva && proximaReserva
+                            ? styles.gridCell
+                            : styles.gridCellFull
+                          : undefined
+                      }
+                    >
+                      <Secao titulo="Origem" stretch={isDesktopLayout}>
+                        <OrigemReservaIndicador
+                          dados={detalhe ?? undefined}
+                          variante="sheet"
+                        />
+                        {mostrarAbaIntegracao ? (
+                          <TouchableOpacity
+                            onPress={() => setAbaAtiva("integracao")}
+                            style={styles.linkAbaOrigem}
+                            activeOpacity={0.85}
+                          >
+                            <Text style={styles.linkAbaOrigemTexto}>
+                              Ver detalhes da integração
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </Secao>
+                    </View>
+                    {mostrarProximaReserva && proximaReserva ? (
+                      <View
+                        style={
+                          isDesktopLayout ? styles.gridCell : undefined
+                        }
+                      >
+                        <Secao titulo="Próxima reserva" stretch={isDesktopLayout}>
+                          <ProximaReservaBloco resumo={proximaReserva} />
+                        </Secao>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Hóspedes | Pagamentos */}
+                  <View
+                    style={
+                      isDesktopLayout ? styles.gridRow : styles.gridStack
+                    }
+                  >
+                    <View
+                      style={
+                        isDesktopLayout
+                          ? pagamentos.length > 0
+                            ? styles.gridCell
+                            : styles.gridCellFull
+                          : undefined
+                      }
+                    >
+                      <Secao titulo="Hóspedes" stretch={isDesktopLayout}>
+                        {hospedesConferencia.length === 0 ? (
+                          <Text style={styles.vazio}>
+                            Nenhum hóspede cadastrado nesta reserva.
+                          </Text>
+                        ) : (
+                          hospedesConferencia.map((h) => (
+                            <View key={h.key} style={styles.hospedeItem}>
+                              <Text style={styles.hospedeRotulo}>
+                                {h.emoji} {h.rotulo}
+                                {h.isResponsavel ? " · Responsável" : ""}
+                              </Text>
+                              <Text style={styles.hospedeNome}>{h.nome}</Text>
+                              <HospedeMeta
+                                dataNascimento={h.dataNascimento}
+                                referenciaIdade={referenciaIdade}
+                                mostrarIdade={h.isCrianca}
+                              />
+                            </View>
+                          ))
+                        )}
+                      </Secao>
+                    </View>
+                    {pagamentos.length > 0 ? (
+                      <View
+                        style={
+                          isDesktopLayout ? styles.gridCell : undefined
+                        }
+                      >
+                        <Secao titulo="Pagamentos" stretch={isDesktopLayout}>
+                          {pagamentos.map((p, idx) => (
+                            <View key={p.id}>
+                              {idx > 0 ? (
+                                <Text style={styles.setaCentro}>↓</Text>
+                              ) : null}
+                              <Text style={styles.pagForma}>
+                                {p.formaPagamentoLabel || p.formaPagamento}
+                                {p.contaNoCaixa === false
+                                  ? " · fora do caixa"
+                                  : ""}
+                              </Text>
+                              <Text style={styles.pagValor}>
+                                {formatCurrency(Number(p.valor))}
+                              </Text>
+                              <Text style={styles.pagHora}>
+                                {formatHoraCurta(p.dataPagamento)}
+                              </Text>
+                            </View>
+                          ))}
+                        </Secao>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Trocas de suíte — largura total */}
                   {movimentacoes.length > 0 ? (
                     <Secao titulo="Trocas de suíte">
                       {movimentacoes.map((m, idx) => (
@@ -735,7 +1003,7 @@ export default function ReservaOperacaoSheet({
                     </Secao>
                   ) : null}
 
-                  {/* Histórico */}
+                  {/* Histórico — largura total */}
                   <Secao titulo="Histórico">
                     {timeline.length === 0 ? (
                       <Text style={styles.vazio}>
@@ -777,7 +1045,7 @@ export default function ReservaOperacaoSheet({
                         setErroAcao(MSG_CHECKIN_BLOQUEADO_SALDO);
                         return;
                       }
-                      if (podeExecutarCheckin) setConfirmMode("checkin");
+                      if (podeExecutarCheckin) abrirConfirmacao("checkin");
                     }}
                     disabled={executando || loading || bloqueadoPorSaldo}
                     activeOpacity={0.85}
@@ -800,7 +1068,7 @@ export default function ReservaOperacaoSheet({
                     !podeExecutarCheckout && styles.btnDesabilitado,
                   ]}
                   onPress={() => {
-                    if (podeExecutarCheckout) setConfirmMode("checkout");
+                    if (podeExecutarCheckout) abrirConfirmacao("checkout");
                   }}
                   disabled={!podeExecutarCheckout}
                   activeOpacity={0.85}
@@ -862,10 +1130,46 @@ export default function ReservaOperacaoSheet({
           <View style={styles.confirmBox}>
             <Text style={styles.confirmTitulo}>{confirmTitulo}</Text>
             <Text style={styles.confirmSub}>{confirmSub}</Text>
+
+            <Text style={styles.confirmLabel}>
+              {confirmMode === "checkout"
+                ? "Data/hora do check-out"
+                : "Data/hora do check-in"}
+            </Text>
+            <View style={styles.confirmDateTimeRow}>
+              <View style={styles.confirmDateField}>
+                <DatePickerComponente
+                  value={operacaoDate}
+                  onChange={(d) => {
+                    setOperacaoDate(d);
+                    setErroConfirmacao(null);
+                  }}
+                />
+              </View>
+              <View style={styles.confirmTimeField}>
+                <TimePickerComponente
+                  value={operacaoTime}
+                  onChange={(t) => {
+                    setOperacaoTime(t);
+                    setErroConfirmacao(null);
+                  }}
+                />
+              </View>
+            </View>
+            <Text style={styles.confirmHint}>
+              Padrão: agora. Altere apenas para registro retroativo.
+            </Text>
+            {erroConfirmacao ? (
+              <Text style={styles.confirmErro}>{erroConfirmacao}</Text>
+            ) : null}
+
             <View style={styles.confirmBtns}>
               <TouchableOpacity
                 style={styles.btnCancelar}
-                onPress={() => setConfirmMode(null)}
+                onPress={() => {
+                  setConfirmMode(null);
+                  setErroConfirmacao(null);
+                }}
                 disabled={executando}
               >
                 <Text style={styles.btnCancelarTexto}>Cancelar</Text>
@@ -918,14 +1222,21 @@ export default function ReservaOperacaoSheet({
 function Secao({
   titulo,
   children,
+  stretch = false,
 }: {
   titulo: string;
   children: React.ReactNode;
+  /** Desktop: preenche a altura da célula do grid. */
+  stretch?: boolean;
 }) {
   return (
-    <View style={styles.secao}>
+    <View style={[styles.secao, stretch && styles.secaoStretch]}>
       <Text style={styles.secaoTitulo}>{titulo}</Text>
-      <View style={styles.secaoCorpo}>{children}</View>
+      <View
+        style={[styles.secaoCorpo, stretch && styles.secaoCorpoStretch]}
+      >
+        {children}
+      </View>
     </View>
   );
 }
@@ -1127,6 +1438,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
   },
+  backdropDesktop: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+  },
   sheet: {
     backgroundColor: colors.branco,
     borderTopLeftRadius: 20,
@@ -1135,6 +1452,15 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 32 : 24,
     paddingTop: 8,
     maxHeight: "92%",
+  },
+  sheetDesktop: {
+    width: "100%",
+    maxWidth: 1320,
+    maxHeight: "90%",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    alignSelf: "center",
   },
   handle: {
     alignSelf: "center",
@@ -1255,6 +1581,25 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  gridStack: {
+    gap: 12,
+  },
+  gridRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 12,
+  },
+  gridCell: {
+    flex: 1,
+    minWidth: 0,
+    alignSelf: "stretch",
+  },
+  gridCellFull: {
+    flex: 1,
+    width: "100%",
+    minWidth: 0,
+    alignSelf: "stretch",
+  },
   secao: {
     borderWidth: 1,
     borderColor: colors.line,
@@ -1262,6 +1607,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: "#fafbfc",
+  },
+  secaoStretch: {
+    flex: 1,
+    alignSelf: "stretch",
   },
   secaoTitulo: {
     fontSize: 12,
@@ -1273,6 +1622,10 @@ const styles = StyleSheet.create({
   },
   secaoCorpo: {
     gap: 8,
+  },
+  secaoCorpoStretch: {
+    flex: 1,
+    minHeight: 0,
   },
   linha: {
     gap: 2,
@@ -1340,15 +1693,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#888",
   },
-  observacoesTexto: {
+  observacoesInput: {
+    minHeight: 110,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    backgroundColor: colors.branco,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 14,
     color: "#333",
     lineHeight: 20,
   },
-  observacoesVazio: {
-    fontSize: 14,
+  observacoesWrapDesktop: {
+    flex: 1,
+    minHeight: 0,
+    gap: 6,
+  },
+  observacoesInputDesktop: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+  },
+  observacoesStatusRow: {
+    minHeight: 18,
+    marginTop: 6,
+  },
+  observacoesStatusTexto: {
+    fontSize: 12,
     color: "#888",
-    fontStyle: "italic",
+  },
+  observacoesStatusSalvo: {
+    fontSize: 12,
+    color: "#2e7d32",
+    fontWeight: "600",
+  },
+  observacoesStatusErro: {
+    fontSize: 12,
+    color: "#c62828",
   },
   hospedeItem: {
     backgroundColor: colors.branco,
@@ -1490,7 +1872,35 @@ const styles = StyleSheet.create({
   confirmSub: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 20,
+    marginBottom: 14,
+  },
+  confirmLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.cinza,
+    marginBottom: 6,
+  },
+  confirmDateTimeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 6,
+  },
+  confirmDateField: {
+    flex: 1.2,
+  },
+  confirmTimeField: {
+    flex: 1,
+  },
+  confirmHint: {
+    fontSize: 12,
+    color: "#888",
+    marginBottom: 12,
+  },
+  confirmErro: {
+    fontSize: 13,
+    color: "#c0392b",
+    marginBottom: 10,
+    fontWeight: "600",
   },
   confirmBtns: {
     flexDirection: "row",

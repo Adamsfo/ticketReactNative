@@ -2,10 +2,7 @@ import { addDays, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import {
   DiaCalendarioSuites,
-  EventoAgendaSuite,
-  getReservasAdmin,
   getSuitesOperacionais,
-  ReservaAdminCard,
   SuiteOperacionalCard,
 } from "@/src/lib/hospedagemAdmin";
 
@@ -33,6 +30,11 @@ export type BarraAgendaReserva = {
   saldoPendente?: number;
   dataHoraCheckinReal?: string | null;
   dataHoraCheckoutRealizado?: string | null;
+  /**
+   * Dias civis em que o calendário das Suítes marcou a reserva como ocupante
+   * (`classificarReservaNoDia` / `agendaOcupada`) — mesma fonte dos cards.
+   */
+  diasOcupados: string[];
 };
 
 const MESES_PT = [
@@ -88,52 +90,38 @@ function chaveBarra(idReserva: number, idSuite: number): string {
   return `${idReserva}-${idSuite}`;
 }
 
-function diaInicioMs(data: string): number {
-  return parseISO(`${data}T00:00:00`).getTime();
-}
-
-function diaFimMs(data: string): number {
-  return parseISO(`${data}T23:59:59.999`).getTime();
-}
-
-/** Posição da barra na grade (hotelaria: check-in 16:00 → check-out 13:00).
- * Inicia na metade do dia de check-in e termina na metade do dia de check-out. */
+/**
+ * Posição da barra na grade — somente nos dias que o calendário das Suítes
+ * marcou como ocupados (`diasOcupados`), alinhado aos cards.
+ * Meia célula no dia civil de check-in / check-out (hotelaria).
+ */
 export function calcularGeometriaBarra(
   inicio: string,
   fim: string,
   diasVisiveis: string[],
   dayWidth = AGENDA_DAY_WIDTH,
+  diasOcupados: string[] = [],
 ): { left: number; width: number } | null {
-  const ci = new Date(inicio).getTime();
-  const co = new Date(fim).getTime();
-  if (!(co > ci)) return null;
+  const ocupadosSet = new Set(diasOcupados);
+  const indices = diasVisiveis
+    .map((data, idx) => ({ data, idx }))
+    .filter(({ data }) => ocupadosSet.has(data))
+    .map(({ idx }) => idx);
 
-  let firstIdx = -1;
-  let lastIdx = -1;
+  if (!indices.length) return null;
 
-  diasVisiveis.forEach((data, idx) => {
-    const inicioDia = diaInicioMs(data);
-    const fimDia = diaFimMs(data);
-    if (ci < fimDia && co > inicioDia) {
-      if (firstIdx === -1) firstIdx = idx;
-      lastIdx = idx;
-    }
-  });
-
-  if (firstIdx === -1 || lastIdx === -1) return null;
-
+  const firstIdx = indices[0];
+  const lastIdx = indices[indices.length - 1];
   const half = dayWidth / 2;
   const checkinDia = dataCuiabaFromIso(inicio);
   const checkoutDia = dataCuiabaFromIso(fim);
   const pad = 2;
 
-  // Check-in 16:00 → começa na metade; se a reserva já estava ativa no início da janela, ocupa desde o início do dia.
   const startX =
     checkinDia === diasVisiveis[firstIdx]
       ? firstIdx * dayWidth + half
       : firstIdx * dayWidth;
 
-  // Check-out 13:00 → termina na metade; se o check-out fica fora da janela, ocupa até o fim do último dia.
   const endX =
     checkoutDia === diasVisiveis[lastIdx]
       ? lastIdx * dayWidth + half
@@ -148,15 +136,20 @@ export function calcularGeometriaBarra(
   };
 }
 
-function extrairEventosCalendario(
-  dias: { eventosAgenda?: EventoAgendaSuite[] }[],
+/**
+ * Barras somente a partir de `meta.calendario.eventosAgenda`
+ * (mesmo `SuiteDisponibilidadeService` / `classificarReservaNoDia` dos cards).
+ */
+function extrairBarrasDoCalendarioSuites(
+  dias: DiaCalendarioSuites[],
 ): Map<string, BarraAgendaReserva> {
   const map = new Map<string, BarraAgendaReserva>();
 
   for (const dia of dias) {
     for (const ev of dia.eventosAgenda ?? []) {
       const key = chaveBarra(ev.idReservaHospedagem, ev.idEventoSuite);
-      if (!map.has(key)) {
+      const existente = map.get(key);
+      if (!existente) {
         map.set(key, {
           id: key,
           idReservaHospedagem: ev.idReservaHospedagem,
@@ -168,7 +161,11 @@ function extrairEventosCalendario(
           responsavel: ev.responsavel,
           dataHoraCheckinReal: ev.dataHoraCheckinReal ?? null,
           dataHoraCheckoutRealizado: ev.dataHoraCheckoutRealizado ?? null,
+          diasOcupados: [dia.data],
         });
+      } else if (!existente.diasOcupados.includes(dia.data)) {
+        existente.diasOcupados.push(dia.data);
+        existente.diasOcupados.sort();
       }
     }
   }
@@ -176,59 +173,11 @@ function extrairEventosCalendario(
   return map;
 }
 
-function mesclarReservasAdmin(
-  map: Map<string, BarraAgendaReserva>,
-  reservas: ReservaAdminCard[],
-  suites: SuiteOperacionalCard[],
-  diasVisiveis: string[],
-) {
-  const inicioJanela = diaInicioMs(diasVisiveis[0]);
-  const fimJanela = diaFimMs(diasVisiveis[diasVisiveis.length - 1]);
-
-  for (const r of reservas) {
-    const ci = new Date(r.checkin).getTime();
-    const co = new Date(r.checkout).getTime();
-    if (co <= inicioJanela || ci >= fimJanela) continue;
-
-    const suite = suites.find((s) => s.nome === r.nomeSuite);
-    if (!suite) continue;
-
-    const key = chaveBarra(r.idReservaHospedagem, suite.idEventoSuite);
-    const existente = map.get(key);
-
-    map.set(key, {
-      id: key,
-      idReservaHospedagem: r.idReservaHospedagem,
-      idEventoSuite: suite.idEventoSuite,
-      suiteNome: r.nomeSuite,
-      inicio: existente?.inicio ?? r.checkin,
-      fim:
-        existente?.fim ??
-        (r as ReservaAdminCard & { dataHoraCheckoutRealizado?: string | null })
-          .dataHoraCheckoutRealizado ??
-        r.checkout,
-      status: r.status || existente?.status || "Confirmada",
-      responsavel:
-        r.responsavel || r.nomeResponsavel || existente?.responsavel || null,
-      adultos: r.adultos,
-      criancas: r.criancas,
-      valorTotal: r.valorTotal,
-      valorPago: r.valorPago ?? existente?.valorPago,
-      saldoPendente: r.saldoPendente ?? existente?.saldoPendente,
-      dataHoraCheckinReal:
-        (r as ReservaAdminCard & { dataHoraCheckinReal?: string | null })
-          .dataHoraCheckinReal ??
-        existente?.dataHoraCheckinReal ??
-        null,
-      dataHoraCheckoutRealizado:
-        (r as ReservaAdminCard & { dataHoraCheckoutRealizado?: string | null })
-          .dataHoraCheckoutRealizado ??
-        existente?.dataHoraCheckoutRealizado ??
-        null,
-    });
-  }
-}
-
+/**
+ * Dados da Agenda = mesma API/estrutura operacional das Suítes
+ * (`getSuitesOperacionais` → `meta.calendario` via SuiteDisponibilidadeService).
+ * Não mescla listagem de reservas nem recalcula ocupação no cliente.
+ */
 export async function carregarDadosAgenda(
   dataInicio: string,
   range: AgendaRange,
@@ -249,46 +198,28 @@ export async function carregarDadosAgenda(
   });
   const suites = suitesResp.data ?? [];
 
-  const barrasMap = new Map<string, BarraAgendaReserva>();
   const diasCalendario: DiaCalendarioSuites[] = [];
   const diasVistos = new Set<string>();
 
   for (const mes of meses) {
-    const resp = await getSuitesOperacionais({
-      filtro: "todas",
-      data: `${mes}-01`,
-      mes,
-    });
+    const resp =
+      mes === mesPrincipal
+        ? suitesResp
+        : await getSuitesOperacionais({
+            filtro: "todas",
+            data: `${mes}-01`,
+            mes,
+          });
     for (const dia of resp.meta?.calendario?.dias ?? []) {
       if (diasVistos.has(dia.data)) continue;
       diasVistos.add(dia.data);
       diasCalendario.push(dia);
     }
-    const eventos = extrairEventosCalendario(
-      resp.meta?.calendario?.dias ?? [],
-    );
-    for (const [k, v] of eventos) {
-      if (!barrasMap.has(k)) barrasMap.set(k, v);
-    }
   }
 
-  try {
-    const reservasResp = await getReservasAdmin({
-      filtro: "todos",
-      page: 1,
-      pageSize: 200,
-    });
-    mesclarReservasAdmin(
-      barrasMap,
-      reservasResp.data ?? [],
-      suites,
-      diasVisiveis,
-    );
-  } catch {
-    // Mantém apenas eventos do calendário se a listagem falhar
-  }
+  const barrasMap = extrairBarrasDoCalendarioSuites(diasCalendario);
 
-  // Geometria: check-out real encerra a barra no horário efetivo (não recalcula disponibilidade).
+  // Check-out real encerra a barra no horário efetivo (já vem do evento do calendário).
   for (const barra of barrasMap.values()) {
     if (barra.dataHoraCheckoutRealizado) {
       barra.fim = barra.dataHoraCheckoutRealizado;
@@ -298,7 +229,13 @@ export async function carregarDadosAgenda(
 
   const barras = Array.from(barrasMap.values()).filter((b) =>
     Boolean(
-      calcularGeometriaBarra(b.inicio, b.fim, diasVisiveis, AGENDA_DAY_WIDTH),
+      calcularGeometriaBarra(
+        b.inicio,
+        b.fim,
+        diasVisiveis,
+        AGENDA_DAY_WIDTH,
+        b.diasOcupados,
+      ),
     ),
   );
 
@@ -341,10 +278,9 @@ export type SlotDisponivelAgenda = {
 };
 
 /**
- * Slots clicáveis na Agenda — somente flags do SuiteDisponibilidadeService
- * (`podeReservar` / `disponivelAposCheckout` / `agendaOcupada`).
- * Mantém a UX esparsa: suíte sem ocupação → primeiro dia reservável;
- * com ocupação → dias de disponível após checkout.
+ * Slots verdes da Agenda = mesmos dias em que a aba Suítes permite Nova Reserva.
+ * Usa apenas `podeReservar` / `disponivelAposCheckout` de
+ * `disponibilidadePorSuite` (SuiteDisponibilidadeService) — sem filtro esparso.
  */
 export function slotsDisponiveisDaAgenda(
   idEventoSuite: number,
@@ -354,28 +290,19 @@ export function slotsDisponiveisDaAgenda(
   if (!diasVisiveis.length) return [];
 
   const byData = new Map(diasCalendario.map((d) => [d.data, d]));
-  const infos = diasVisiveis.map((data) => {
-    const info = byData
-      .get(data)
-      ?.disponibilidadePorSuite?.find((s) => s.idEventoSuite === idEventoSuite);
-    return { data, info };
-  });
 
-  const temOcupacao = infos.some((i) => i.info?.agendaOcupada);
-  if (!temOcupacao) {
-    const primeiro = infos.find((i) => i.info?.podeReservar);
-    return primeiro
-      ? [{ data: primeiro.data, modo: "cheia" }]
-      : [];
-  }
-
-  return infos
-    .filter(
-      (i) =>
-        Boolean(i.info?.podeReservar) &&
-        Boolean(i.info?.disponivelAposCheckout),
-    )
-    .map((i) => ({ data: i.data, modo: "meia" as const }));
+  return diasVisiveis
+    .map((data) => {
+      const info = byData
+        .get(data)
+        ?.disponibilidadePorSuite?.find((s) => s.idEventoSuite === idEventoSuite);
+      return { data, info };
+    })
+    .filter((i) => Boolean(i.info?.podeReservar))
+    .map((i) => ({
+      data: i.data,
+      modo: i.info?.disponivelAposCheckout ? ("meia" as const) : ("cheia" as const),
+    }));
 }
 
 export type AgendaNovaReservaPrefill = {

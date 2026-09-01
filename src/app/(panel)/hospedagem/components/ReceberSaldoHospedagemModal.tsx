@@ -40,6 +40,7 @@ import { useAuth } from "@/src/contexts_/AuthContext";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemContext";
 import ComprovanteUploader from "./ComprovanteUploader";
+import AlertaPossivelPagamentoOta from "./AlertaPossivelPagamentoOta";
 
 const FORMAS_TEF: FormaPagamentoRecepcao[] = [
   "CartaoCredito",
@@ -139,7 +140,9 @@ export default function ReceberSaldoHospedagemModal() {
     setDigitosValor(valorParaDigitosCentavos(saldoInicial));
     setDetalhe(null);
     setErro(null);
-    setFormaPagamento(null);
+    setFormaPagamento(
+      target.possivelPagamentoOta ? "RECEBIDO_OTA" : null,
+    );
     setComprovante(null);
     setObservacao("");
     setPaymentUniqueId("");
@@ -505,6 +508,28 @@ export default function ReceberSaldoHospedagemModal() {
                 <Text style={[styles.label, { marginTop: 12 }]}>
                   Forma de pagamento
                 </Text>
+                {(target.possivelPagamentoOta ||
+                  detalhe?.possivelPagamentoOta) && (
+                  <View style={{ marginBottom: 8 }}>
+                    <AlertaPossivelPagamentoOta
+                      compact
+                      canalLabel={
+                        target.canalVendaLabel ||
+                        detalhe?.canalVendaLabel ||
+                        detalhe?.canalVenda
+                      }
+                      trecho={
+                        target.possivelPagamentoOtaTrecho ||
+                        detalhe?.possivelPagamentoOtaTrecho
+                      }
+                    />
+                    <Text style={styles.hintOta}>
+                      Se o pagamento foi pela plataforma, use{" "}
+                      <Text style={styles.hintOtaBold}>Recebido pela OTA</Text>{" "}
+                      — o valor não entra no caixa.
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.formasWrap}>
                   {FORMAS_PAGAMENTO_RECEPCAO.map((f) => {
                     const ativo = formaPagamento === f.value;
@@ -803,6 +828,16 @@ const styles = StyleSheet.create({
   },
   formaChipTextAtivo: {
     color: colors.branco,
+  },
+  hintOta: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#6b5500",
+    marginBottom: 4,
+  },
+  hintOtaBold: {
+    fontWeight: "800",
+    color: "#5c4500",
   },
   aposBox: {
     marginTop: 14,

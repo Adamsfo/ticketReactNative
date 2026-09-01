@@ -48,12 +48,13 @@ export type ReservaOperacaoRef = {
 /** Executa check-in via único endpoint do backend. */
 export async function executarCheckinOperacional(
   idReservaHospedagem: number,
+  dataHora?: string | null,
 ): Promise<{
   success: boolean;
   message?: string;
   data?: ReservaAdminDetalhe;
 }> {
-  const resp = await postRealizarCheckin(idReservaHospedagem);
+  const resp = await postRealizarCheckin(idReservaHospedagem, dataHora);
   return {
     success: Boolean(resp.success),
     message: resp.message,
@@ -64,12 +65,13 @@ export async function executarCheckinOperacional(
 /** Executa check-out via único endpoint do backend. */
 export async function executarCheckoutOperacional(
   idReservaHospedagem: number,
+  dataHora?: string | null,
 ): Promise<{
   success: boolean;
   message?: string;
   data?: ReservaAdminDetalhe;
 }> {
-  const resp = await postRealizarCheckout(idReservaHospedagem);
+  const resp = await postRealizarCheckout(idReservaHospedagem, dataHora);
   return {
     success: Boolean(resp.success),
     message: resp.message,
