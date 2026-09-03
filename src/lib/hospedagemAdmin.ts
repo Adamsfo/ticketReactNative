@@ -447,6 +447,20 @@ export function labelStatusReserva(status: StatusReservaAdmin): string {
   );
 }
 
+/** Status persistido no banco (statusOriginal) — elegível para cancelamento admin. */
+export function podeExibirCancelamentoReservaAdmin(
+  input?: {
+    statusOriginal?: string | null;
+    status?: string | null;
+  } | null,
+  statusFallback?: string | null,
+): boolean {
+  const status = String(
+    input?.statusOriginal ?? statusFallback ?? "",
+  ).trim();
+  return status === "Confirmada" || status === "AguardandoPagamento";
+}
+
 export function corStatusSuiteOperacional(status: StatusOperacionalSuite): string {
   return corStatusOperacionalHospedagem(status);
 }
@@ -509,6 +523,18 @@ export async function getReservaAdminDetalhe(
   );
 }
 
+/** Vincula o responsável da reserva a um cliente Jango (id_cliente). */
+export async function atualizarUsuarioReserva(
+  idReserva: number,
+  idCliente: number,
+): Promise<ApiResponse<unknown>> {
+  return api.request<unknown>(
+    `/hospedagem/reservas/${idReserva}/usuario`,
+    "PATCH",
+    { id_cliente: idCliente },
+  );
+}
+
 /** Token leve para o RefreshManager (polling sem recarregar listas). */
 export async function getHospedagemRefreshVersion(): Promise<
   ApiResponse<{ version: string }>
@@ -540,6 +566,18 @@ export async function postRealizarCheckout(
     `/hospedagem/reservas/${idReservaHospedagem}/checkout`,
     "POST",
     dataHora ? { dataHora } : null,
+  );
+}
+
+/** Cancelamento administrativo da reserva (soft delete de status). */
+export async function postCancelarReservaHospedagem(
+  idReservaHospedagem: number,
+  motivo: string,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/cancelar`,
+    "POST",
+    { motivo },
   );
 }
 

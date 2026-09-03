@@ -5,11 +5,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
-  Dimensions,
   RefreshControl,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
+import CadastroClienteRapido from "../components/CadastroClienteRapido";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "expo-router";
@@ -21,12 +24,16 @@ import BarMenu from "@/src/components/BarMenu";
 import colors from "@/src/constants/colors";
 import formatCurrency from "@/src/components/FormatCurrency";
 import {
+  atualizarUsuarioReserva,
   corStatusReserva,
   getReservaAdminDetalhe,
   labelStatusReserva,
+  postCancelarReservaHospedagem,
   postReenviarLinkPagamentoReserva,
+  podeExibirCancelamentoReservaAdmin,
   ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
+import { Usuario } from "@/src/types/geral";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
 import AlertaPossivelPagamentoOta from "../components/AlertaPossivelPagamentoOta";
@@ -35,8 +42,8 @@ import {
   useReceberSaldoHospedagem,
 } from "../contexts/ReceberSaldoHospedagemContext";
 import ReceberSaldoHospedagemModal from "../components/ReceberSaldoHospedagemModal";
-
-const { width } = Dimensions.get("window");
+import { isHospedeSemCpf, textoObservacoesReserva } from "@/src/lib/hospedagemHospedes";
+import { HospedagemAdminRefreshProvider, useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 
 function formatDateTime(iso: string): string {
   try {
@@ -57,10 +64,12 @@ function labelTipoHospede(tipo: string): string {
 
 export default function HospedagemReservaDetalhePage() {
   return (
-    <ReceberSaldoHospedagemProvider>
-      <HospedagemReservaDetalheContent />
-      <ReceberSaldoHospedagemModal />
-    </ReceberSaldoHospedagemProvider>
+    <HospedagemAdminRefreshProvider>
+      <ReceberSaldoHospedagemProvider>
+        <HospedagemReservaDetalheContent />
+        <ReceberSaldoHospedagemModal />
+      </ReceberSaldoHospedagemProvider>
+    </HospedagemAdminRefreshProvider>
   );
 }
 
@@ -68,15 +77,25 @@ function HospedagemReservaDetalheContent() {
   const navigation = useNavigation() as any;
   const route = useRoute();
   const { openReceberSaldo } = useReceberSaldoHospedagem();
+  const { notifyOperacaoConcluida } = useHospedagemAdminRefresh();
   const { idReserva } = (route.params || {}) as { idReserva?: number };
   const id = Number(idReserva);
 
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalCancelarOpen, setModalCancelarOpen] = useState(false);
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
+  const [cancelandoReserva, setCancelandoReserva] = useState(false);
+  const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [reserva, setReserva] = useState<ReservaAdminDetalhe | null>(null);
   const [reenviandoLink, setReenviandoLink] = useState(false);
   const [msgLink, setMsgLink] = useState<string | null>(null);
+  const [erroCadastroCliente, setErroCadastroCliente] = useState<string | null>(
+    null,
+  );
+  const [vinculandoCliente, setVinculandoCliente] = useState(false);
 
   const carregar = useCallback(
     async (isRefresh = false) => {
@@ -116,6 +135,33 @@ function HospedagemReservaDetalheContent() {
     }, [carregar]),
   );
 
+  const handleOnCadastrado = async (usuario: Usuario) => {
+    const idCliente = Number(usuario.id_cliente);
+    if (!reserva?.id || !Number.isFinite(idCliente) || idCliente <= 0) {
+      setErroCadastroCliente(
+        "Cliente cadastrado, mas sem id_cliente para vincular à reserva.",
+      );
+      return;
+    }
+    setVinculandoCliente(true);
+    setErroCadastroCliente(null);
+    try {
+      const resp = await atualizarUsuarioReserva(reserva.id, idCliente);
+      if (!resp.success) {
+        setErroCadastroCliente(
+          resp.message || "Não foi possível vincular o cliente à reserva.",
+        );
+        return;
+      }
+      setModalOpen(false);
+      await carregar(true);
+    } catch {
+      setErroCadastroCliente("Erro ao vincular o cliente à reserva.");
+    } finally {
+      setVinculandoCliente(false);
+    }
+  };
+
   const handleReenviarLink = async () => {
     if (!reserva?.id) return;
     setReenviandoLink(true);
@@ -135,13 +181,55 @@ function HospedagemReservaDetalheContent() {
     }
   };
 
+  const abrirModalCancelar = () => {
+    setMotivoCancelamento("");
+    setErroCancelamento(null);
+    setModalCancelarOpen(true);
+  };
+
+  const handleConfirmarCancelamento = async () => {
+    if (!reserva?.id) return;
+    const motivo = motivoCancelamento.trim();
+    if (!motivo) {
+      setErroCancelamento("Informe o motivo do cancelamento.");
+      return;
+    }
+
+    setCancelandoReserva(true);
+    setErroCancelamento(null);
+    try {
+      const resp = await postCancelarReservaHospedagem(reserva.id, motivo);
+      if (!resp.success || !resp.data) {
+        setErroCancelamento(resp.message || "Não foi possível cancelar a reserva.");
+        return;
+      }
+      setReserva(resp.data);
+      setModalCancelarOpen(false);
+      setMotivoCancelamento("");
+      notifyOperacaoConcluida();
+    } catch {
+      setErroCancelamento("Erro ao cancelar a reserva.");
+    } finally {
+      setCancelandoReserva(false);
+    }
+  };
+
   const status = reserva?.status ?? "Confirmada";
   const cor = corStatusReserva(status);
   const podeReenviarLink =
     (reserva?.statusOriginal === "AguardandoPagamento" ||
       status === "AguardandoPagamento") &&
-    Boolean(reserva?.tokenPagamento || reserva?.linkPagamento || reserva?.idTransacao);
+    Boolean(
+      reserva?.tokenPagamento ||
+        reserva?.linkPagamento ||
+        reserva?.idTransacao,
+    );
   const pagamento = reserva?.pagamento ?? null;
+  const nomeResponsavel =
+    reserva?.nomeResponsavel || reserva?.responsavel || "";
+  const mostrarCadastrarCliente = isHospedeSemCpf(nomeResponsavel);
+  const observacoesReservaCadastro = textoObservacoesReserva(reserva);
+  const exibirBotaoCancelar = podeExibirCancelamentoReservaAdmin(reserva);
   const totalDescontoReserva = (reserva?.suites ?? []).reduce((sum, suite) => {
     if (
       suite.valorOriginal != null &&
@@ -154,7 +242,11 @@ function HospedagemReservaDetalheContent() {
     return sum;
   }, 0);
   const valorOriginalReserva = (reserva?.suites ?? []).reduce((sum, suite) => {
-    if (suite.valorOriginal != null && suite.descontoValor != null && suite.descontoValor > 0) {
+    if (
+      suite.valorOriginal != null &&
+      suite.descontoValor != null &&
+      suite.descontoValor > 0
+    ) {
       return sum + suite.valorOriginal;
     }
     return sum + (suite.valorTotal ?? suite.preco ?? 0);
@@ -231,6 +323,7 @@ function HospedagemReservaDetalheContent() {
                       )}
                     </TouchableOpacity>
                   ) : null}
+
                   {msgLink ? (
                     <Text style={styles.msgLink}>{msgLink}</Text>
                   ) : null}
@@ -242,14 +335,32 @@ function HospedagemReservaDetalheContent() {
                   {reserva.evento?.nome ? (
                     <Text style={styles.subtitulo}>{reserva.evento.nome}</Text>
                   ) : null}
-                  <Text style={styles.responsavel}>
-                    {reserva.nomeResponsavel || reserva.responsavel}
-                  </Text>
+                  <Text style={styles.responsavel}>{nomeResponsavel}</Text>
                   {reserva.telefone ? (
                     <Text style={styles.meta}>{reserva.telefone}</Text>
                   ) : null}
                   {reserva.email ? (
                     <Text style={styles.meta}>{reserva.email}</Text>
+                  ) : null}
+
+                  {mostrarCadastrarCliente ? (
+                    <TouchableOpacity
+                      style={styles.botaoCadastrarCliente}
+                      onPress={() => {
+                        setErroCadastroCliente(null);
+                        setModalOpen(true);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Feather
+                        name="user-plus"
+                        size={16}
+                        color={colors.branco}
+                      />
+                      <Text style={styles.botaoCadastrarClienteTexto}>
+                        Cadastrar cliente
+                      </Text>
+                    </TouchableOpacity>
                   ) : null}
                 </View>
 
@@ -337,7 +448,11 @@ function HospedagemReservaDetalheContent() {
                           </View>
                           <Text style={styles.suiteValor}>
                             Valor final:{" "}
-                            {formatCurrency(suite.valorFinal ?? suite.valorTotal ?? suite.preco)}
+                            {formatCurrency(
+                              suite.valorFinal ??
+                                suite.valorTotal ??
+                                suite.preco,
+                            )}
                           </Text>
                         </>
                       ) : (
@@ -487,12 +602,14 @@ function HospedagemReservaDetalheContent() {
             <TouchableOpacity style={styles.botaoAcao} onPress={() => {}}>
               <Text style={styles.botaoAcaoTexto}>Editar</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.botaoAcao, styles.botaoDanger]}
-              onPress={() => {}}
-            >
-              <Text style={styles.botaoAcaoTexto}>Cancelar</Text>
-            </TouchableOpacity>
+            {exibirBotaoCancelar ? (
+              <TouchableOpacity
+                style={[styles.botaoAcao, styles.botaoDanger]}
+                onPress={abrirModalCancelar}
+              >
+                <Text style={styles.botaoAcaoTexto}>Cancelar</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={[styles.botaoAcao, styles.botaoSuccess]}
               onPress={() => {}}
@@ -508,6 +625,108 @@ function HospedagemReservaDetalheContent() {
           </View>
         ) : null}
       </View>
+
+      <Modal
+        visible={modalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!vinculandoCliente) setModalOpen(false);
+        }}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              if (!vinculandoCliente) setModalOpen(false);
+            }}
+          >
+            <View style={styles.overlay} />
+          </TouchableWithoutFeedback>
+          <View
+            style={[
+              styles.modalContent,
+              observacoesReservaCadastro.length > 0 && styles.modalContentLargo,
+            ]}
+          >
+            {vinculandoCliente ? (
+              <View style={styles.vinculandoBox}>
+                <ActivityIndicator size="large" color={colors.azul} />
+                <Text style={styles.estadoTexto}>
+                  Vinculando cliente à reserva...
+                </Text>
+              </View>
+            ) : (
+              <>
+                <CadastroClienteRapido
+                  onCadastrado={handleOnCadastrado}
+                  onCancelar={() => setModalOpen(false)}
+                  observacoesReserva={observacoesReservaCadastro}
+                />
+                {erroCadastroCliente ? (
+                  <Text style={styles.erroCadastro}>{erroCadastroCliente}</Text>
+                ) : null}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={modalCancelarOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!cancelandoReserva) setModalCancelarOpen(false);
+        }}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              if (!cancelandoReserva) setModalCancelarOpen(false);
+            }}
+          >
+            <View style={styles.overlay} />
+          </TouchableWithoutFeedback>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitulo}>Cancelar reserva</Text>
+            <Text style={styles.modalSubtitulo}>
+              Esta ação altera o status para Cancelada. Informe o motivo.
+            </Text>
+            <TextInput
+              style={styles.inputMotivo}
+              value={motivoCancelamento}
+              onChangeText={setMotivoCancelamento}
+              placeholder="Motivo do cancelamento"
+              placeholderTextColor="#9ca3af"
+              multiline
+              editable={!cancelandoReserva}
+            />
+            {erroCancelamento ? (
+              <Text style={styles.erroCadastro}>{erroCancelamento}</Text>
+            ) : null}
+            <View style={styles.modalAcoes}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnSec]}
+                onPress={() => setModalCancelarOpen(false)}
+                disabled={cancelandoReserva}
+              >
+                <Text style={styles.modalBtnSecTexto}>Voltar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnDanger]}
+                onPress={handleConfirmarCancelamento}
+                disabled={cancelandoReserva}
+              >
+                {cancelandoReserva ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalBtnDangerTexto}>Confirmar cancelamento</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -573,6 +792,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 13,
+  },
+  botaoCadastrarCliente: {
+    marginTop: 14,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.azul,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  botaoCadastrarClienteTexto: {
+    color: colors.branco,
+    fontWeight: "700",
+    fontSize: 14,
   },
   msgLink: {
     marginTop: 8,
@@ -686,6 +921,11 @@ const styles = StyleSheet.create({
     color: colors.cinza,
     marginBottom: 16,
   },
+  erroCadastro: {
+    marginTop: 10,
+    fontSize: 13,
+    color: colors.red,
+  },
   footer: {
     position: "absolute",
     left: 0,
@@ -724,6 +964,34 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    width: "90%",
+    maxWidth: 480,
+    maxHeight: "90%",
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+  },
+  modalContentLargo: {
+    maxWidth: 920,
+  },
+  vinculandoBox: {
+    paddingVertical: 28,
+    alignItems: "center",
+  },
   botaoSecundario: {
     alignSelf: "center",
     paddingHorizontal: 20,
@@ -732,6 +1000,55 @@ const styles = StyleSheet.create({
     backgroundColor: colors.azul,
   },
   botaoSecundarioTexto: {
+    color: colors.branco,
+    fontWeight: "700",
+  },
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.cinza,
+    marginBottom: 8,
+  },
+  modalSubtitulo: {
+    fontSize: 14,
+    color: colors.cinza,
+    marginBottom: 12,
+  },
+  inputMotivo: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 88,
+    textAlignVertical: "top",
+    fontSize: 15,
+    color: colors.cinza,
+  },
+  modalAcoes: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  modalBtnSec: {
+    backgroundColor: "#e5e7eb",
+  },
+  modalBtnSecTexto: {
+    color: colors.cinza,
+    fontWeight: "700",
+  },
+  modalBtnDanger: {
+    backgroundColor: "#c0392b",
+  },
+  modalBtnDangerTexto: {
     color: colors.branco,
     fontWeight: "700",
   },

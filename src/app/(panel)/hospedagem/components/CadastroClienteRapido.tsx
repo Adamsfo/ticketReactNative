@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import colors from "@/src/constants/colors";
@@ -16,6 +18,8 @@ type Props = {
   onCadastrado: (usuario: Usuario) => void;
   onCancelar: () => void;
   cpfInicial?: string;
+  /** Texto livre da reserva — somente exibição, sem parsing ou preenchimento automático. */
+  observacoesReserva?: string | null;
 };
 
 function isValidCPF(cpf: string): boolean {
@@ -68,7 +72,12 @@ export default function CadastroClienteRapido({
   onCadastrado,
   onCancelar,
   cpfInicial = "",
+  observacoesReserva,
 }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
+  const textoObservacoes = observacoesReserva ?? "";
+  const mostrarObservacoes = textoObservacoes.length > 0;
+  const layoutLadoALado = mostrarObservacoes && windowWidth >= 768;
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [formData, setFormData] = useState<Usuario>({
@@ -172,54 +181,82 @@ export default function CadastroClienteRapido({
         Mesmo cadastro utilizado na Cortesia (Jango + pré-cadastro).
       </Text>
 
-      <Text style={styles.label}>CPF</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.cpf}
-        keyboardType="numeric"
-        onChangeText={(t) => setField("cpf", formatCPF(t))}
-        onBlur={() => {
-          if (formData.cpf && isValidCPF(formData.cpf)) {
-            buscarJangoPorCpf(formData.cpf);
-          }
-        }}
-        placeholder="000.000.000-00"
-      />
+      <View
+        style={[styles.corpo, layoutLadoALado && styles.corpoDesktop]}
+      >
+        <View style={[styles.formCol, layoutLadoALado && styles.formColDesktop]}>
+          <Text style={styles.label}>CPF</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.cpf}
+            keyboardType="numeric"
+            onChangeText={(t) => setField("cpf", formatCPF(t))}
+            onBlur={() => {
+              if (formData.cpf && isValidCPF(formData.cpf)) {
+                buscarJangoPorCpf(formData.cpf);
+              }
+            }}
+            placeholder="000.000.000-00"
+          />
 
-      <Text style={styles.label}>Nome</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.nomeCompleto}
-        onChangeText={(t) => setField("nomeCompleto", t.toUpperCase())}
-        placeholder="Nome"
-      />
+          <Text style={styles.label}>Nome</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.nomeCompleto}
+            onChangeText={(t) => setField("nomeCompleto", t.toUpperCase())}
+            placeholder="Nome"
+          />
 
-      <Text style={styles.label}>Sobrenome</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.sobreNome}
-        onChangeText={(t) => setField("sobreNome", t.toUpperCase())}
-        placeholder="Sobrenome"
-      />
+          <Text style={styles.label}>Sobrenome</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.sobreNome}
+            onChangeText={(t) => setField("sobreNome", t.toUpperCase())}
+            placeholder="Sobrenome"
+          />
 
-      <Text style={styles.label}>E-mail</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.email}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        onChangeText={(t) => setField("email", t)}
-        placeholder="email@exemplo.com"
-      />
+          <Text style={styles.label}>E-mail</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.email}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            onChangeText={(t) => setField("email", t)}
+            placeholder="email@exemplo.com"
+          />
 
-      <Text style={styles.label}>Telefone</Text>
-      <TextInput
-        style={styles.input}
-        value={formData.telefone}
-        keyboardType="phone-pad"
-        onChangeText={(t) => setField("telefone", formatPhone(t))}
-        placeholder="(00) 00000-0000"
-      />
+          <Text style={styles.label}>Telefone</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.telefone}
+            keyboardType="phone-pad"
+            onChangeText={(t) => setField("telefone", formatPhone(t))}
+            placeholder="(00) 00000-0000"
+          />
+        </View>
+
+        {mostrarObservacoes ? (
+          <View
+            style={[
+              styles.obsCol,
+              layoutLadoALado ? styles.obsColDesktop : styles.obsColMobile,
+            ]}
+          >
+            <Text style={styles.obsTitulo}>Observações da reserva</Text>
+            <ScrollView
+              style={[
+                styles.obsScroll,
+                layoutLadoALado && styles.obsScrollDesktop,
+              ]}
+              contentContainerStyle={styles.obsScrollContent}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              <Text style={styles.obsTexto}>{textoObservacoes}</Text>
+            </ScrollView>
+          </View>
+        ) : null}
+      </View>
 
       {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 
@@ -247,6 +284,44 @@ const styles = StyleSheet.create({
   wrap: { gap: 6 },
   titulo: { fontSize: 18, fontWeight: "700", color: colors.cinza, marginBottom: 4 },
   hint: { fontSize: 12, color: "#777", marginBottom: 10 },
+  corpo: { gap: 16 },
+  corpoDesktop: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 20,
+  },
+  formCol: { gap: 6, flex: 1 },
+  formColDesktop: { flex: 1, minWidth: 260 },
+  obsCol: { gap: 6 },
+  obsColMobile: { marginTop: 4 },
+  obsColDesktop: { flex: 1, minWidth: 260, minHeight: 0 },
+  obsTitulo: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#666",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  obsScroll: {
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    backgroundColor: "#f8f9fa",
+  },
+  obsScrollDesktop: {
+    maxHeight: 420,
+    flexGrow: 1,
+  },
+  obsScrollContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  obsTexto: {
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 20,
+  },
   label: { fontSize: 12, fontWeight: "600", color: "#666", marginTop: 6 },
   input: {
     borderWidth: 1,

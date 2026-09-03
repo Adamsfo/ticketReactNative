@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -22,6 +23,9 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import {
   getReservaAdminDetalhe,
   patchObservacoesReserva,
+  atualizarUsuarioReserva,
+  postCancelarReservaHospedagem,
+  podeExibirCancelamentoReservaAdmin,
   ReservaAdminDetalhe,
   ReservaTimelineEvento,
 } from "@/src/lib/hospedagemAdmin";
@@ -37,7 +41,9 @@ import {
 import {
   calcularIdadeEmAnos,
   formatarIdadeAnos,
+  isHospedeSemCpf,
 } from "@/src/lib/hospedagemHospedes";
+import { Usuario } from "@/src/types/geral";
 import { HOSPEDAGEM_TZ } from "@/src/lib/hospedagemStatusOperacional";
 import {
   useHospedagemAdminRefresh,
@@ -58,6 +64,7 @@ import AlertaPossivelPagamentoOta from "./AlertaPossivelPagamentoOta";
 import ReservaOrigemIntegracaoPanel from "./ReservaOrigemIntegracaoPanel";
 import TrocaSuiteModal from "./TrocaSuiteModal";
 import AlterarPeriodoModal from "./AlterarPeriodoModal";
+import CadastroClienteRapido from "./CadastroClienteRapido";
 
 type HospedeConferencia = {
   key: string;
@@ -128,6 +135,15 @@ export default function ReservaOperacaoSheet({
   const [observacoesSalvando, setObservacoesSalvando] = useState(false);
   const [observacoesSalvoOk, setObservacoesSalvoOk] = useState(false);
   const [observacoesErro, setObservacoesErro] = useState<string | null>(null);
+  const [cadastroClienteVisible, setCadastroClienteVisible] = useState(false);
+  const [erroCadastroCliente, setErroCadastroCliente] = useState<string | null>(
+    null,
+  );
+  const [vinculandoCliente, setVinculandoCliente] = useState(false);
+  const [modalCancelarOpen, setModalCancelarOpen] = useState(false);
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
+  const [cancelandoReserva, setCancelandoReserva] = useState(false);
+  const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
   const observacoesSalvoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -151,6 +167,13 @@ export default function ReservaOperacaoSheet({
       setObservacoesSalvando(false);
       setObservacoesSalvoOk(false);
       setObservacoesErro(null);
+      setCadastroClienteVisible(false);
+      setErroCadastroCliente(null);
+      setVinculandoCliente(false);
+      setModalCancelarOpen(false);
+      setMotivoCancelamento("");
+      setCancelandoReserva(false);
+      setErroCancelamento(null);
       if (observacoesSalvoTimerRef.current) {
         clearTimeout(observacoesSalvoTimerRef.current);
         observacoesSalvoTimerRef.current = null;
@@ -238,7 +261,11 @@ export default function ReservaOperacaoSheet({
   };
 
   const statusDb =
-    detalhe?.status ?? reserva?.statusReserva ?? reserva?.status ?? "";
+    detalhe?.statusOriginal ??
+    detalhe?.status ??
+    reserva?.statusReserva ??
+    reserva?.status ??
+    "";
   const checkinIso = detalhe?.checkin ?? reserva?.inicio ?? "";
   const checkoutIso = detalhe?.checkout ?? reserva?.fim ?? "";
 
@@ -247,6 +274,45 @@ export default function ReservaOperacaoSheet({
     detalhe?.nomeResponsavel ??
     reserva?.responsavel ??
     "";
+
+  const mostrarCadastrarCliente =
+    !loading && Boolean(responsavel) && isHospedeSemCpf(responsavel);
+
+  const handleClienteCadastrado = async (usuario: Usuario) => {
+    const idCliente = Number(usuario.id_cliente);
+    const idReserva = detalhe?.id ?? reserva?.idReservaHospedagem;
+    if (!idReserva || !Number.isFinite(idCliente) || idCliente <= 0) {
+      setErroCadastroCliente(
+        "Cliente cadastrado, mas sem id_cliente para vincular à reserva.",
+      );
+      return;
+    }
+
+    setVinculandoCliente(true);
+    setErroCadastroCliente(null);
+    try {
+      const resp = await atualizarUsuarioReserva(idReserva, idCliente);
+      if (!resp.success) {
+        setErroCadastroCliente(
+          resp.message || "Não foi possível vincular o cliente à reserva.",
+        );
+        return;
+      }
+      setCadastroClienteVisible(false);
+      const reload = await getReservaAdminDetalhe(
+        reserva!.idReservaHospedagem,
+        dataSelecionada,
+      );
+      if (reload.success && reload.data) {
+        setDetalhe(reload.data);
+      }
+      notifyOperacaoConcluida();
+    } catch {
+      setErroCadastroCliente("Erro ao vincular o cliente à reserva.");
+    } finally {
+      setVinculandoCliente(false);
+    }
+  };
 
   const hospedesConferencia = useMemo((): HospedeConferencia[] => {
     const suites = detalhe?.suites ?? [];
@@ -346,6 +412,10 @@ export default function ReservaOperacaoSheet({
   const mostrarTrocarSuite =
     statusParaTroca === "Confirmada" || statusParaTroca === "Hospedada";
   const mostrarAlterarPeriodo = mostrarTrocarSuite;
+  const mostrarCancelarReserva = podeExibirCancelamentoReservaAdmin(
+    detalhe,
+    reserva?.statusReserva ?? reserva?.status ?? null,
+  );
   const idReservaSuiteTroca = detalhe?.suites?.[0]?.idReservaSuite ?? null;
 
   // Financeiro: exclusivamente valores resolvidos pela API (resolverFinanceiroReserva).
@@ -492,6 +562,45 @@ export default function ReservaOperacaoSheet({
       setConfirmMode(null);
     } finally {
       setExecutando(false);
+    }
+  };
+
+  const abrirModalCancelar = () => {
+    setMotivoCancelamento("");
+    setErroCancelamento(null);
+    setModalCancelarOpen(true);
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!reserva?.idReservaHospedagem) return;
+    const motivo = motivoCancelamento.trim();
+    if (!motivo) {
+      setErroCancelamento("Informe o motivo do cancelamento.");
+      return;
+    }
+
+    setCancelandoReserva(true);
+    setErroCancelamento(null);
+    try {
+      const resp = await postCancelarReservaHospedagem(
+        reserva.idReservaHospedagem,
+        motivo,
+      );
+      if (!resp.success || !resp.data) {
+        setErroCancelamento(
+          resp.message || "Não foi possível cancelar a reserva.",
+        );
+        return;
+      }
+      setDetalhe(resp.data);
+      setModalCancelarOpen(false);
+      setMotivoCancelamento("");
+      notifyOperacaoConcluida();
+      onClose();
+    } catch {
+      setErroCancelamento("Erro ao cancelar a reserva.");
+    } finally {
+      setCancelandoReserva(false);
     }
   };
 
@@ -662,6 +771,25 @@ export default function ReservaOperacaoSheet({
                       <Secao titulo="Resumo" stretch={isDesktopLayout}>
                         {responsavel ? (
                           <Linha label="Responsável" valor={responsavel} />
+                        ) : null}
+                        {mostrarCadastrarCliente ? (
+                          <TouchableOpacity
+                            style={styles.botaoCadastrarCliente}
+                            onPress={() => {
+                              setErroCadastroCliente(null);
+                              setCadastroClienteVisible(true);
+                            }}
+                            activeOpacity={0.85}
+                          >
+                            <Feather
+                              name="user-plus"
+                              size={16}
+                              color={colors.branco}
+                            />
+                            <Text style={styles.botaoCadastrarClienteTexto}>
+                              Cadastrar cliente
+                            </Text>
+                          </TouchableOpacity>
                         ) : null}
                         {(adultos > 0 || criancas > 0) && (
                           <Linha
@@ -1102,6 +1230,17 @@ export default function ReservaOperacaoSheet({
                 </TouchableOpacity>
               ) : null}
 
+              {mostrarCancelarReserva ? (
+                <TouchableOpacity
+                  style={[styles.btnAcao, styles.btnAcaoDanger]}
+                  onPress={abrirModalCancelar}
+                  disabled={loading || executando || cancelandoReserva}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnAcaoTexto}>Cancelar reserva</Text>
+                </TouchableOpacity>
+              ) : null}
+
               {mostrarNovaReserva ? (
                 <TouchableOpacity
                   style={[
@@ -1195,6 +1334,58 @@ export default function ReservaOperacaoSheet({
         </View>
       </Modal>
 
+      <Modal
+        visible={modalCancelarOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!cancelandoReserva) setModalCancelarOpen(false);
+        }}
+      >
+        <View style={styles.confirmBackdrop}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitulo}>Cancelar reserva</Text>
+            <Text style={styles.confirmSub}>
+              Esta ação altera o status para Cancelada. Informe o motivo.
+            </Text>
+            <TextInput
+              style={styles.cancelMotivoInput}
+              value={motivoCancelamento}
+              onChangeText={setMotivoCancelamento}
+              placeholder="Motivo do cancelamento"
+              placeholderTextColor="#9ca3af"
+              multiline
+              editable={!cancelandoReserva}
+            />
+            {erroCancelamento ? (
+              <Text style={styles.confirmErro}>{erroCancelamento}</Text>
+            ) : null}
+            <View style={styles.confirmBtns}>
+              <TouchableOpacity
+                style={styles.btnCancelar}
+                onPress={() => setModalCancelarOpen(false)}
+                disabled={cancelandoReserva}
+              >
+                <Text style={styles.btnCancelarTexto}>Voltar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btnConfirmar, styles.btnConfirmarDanger]}
+                onPress={confirmarCancelamento}
+                disabled={cancelandoReserva}
+              >
+                {cancelandoReserva ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.btnConfirmarTexto}>
+                    Confirmar cancelamento
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <TrocaSuiteModal
         visible={trocaSuiteVisible}
         idReservaHospedagem={reserva.idReservaHospedagem}
@@ -1215,6 +1406,51 @@ export default function ReservaOperacaoSheet({
           onClose();
         }}
       />
+
+      <Modal
+        visible={cadastroClienteVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!vinculandoCliente) setCadastroClienteVisible(false);
+        }}
+      >
+        <View style={styles.cadastroModalContainer}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              if (!vinculandoCliente) setCadastroClienteVisible(false);
+            }}
+          >
+            <View style={styles.cadastroModalOverlay} />
+          </TouchableWithoutFeedback>
+          <View
+            style={[
+              styles.cadastroModalContent,
+              observacoesTexto.length > 0 && styles.cadastroModalContentLargo,
+            ]}
+          >
+            {vinculandoCliente ? (
+              <View style={styles.cadastroVinculandoBox}>
+                <ActivityIndicator size="large" color={colors.azul} />
+                <Text style={styles.cadastroVinculandoTexto}>
+                  Vinculando cliente à reserva...
+                </Text>
+              </View>
+            ) : (
+              <>
+                <CadastroClienteRapido
+                  onCadastrado={handleClienteCadastrado}
+                  onCancelar={() => setCadastroClienteVisible(false)}
+                  observacoesReserva={observacoesTexto}
+                />
+                {erroCadastroCliente ? (
+                  <Text style={styles.cadastroErro}>{erroCadastroCliente}</Text>
+                ) : null}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -1847,6 +2083,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
   },
+  btnAcaoDanger: {
+    backgroundColor: "#c0392b",
+  },
+  cancelMotivoInput: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 88,
+    textAlignVertical: "top",
+    fontSize: 15,
+    color: colors.cinza,
+    marginBottom: 12,
+  },
+  btnConfirmarDanger: {
+    backgroundColor: "#c0392b",
+  },
   erroAcao: {
     color: CORES_STATUS_OPERACIONAL.alerta,
     fontSize: 13,
@@ -1930,5 +2184,60 @@ const styles = StyleSheet.create({
   btnConfirmarTexto: {
     fontWeight: "700",
     color: colors.branco,
+  },
+  botaoCadastrarCliente: {
+    marginTop: 10,
+    marginBottom: 4,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.azul,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  botaoCadastrarClienteTexto: {
+    color: colors.branco,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  cadastroModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  cadastroModalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  cadastroModalContent: {
+    width: "100%",
+    maxWidth: 480,
+    backgroundColor: colors.branco,
+    borderRadius: 16,
+    padding: 16,
+    zIndex: 1,
+  },
+  cadastroModalContentLargo: {
+    maxWidth: 920,
+  },
+  cadastroVinculandoBox: {
+    alignItems: "center",
+    paddingVertical: 24,
+    gap: 12,
+  },
+  cadastroVinculandoTexto: {
+    fontSize: 14,
+    color: colors.cinza,
+    textAlign: "center",
+  },
+  cadastroErro: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#c0392b",
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

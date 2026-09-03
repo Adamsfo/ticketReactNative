@@ -5,6 +5,32 @@ export const IDADE_MAXIMA_CRIANCA_HOSPEDAGEM = 12;
 export const MSG_CRIANCA_ACIMA_IDADE =
   "A categoria Criança é válida somente até 12 anos. Para hóspedes acima de 12 anos, selecione Adulto.";
 
+/** Responsável técnico sem CPF (ex.: "HÓSPEDE SEM CPF (HOSPEDIN)"). */
+export function isHospedeSemCpf(nome?: string | null): boolean {
+  const n = String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  return n.includes("HOSPEDE SEM CPF") || n.includes("SEM CPF");
+}
+
+/** Texto de observações já mesclado pela API ou pelas partes importada/operador. */
+export function textoObservacoesReserva(reserva: {
+  observacoes?: string | null;
+  observacaoImportada?: string | null;
+  observacaoOperador?: string | null;
+} | null | undefined): string {
+  if (!reserva) return "";
+  if (reserva.observacoes != null && String(reserva.observacoes).length > 0) {
+    return String(reserva.observacoes);
+  }
+  return [reserva.observacaoImportada, reserva.observacaoOperador]
+    .filter((parte) => String(parte || "").length > 0)
+    .join("\n\n");
+}
+
 export type HospedeAdultoForm = {
   tipo: "adulto";
   ordem: number;
