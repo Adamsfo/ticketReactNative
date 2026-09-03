@@ -17,6 +17,7 @@ import HospedagemAdmin from "./(panel)/hospedagem/page";
 import HospedagemDrawerLabel from "./(panel)/hospedagem/components/HospedagemDrawerLabel";
 import HospedagemReservaDetalhe from "./(panel)/hospedagem/reservaDetalhe/page";
 import HospedagemSuiteDetalhe from "./(panel)/hospedagem/suiteDetalhe/page";
+import LimpezaSuitesPage from "./(panel)/limpezaSuites/page";
 import Produtor from "./(panel)/produtor/page";
 import Usuario from "./(panel)/usuario/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
@@ -151,6 +152,21 @@ function Routes() {
             }}
           />
           <Drawer.Screen
+            name="limpezaSuites"
+            component={LimpezaSuitesPage}
+            options={{
+              headerShown: false,
+              title: "🧹 Limpeza das Suítes",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "brush" : "brush-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="produtor"
             component={Produtor}
             options={{ headerShown: false, title: "Produtor" }}
@@ -279,6 +295,21 @@ function Routes() {
             }}
           />
           <Drawer.Screen
+            name="limpezaSuites"
+            component={LimpezaSuitesPage}
+            options={{
+              headerShown: false,
+              title: "🧹 Limpeza das Suítes",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "brush" : "brush-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="cupompromocional"
             component={CupomPromocional}
             options={{ headerShown: false, title: "Cupom Promocional" }}
@@ -393,6 +424,21 @@ function Routes() {
               title: "🏨 Hospedagem",
               drawerLabel: ({ color }) => (
                 <HospedagemDrawerLabel color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="limpezaSuites"
+            component={LimpezaSuitesPage}
+            options={{
+              headerShown: false,
+              title: "🧹 Limpeza das Suítes",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "brush" : "brush-outline"}
+                  size={size}
+                  color={color}
+                />
               ),
             }}
           />
