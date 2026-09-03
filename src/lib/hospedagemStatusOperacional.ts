@@ -13,6 +13,7 @@ export const HOSPEDAGEM_TZ = "America/Cuiaba";
 export type StatusOperacionalPadrao =
   | "LIVRE"
   | "CHECKIN_HOJE"
+  | "HOSPEDE_CHEGOU"
   | "HOSPEDADA"
   | "CHECKOUT_HOJE"
   | "RESERVADA"
@@ -171,6 +172,10 @@ export function corStatusOperacionalPadrao(
       return CORES_STATUS_OPERACIONAL.hospedada;
     case "CHECKIN_HOJE":
     case "CheckInHoje":
+      return CORES_STATUS_OPERACIONAL.aguardandoAcao;
+    case "HOSPEDE_CHEGOU":
+    case "Hóspede chegou":
+      return CORES_STATUS_OPERACIONAL.livre;
     case "CHECKOUT_HOJE":
     case "CheckOutHoje":
     case "RESERVADA":
@@ -207,6 +212,9 @@ export function labelStatusOperacionalPadrao(
     case "CHECKIN_HOJE":
     case "CheckInHoje":
       return "Check-in hoje";
+    case "HOSPEDE_CHEGOU":
+    case "Hóspede chegou":
+      return BADGE_HOSPEDE_CHEGOU;
     case "HOSPEDADA":
     case "Hospedada":
       return "Hospedada";
@@ -271,4 +279,58 @@ export function formatHoraHospedagem(iso?: string | Date | null): string {
   } catch {
     return "--:--";
   }
+}
+
+export type InputAguardandoAcomodacao = {
+  statusReserva?: string | null;
+  dataHoraChegadaReal?: string | Date | null;
+  dataHoraCheckinReal?: string | Date | null;
+};
+
+/** Confirmada + chegada registrada + check-in ainda não realizado. */
+export function isAguardandoAcomodacaoReserva(
+  input: InputAguardandoAcomodacao,
+): boolean {
+  if (String(input.statusReserva || "").trim() !== "Confirmada") return false;
+  if (!input.dataHoraChegadaReal) return false;
+  if (input.dataHoraCheckinReal) return false;
+  return true;
+}
+
+/**
+ * Inferência para cards operacionais (listagem não expõe dataHoraChegadaReal).
+ * Após chegada registrada, o backend libera botão/ação de check-in.
+ */
+export function isAguardandoAcomodacaoCard(input: {
+  statusReserva?: string | null;
+  dataHoraCheckinReal?: string | Date | null;
+  dataHoraChegadaReal?: string | Date | null;
+  botaoPrincipal?: string | null;
+  podeCheckin?: boolean;
+}): boolean {
+  if (
+    isAguardandoAcomodacaoReserva({
+      statusReserva: input.statusReserva,
+      dataHoraChegadaReal: input.dataHoraChegadaReal,
+      dataHoraCheckinReal: input.dataHoraCheckinReal,
+    })
+  ) {
+    return true;
+  }
+  if (String(input.statusReserva || "").trim() !== "Confirmada") return false;
+  if (input.dataHoraCheckinReal) return false;
+  if (input.botaoPrincipal === "checkin") return true;
+  if (input.podeCheckin === true) return true;
+  return false;
+}
+
+export const BADGE_HOSPEDE_CHEGOU = "Hóspede chegou";
+export const MSG_AGUARDANDO_ACOMODACAO =
+  "Hóspede chegou • aguardando acomodação";
+
+export function mensagemChegadaRegistrada(
+  dataHoraChegadaReal?: string | Date | null,
+): string | null {
+  if (!dataHoraChegadaReal) return null;
+  return `Chegada registrada às ${formatHoraHospedagem(dataHoraChegadaReal)}`;
 }

@@ -6,6 +6,7 @@
  */
 
 import {
+  postRegistrarChegada,
   postRealizarCheckin,
   postRealizarCheckout,
   ReservaAdminDetalhe,
@@ -44,6 +45,23 @@ export type ReservaOperacaoRef = {
   idEvento?: number | null;
   idEventoSuite?: number | null;
 };
+
+/** Registra chegada física via único endpoint do backend. */
+export async function executarRegistrarChegadaOperacional(
+  idReservaHospedagem: number,
+  dataHora?: string | null,
+): Promise<{
+  success: boolean;
+  message?: string;
+  data?: ReservaAdminDetalhe;
+}> {
+  const resp = await postRegistrarChegada(idReservaHospedagem, dataHora);
+  return {
+    success: Boolean(resp.success),
+    message: resp.message,
+    data: resp.data,
+  };
+}
 
 /** Executa check-in via único endpoint do backend. */
 export async function executarCheckinOperacional(

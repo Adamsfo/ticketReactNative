@@ -34,6 +34,7 @@ import {
   corStatusOperacionalPadrao,
   executarCheckinOperacional,
   executarCheckoutOperacional,
+  executarRegistrarChegadaOperacional,
   formatDateTimeHospedagem,
   labelStatusOperacionalPadrao,
   ReservaOperacaoRef,
@@ -44,7 +45,13 @@ import {
   isHospedeSemCpf,
 } from "@/src/lib/hospedagemHospedes";
 import { Usuario } from "@/src/types/geral";
-import { HOSPEDAGEM_TZ } from "@/src/lib/hospedagemStatusOperacional";
+import {
+  BADGE_HOSPEDE_CHEGOU,
+  HOSPEDAGEM_TZ,
+  isAguardandoAcomodacaoReserva,
+  mensagemChegadaRegistrada,
+  MSG_AGUARDANDO_ACOMODACAO,
+} from "@/src/lib/hospedagemStatusOperacional";
 import {
   useHospedagemAdminRefresh,
   useHospedagemEditLock,
@@ -60,6 +67,10 @@ import OrigemReservaIndicador, {
   labelCanalVenda,
   labelChipOrigemReserva,
 } from "./OrigemReservaIndicador";
+import {
+  BadgeHospedeChegou,
+  PainelHospedeChegou,
+} from "./HospedeChegouDestaque";
 import AlertaPossivelPagamentoOta from "./AlertaPossivelPagamentoOta";
 import ReservaOrigemIntegracaoPanel from "./ReservaOrigemIntegracaoPanel";
 import TrocaSuiteModal from "./TrocaSuiteModal";
@@ -82,9 +93,11 @@ type Props = {
   onClose: () => void;
   /** YYYY-MM-DD da operação (Agenda/Suítes). Default = hoje. */
   dataReferencia?: string | null;
+  /** Propaga horário de chegada ao card da suíte (somente apresentação). */
+  onDetalheAtualizado?: (detalhe: ReservaAdminDetalhe) => void;
 };
 
-type ConfirmMode = "checkin" | "checkout" | null;
+type ConfirmMode = "chegada" | "checkin" | "checkout" | null;
 
 function combineDateTimeOperacao(date: Date, time: Date): Date {
   const wall = new Date(
@@ -108,6 +121,7 @@ export default function ReservaOperacaoSheet({
   visible,
   onClose,
   dataReferencia,
+  onDetalheAtualizado,
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   /** Layout em duas colunas apenas no desktop largo. */
@@ -218,6 +232,12 @@ export default function ReservaOperacaoSheet({
     setObservacoesSalvoOk(false);
     setObservacoesErro(null);
   }, [detalhe?.id, detalhe?.observacoes]);
+
+  useEffect(() => {
+    if (detalhe && onDetalheAtualizado) {
+      onDetalheAtualizado(detalhe);
+    }
+  }, [detalhe, onDetalheAtualizado]);
 
   const salvarObservacoes = async () => {
     if (!reserva?.idReservaHospedagem || observacoesSalvando) return;
@@ -378,6 +398,19 @@ export default function ReservaOperacaoSheet({
     return new Date();
   }, [checkinIso]);
 
+  const checkinCuiaba = useMemo(() => {
+    if (!checkinIso) return null;
+    try {
+      return formatInTimeZone(
+        parseISO(String(checkinIso)),
+        HOSPEDAGEM_TZ,
+        "yyyy-MM-dd",
+      );
+    } catch {
+      return null;
+    }
+  }, [checkinIso]);
+
   const disp = detalhe?.disponibilidade ?? null;
 
   const statusOp = useMemo(() => {
@@ -404,7 +437,53 @@ export default function ReservaOperacaoSheet({
   const mensagemOp = disp?.mensagem ?? null;
   const mensagemOpSec = disp?.mensagemSecundaria ?? null;
 
-  const mostrarBotaoCheckin = Boolean(disp?.podeCheckin);
+  // Financeiro: exclusivamente valores resolvidos pela API (resolverFinanceiroReserva).
+  const valorTotal = Number(detalhe?.valorTotal ?? reserva?.valorTotal ?? 0);
+  const valorPago = Number(detalhe?.valorPago ?? reserva?.valorPago ?? 0);
+  const saldoPendente = Number(
+    detalhe?.saldoPendente ?? reserva?.saldoPendente ?? 0,
+  );
+  const situacaoFinanceira = String(
+    detalhe?.situacaoFinanceira ?? "Pendente",
+  );
+  const bloqueadoPorSaldo = saldoPendente > 0.009;
+
+  const chegadaRegistrada = detalhe?.dataHoraChegadaReal != null;
+  const checkinRealizado =
+    statusDb === "Hospedada" || Boolean(detalhe?.dataHoraCheckinReal);
+
+  const aguardandoAcomodacao = isAguardandoAcomodacaoReserva({
+    statusReserva: statusDb,
+    dataHoraChegadaReal: detalhe?.dataHoraChegadaReal,
+    dataHoraCheckinReal: detalhe?.dataHoraCheckinReal,
+  });
+
+  const badgeLabelExibicao = aguardandoAcomodacao
+    ? BADGE_HOSPEDE_CHEGOU
+    : badgeLabel;
+  const mensagemOpExibicao = aguardandoAcomodacao
+    ? MSG_AGUARDANDO_ACOMODACAO
+    : mensagemOp;
+  const mensagemOpSecExibicao = aguardandoAcomodacao
+    ? mensagemChegadaRegistrada(detalhe?.dataHoraChegadaReal) ??
+      mensagemOpSec
+    : mensagemOpSec;
+  const statusOpExibicao = aguardandoAcomodacao ? "HOSPEDE_CHEGOU" : statusOp;
+
+  const agendaNaoFutura = dataSelecionada <= hojeOperacao;
+  const checkinPermitidoNaData =
+    checkinCuiaba != null && dataSelecionada >= checkinCuiaba;
+
+  const mostrarBotaoCheckin =
+    !checkinRealizado && Boolean(disp?.podeCheckin);
+  const mostrarBotaoRegistrarChegada =
+    !checkinRealizado &&
+    !mostrarBotaoCheckin &&
+    statusDb === "Confirmada" &&
+    !chegadaRegistrada &&
+    agendaNaoFutura &&
+    checkinPermitidoNaData &&
+    !bloqueadoPorSaldo;
   const mostrarBotaoCheckout = Boolean(disp?.podeCheckout);
   const mostrarNovaReserva = disp?.botaoPrincipal === "nova_reserva";
 
@@ -418,19 +497,10 @@ export default function ReservaOperacaoSheet({
   );
   const idReservaSuiteTroca = detalhe?.suites?.[0]?.idReservaSuite ?? null;
 
-  // Financeiro: exclusivamente valores resolvidos pela API (resolverFinanceiroReserva).
-  const valorTotal = Number(detalhe?.valorTotal ?? reserva?.valorTotal ?? 0);
-  const valorPago = Number(detalhe?.valorPago ?? reserva?.valorPago ?? 0);
-  const saldoPendente = Number(
-    detalhe?.saldoPendente ?? reserva?.saldoPendente ?? 0,
-  );
-  const situacaoFinanceira = String(
-    detalhe?.situacaoFinanceira ?? "Pendente",
-  );
-  const bloqueadoPorSaldo = saldoPendente > 0.009;
-
   const podeExecutarCheckin =
     mostrarBotaoCheckin && !bloqueadoPorSaldo && !executando && !loading;
+  const podeExecutarRegistrarChegada =
+    mostrarBotaoRegistrarChegada && !executando && !loading;
   const podeExecutarCheckout = mostrarBotaoCheckout && !executando;
 
   const adultos = detalhe?.suites?.[0]?.adultos ?? reserva?.adultos ?? 0;
@@ -452,10 +522,12 @@ export default function ReservaOperacaoSheet({
     String(
       detalhe?.origemReserva || reserva?.origemReserva || "",
     ).toUpperCase() === "HOSPEDIN";
-  /** Hospedin: sempre permitir receber (financeiro importado é incompleto). Demais: regra atual. */
+  /** Hospedin: sempre permitir receber (financeiro importado é incompleto). Demais: saldo pendente antes do check-in. */
   const mostrarBotaoReceberSaldo =
     isOrigemHospedin ||
-    (mostrarBotaoCheckin && saldoPendente > 0.009);
+    (saldoPendente > 0.009 &&
+      statusDb === "Confirmada" &&
+      !checkinRealizado);
   const mostrarAbaIntegracao =
     (isOrigemHospedin || Boolean(detalhe?.syncIntegracao)) &&
     !loading &&
@@ -465,7 +537,7 @@ export default function ReservaOperacaoSheet({
 
   if (!reserva) return null;
 
-  const corStatus = corStatusOperacionalPadrao(statusOp);
+  const corStatus = corStatusOperacionalPadrao(statusOpExibicao);
 
   const abrirNovaReserva = () => {
     if (!reserva.idEvento) {
@@ -480,7 +552,7 @@ export default function ReservaOperacaoSheet({
     });
   };
 
-  const abrirConfirmacao = (mode: "checkin" | "checkout") => {
+  const abrirConfirmacao = (mode: "chegada" | "checkin" | "checkout") => {
     const agora = new Date();
     setOperacaoDate(agora);
     setOperacaoTime(agora);
@@ -492,6 +564,11 @@ export default function ReservaOperacaoSheet({
     if (!reserva.idReservaHospedagem || !confirmMode) return;
     const mode = confirmMode;
     if (mode === "checkin" && bloqueadoPorSaldo) {
+      setConfirmMode(null);
+      setErroAcao(MSG_CHECKIN_BLOQUEADO_SALDO);
+      return;
+    }
+    if (mode === "chegada" && bloqueadoPorSaldo) {
       setConfirmMode(null);
       setErroAcao(MSG_CHECKIN_BLOQUEADO_SALDO);
       return;
@@ -523,16 +600,29 @@ export default function ReservaOperacaoSheet({
     try {
       const iso = dataHora.toISOString();
       const resp =
-        mode === "checkin"
-          ? await executarCheckinOperacional(reserva.idReservaHospedagem, iso)
-          : await executarCheckoutOperacional(reserva.idReservaHospedagem, iso);
+        mode === "chegada"
+          ? await executarRegistrarChegadaOperacional(
+              reserva.idReservaHospedagem,
+              iso,
+            )
+          : mode === "checkin"
+            ? await executarCheckinOperacional(
+                reserva.idReservaHospedagem,
+                iso,
+              )
+            : await executarCheckoutOperacional(
+                reserva.idReservaHospedagem,
+                iso,
+              );
 
       if (!resp.success) {
         setErroAcao(
           resp.message ||
-            (mode === "checkin"
-              ? "Não foi possível realizar o check-in."
-              : "Não foi possível realizar o check-out."),
+            (mode === "chegada"
+              ? "Não foi possível registrar a chegada."
+              : mode === "checkin"
+                ? "Não foi possível realizar o check-in."
+                : "Não foi possível realizar o check-out."),
         );
         setConfirmMode(null);
         return;
@@ -555,9 +645,11 @@ export default function ReservaOperacaoSheet({
       }
     } catch {
       setErroAcao(
-        mode === "checkin"
-          ? "Erro ao realizar check-in."
-          : "Erro ao realizar check-out.",
+        mode === "chegada"
+          ? "Erro ao registrar chegada."
+          : mode === "checkin"
+            ? "Erro ao realizar check-in."
+            : "Erro ao realizar check-out.",
       );
       setConfirmMode(null);
     } finally {
@@ -607,13 +699,21 @@ export default function ReservaOperacaoSheet({
   const confirmTitulo =
     confirmMode === "checkout"
       ? "Confirmar o check-out desta hospedagem?"
-      : "Confirmar entrada do hóspede?";
+      : confirmMode === "chegada"
+        ? "Registrar chegada?"
+        : "Confirmar entrada do hóspede?";
   const confirmSub =
     confirmMode === "checkout"
       ? "Após confirmar, a suíte ficará disponível para novas reservas."
-      : "O status passará de Confirmada para Hospedada.";
+      : confirmMode === "chegada"
+        ? "Registra a chegada física. A reserva permanece Confirmada até o check-in."
+        : "O status passará de Confirmada para Hospedada.";
   const confirmBtnLabel =
-    confirmMode === "checkout" ? "Confirmar Check-out" : "Confirmar Check-in";
+    confirmMode === "checkout"
+      ? "Confirmar Check-out"
+      : confirmMode === "chegada"
+        ? "Confirmar chegada"
+        : "Confirmar Check-in";
 
   return (
     <>
@@ -640,11 +740,23 @@ export default function ReservaOperacaoSheet({
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.statusBadge, { backgroundColor: corStatus }]}>
-              <Text style={styles.statusTexto}>
-                {badgeLabel.toUpperCase()}
-              </Text>
-            </View>
+            {aguardandoAcomodacao ? (
+              <View style={styles.statusBadgeHospedeChegou}>
+                <BadgeHospedeChegou fullWidth />
+              </View>
+            ) : (
+              <View style={[styles.statusBadge, { backgroundColor: corStatus }]}>
+                <Text style={styles.statusTexto}>
+                  {badgeLabelExibicao.toUpperCase()}
+                </Text>
+              </View>
+            )}
+
+            {aguardandoAcomodacao ? (
+              <PainelHospedeChegou
+                dataHoraChegadaReal={detalhe?.dataHoraChegadaReal}
+              />
+            ) : null}
 
             {isOrigemHospedin && detalhe ? (
               <View style={styles.seloOrigemRow}>
@@ -801,12 +913,12 @@ export default function ReservaOperacaoSheet({
                             }`}
                           />
                         )}
-                        <Linha label="Status" valor={badgeLabel} />
-                        {mensagemOp ? (
-                          <Linha label="Situação" valor={mensagemOp} />
+                        <Linha label="Status" valor={badgeLabelExibicao} />
+                        {!aguardandoAcomodacao && mensagemOpExibicao ? (
+                          <Linha label="Situação" valor={mensagemOpExibicao} />
                         ) : null}
-                        {mensagemOpSec ? (
-                          <Text style={styles.hint}>{mensagemOpSec}</Text>
+                        {!aguardandoAcomodacao && mensagemOpSecExibicao ? (
+                          <Text style={styles.hint}>{mensagemOpSecExibicao}</Text>
                         ) : null}
                       </Secao>
                     </View>
@@ -1159,6 +1271,35 @@ export default function ReservaOperacaoSheet({
                 <>
               <Text style={styles.acoesTitulo}>Ações</Text>
 
+              {mostrarBotaoRegistrarChegada ? (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.btnAcao,
+                      { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
+                      (!podeExecutarRegistrarChegada || bloqueadoPorSaldo) &&
+                        styles.btnDesabilitado,
+                    ]}
+                    onPress={() => {
+                      if (bloqueadoPorSaldo) {
+                        setErroAcao(MSG_CHECKIN_BLOQUEADO_SALDO);
+                        return;
+                      }
+                      if (podeExecutarRegistrarChegada) {
+                        abrirConfirmacao("chegada");
+                      }
+                    }}
+                    disabled={executando || loading || bloqueadoPorSaldo}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnAcaoTexto}>Registrar Chegada</Text>
+                  </TouchableOpacity>
+                  {bloqueadoPorSaldo ? (
+                    <Text style={styles.hint}>{MSG_CHECKIN_BLOQUEADO_SALDO}</Text>
+                  ) : null}
+                </>
+              ) : null}
+
               {mostrarBotaoCheckin ? (
                 <>
                   <TouchableOpacity
@@ -1273,7 +1414,9 @@ export default function ReservaOperacaoSheet({
             <Text style={styles.confirmLabel}>
               {confirmMode === "checkout"
                 ? "Data/hora do check-out"
-                : "Data/hora do check-in"}
+                : confirmMode === "chegada"
+                  ? "Data/hora da chegada"
+                  : "Data/hora do check-in"}
             </Text>
             <View style={styles.confirmDateTimeRow}>
               <View style={styles.confirmDateField}>
@@ -1725,6 +1868,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     marginBottom: 12,
+  },
+  statusBadgeHospedeChegou: {
+    alignSelf: "stretch",
+    marginBottom: 10,
   },
   statusTexto: {
     color: colors.branco,

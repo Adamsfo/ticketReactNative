@@ -24,9 +24,14 @@ import {
   IndicadoresDiaCalendario,
   MetaCalendarioSuites,
   SuiteOperacionalCard,
+  ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
 import { dotsIndicadoresCalendario } from "@/src/constants/hospedagemStatusColors";
 import ReservaOperacaoSheet from "../components/ReservaOperacaoSheet";
+import {
+  BadgeHospedeChegou,
+  PainelHospedeChegou,
+} from "../components/HospedeChegouDestaque";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador, {
   labelChipOrigemReserva,
@@ -37,6 +42,7 @@ import {
   badgeStatusOperacional,
   CORES_STATUS_OPERACIONAL,
   corStatusOperacionalPadrao,
+  isAguardandoAcomodacaoCard,
 } from "@/src/lib/hospedagemStatusOperacional";
 import { ReservaOperacaoRef } from "@/src/lib/hospedagemOperacao";
 import { obterSaldoPendenteExibicao } from "@/src/lib/hospedagemPagamentoRecepcao";
@@ -366,15 +372,105 @@ function MetaLinha({
 const MSG_CHECKIN_AGUARDA_CHECKOUT =
   "É necessário realizar o check-out do hóspede atual antes de efetuar o check-in da próxima reserva.";
 
+/** Apresentação específica: Suite Azaléia hospedada no dia do checkout (sem próxima reserva). */
+function isSuiteAzaleiaCard(item: SuiteOperacionalCard): boolean {
+  return (
+    item.idEventoSuite === 10 ||
+    /azal[eé]ia/i.test(String(item.nome || ""))
+  );
+}
+
+function clienteHospedadoNoCard(item: SuiteOperacionalCard): boolean {
+  return (
+    String(item.statusReserva || item.status || "").toUpperCase() ===
+      "HOSPEDADA" || Boolean(item.dataHoraCheckinReal)
+  );
+}
+
+function labelChipAcaoOperacional(params: {
+  botao: SuiteOperacionalCard["botaoPrincipal"];
+  statusReserva?: string | null;
+  badge: string;
+  statusExibicao: string;
+  ehHoje: boolean;
+  modoLivreAposCheckout: boolean;
+}): { label: string; cor: string } | null {
+  const {
+    botao,
+    statusReserva,
+    badge,
+    statusExibicao,
+    ehHoje,
+    modoLivreAposCheckout,
+  } = params;
+  const corSecundaria =
+    statusExibicao === "HOSPEDADA"
+      ? CORES_STATUS_OPERACIONAL.hospedada
+      : CORES_STATUS_OPERACIONAL.aguardandoAcao;
+
+  if (modoLivreAposCheckout || botao === "nova_reserva") {
+    return { label: "Nova Reserva", cor: CORES_STATUS_OPERACIONAL.livre };
+  }
+  if (ehHoje && !modoLivreAposCheckout && botao === "checkin") {
+    return {
+      label: "Realizar Check-in",
+      cor: CORES_STATUS_OPERACIONAL.livre,
+    };
+  }
+  if (ehHoje && !modoLivreAposCheckout && botao === "checkout") {
+    return {
+      label: "Realizar Check-out",
+      cor: corSecundaria,
+    };
+  }
+  if (
+    !modoLivreAposCheckout &&
+    botao === "ver_reserva" &&
+    ehHoje &&
+    String(statusReserva || "").toUpperCase() === "CONFIRMADA" &&
+    badge === "CHECKIN_HOJE"
+  ) {
+    return {
+      label: "Registrar Chegada",
+      cor: CORES_STATUS_OPERACIONAL.livre,
+    };
+  }
+  if (!modoLivreAposCheckout && botao === "ver_reserva") {
+    return {
+      label: "Ver Reserva",
+      cor: corSecundaria,
+    };
+  }
+  return null;
+}
+
+function labelAcaoProximaReserva(
+  proxima: NonNullable<SuiteOperacionalCard["proximaReservaResumo"]>,
+  ehHoje: boolean,
+): string {
+  if (ehHoje && proxima.podeCheckin) {
+    return "Realizar Check-in";
+  }
+  const status = String(proxima.status || "").toUpperCase();
+  if (ehHoje && status === "CONFIRMADA" && !proxima.podeCheckin) {
+    return "Registrar Chegada";
+  }
+  return "Ver Reserva";
+}
+
 /** Checkout A + Check-in B no mesmo dia — blocos independentes por reservaId. */
 function CardSuiteDuplaReserva({
   item,
   onAbrirReserva,
   compact = false,
+  dataSelecionada,
+  hoje,
 }: {
   item: SuiteOperacionalCard;
   onAbrirReserva: (ref: ReservaOperacaoRef) => void;
   compact?: boolean;
+  dataSelecionada: string;
+  hoje: string;
 }) {
   const proxima = item.proximaReservaResumo!;
   const chip = labelChipOrigemReserva({
@@ -438,6 +534,9 @@ function CardSuiteDuplaReserva({
     }
     abrirProxima();
   };
+
+  const ehHoje = dataSelecionada === hoje;
+  const labelProximaAcao = labelAcaoProximaReserva(proxima, ehHoje);
 
   return (
     <View
@@ -521,7 +620,7 @@ function CardSuiteDuplaReserva({
               { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
             ]}
           >
-            <Text style={styles.reservarTexto}>Realizar Check-in</Text>
+            <Text style={styles.reservarTexto}>{labelProximaAcao}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -643,6 +742,7 @@ function CardSuite({
   hoje,
   compact = false,
   desktopLayout = false,
+  horarioChegadaPorReserva = {},
 }: {
   item: SuiteOperacionalCard;
   onPress: () => void;
@@ -653,6 +753,7 @@ function CardSuite({
   hoje: string;
   compact?: boolean;
   desktopLayout?: boolean;
+  horarioChegadaPorReserva?: Record<number, string>;
 }) {
   const { openReceberSaldo } = useReceberSaldoHospedagem();
 
@@ -673,6 +774,11 @@ function CardSuite({
     item.status === "CheckOutHoje" ||
     statusExibicao === "CHECKOUT_HOJE";
 
+  const suiteAzaleia = isSuiteAzaleiaCard(item);
+  const clienteHospedado = clienteHospedadoNoCard(item);
+  const azaleiaHospedadaCheckoutHoje =
+    suiteAzaleia && clienteHospedado && isCheckoutHoje;
+
   const modoDupla =
     Boolean(item.modoDuplaReserva) &&
     Boolean(item.proximaReservaResumo?.id) &&
@@ -686,6 +792,8 @@ function CardSuite({
         item={item}
         onAbrirReserva={onAbrirReserva}
         compact={compact}
+        dataSelecionada={dataSelecionada}
+        hoje={hoje}
       />
     );
   }
@@ -695,7 +803,8 @@ function CardSuite({
     isCheckoutHoje &&
     Boolean(item.idReservaHospedagem) &&
     dataSelecionada >= hoje &&
-    item.bloqueadaPorCheckinNaData !== true;
+    item.bloqueadaPorCheckinNaData !== true &&
+    !azaleiaHospedadaCheckoutHoje;
 
   if (modoCheckoutComNovaReserva) {
     return (
@@ -708,56 +817,43 @@ function CardSuite({
     );
   }
 
-  const cor = corStatusOperacionalPadrao(statusExibicao);
-  const badgeTexto =
-    modoLivreAposCheckout
-      ? "LIVRE"
-      : (item.badgeLabel || badgeStatusOperacional(statusExibicao)).toUpperCase();
+  const aguardandoAcomodacao = isAguardandoAcomodacaoCard({
+    statusReserva: item.statusReserva ?? item.status,
+    dataHoraCheckinReal: item.dataHoraCheckinReal,
+    botaoPrincipal: item.botaoPrincipal,
+    podeCheckin: item.acoesDisponiveis?.checkin,
+  });
+
+  const statusVisual = azaleiaHospedadaCheckoutHoje
+    ? "HOSPEDADA"
+    : statusExibicao;
+
+  const cor = corStatusOperacionalPadrao(statusVisual);
+  const dataHoraChegadaReal =
+    item.idReservaHospedagem != null
+      ? horarioChegadaPorReserva[item.idReservaHospedagem]
+      : undefined;
+  const badgeTexto = aguardandoAcomodacao
+    ? "HÓSPEDE CHEGOU"
+    : azaleiaHospedadaCheckoutHoje
+      ? "HOSPEDADO"
+      : modoLivreAposCheckout
+        ? "LIVRE"
+        : (item.badgeLabel || badgeStatusOperacional(statusExibicao)).toUpperCase();
 
   const botao = item.botaoPrincipal;
-  const mostrarChipNovaReserva =
-    modoLivreAposCheckout || botao === "nova_reserva";
-  const mostrarChipCheckin =
-    ehHoje && !modoLivreAposCheckout && botao === "checkin";
-  const mostrarChipCheckout =
-    ehHoje && !modoLivreAposCheckout && botao === "checkout";
-  const mostrarChipVerReserva =
-    !modoLivreAposCheckout && botao === "ver_reserva";
+  const chipAcao = labelChipAcaoOperacional({
+    botao,
+    statusReserva: item.statusReserva ?? item.status,
+    badge: statusExibicao,
+    statusExibicao,
+    ehHoje,
+    modoLivreAposCheckout,
+  });
 
   const livre =
     statusExibicao === "LIVRE" || statusExibicao === "Livre";
   const proxima = item.proximaReservaResumo;
-
-  const chipAcao = (() => {
-    if (mostrarChipNovaReserva) {
-      return { label: "Nova Reserva", cor: CORES_STATUS_OPERACIONAL.livre };
-    }
-    if (mostrarChipCheckin) {
-      return {
-        label: "Realizar Check-in",
-        cor: CORES_STATUS_OPERACIONAL.livre,
-      };
-    }
-    if (mostrarChipCheckout) {
-      return {
-        label: "Realizar Check-out",
-        cor:
-          statusExibicao === "HOSPEDADA"
-            ? CORES_STATUS_OPERACIONAL.hospedada
-            : CORES_STATUS_OPERACIONAL.aguardandoAcao,
-      };
-    }
-    if (mostrarChipVerReserva) {
-      return {
-        label: "Ver Reserva",
-        cor:
-          statusExibicao === "HOSPEDADA"
-            ? CORES_STATUS_OPERACIONAL.hospedada
-            : CORES_STATUS_OPERACIONAL.aguardandoAcao,
-      };
-    }
-    return null;
-  })();
 
   return (
     <TouchableOpacity
@@ -784,17 +880,21 @@ function CardSuite({
             <Text style={{ color: cor }}>● </Text>
             {item.nome}
           </Text>
-          <View
-            style={[
-              styles.badge,
-              compact && styles.badgeCompact,
-              { backgroundColor: cor },
-            ]}
-          >
-            <Text style={styles.badgeTexto} numberOfLines={1}>
-              {badgeTexto}
-            </Text>
-          </View>
+          {aguardandoAcomodacao ? (
+            <BadgeHospedeChegou compact={compact} />
+          ) : (
+            <View
+              style={[
+                styles.badge,
+                compact && styles.badgeCompact,
+                { backgroundColor: cor },
+              ]}
+            >
+              <Text style={styles.badgeTexto} numberOfLines={1}>
+                {badgeTexto}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View
@@ -821,7 +921,12 @@ function CardSuite({
                 </MetaLinha>
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
-              {statusExibicao === "CHECKIN_HOJE" && item.checkin ? (
+              {aguardandoAcomodacao ? (
+                <PainelHospedeChegou
+                  dataHoraChegadaReal={dataHoraChegadaReal}
+                  compact={compact}
+                />
+              ) : statusExibicao === "CHECKIN_HOJE" && item.checkin ? (
                 <MetaLinha icon="log-in">
                   Entra às {horaCheckinCurta(item.checkin)}
                 </MetaLinha>
@@ -830,6 +935,17 @@ function CardSuite({
                 <MetaLinha icon="log-out">
                   Sai às {horaCheckinCurta(item.checkout)}
                 </MetaLinha>
+              ) : null}
+              {azaleiaHospedadaCheckoutHoje ? (
+                <>
+                  <View style={styles.blocoSeparador} />
+                  <Text style={styles.blocoTitulo}>
+                    {(
+                      item.mensagemDisponibilidadeSecundaria ||
+                      "Disponível após o check-out"
+                    ).toUpperCase()}
+                  </Text>
+                </>
               ) : null}
               {(statusExibicao === "HOSPEDADA" ||
                 statusExibicao === "RESERVADA") &&
@@ -845,7 +961,8 @@ function CardSuite({
               ) : null}
               {item.mensagemDisponibilidade &&
               statusExibicao !== "CHECKOUT_HOJE" &&
-              statusExibicao !== "CHECKIN_HOJE" ? (
+              statusExibicao !== "CHECKIN_HOJE" &&
+              !aguardandoAcomodacao ? (
                 <Text style={styles.metaSecundario} numberOfLines={1}>
                   {item.mensagemDisponibilidade}
                 </Text>
@@ -948,6 +1065,9 @@ export default function TabSuites() {
   const [metaMsg, setMetaMsg] = useState<string | null>(null);
   const [reservaOperacao, setReservaOperacao] =
     useState<ReservaOperacaoRef | null>(null);
+  const [horarioChegadaPorReserva, setHorarioChegadaPorReserva] = useState<
+    Record<number, string>
+  >({});
   const [sheetVisible, setSheetVisible] = useState(false);
   const { refreshVersion, requestRefresh, lastRefreshAt } =
     useHospedagemAdminRefresh();
@@ -1182,6 +1302,7 @@ export default function TabSuites() {
                 hoje={hoje}
                 compact={cardsCompactos}
                 desktopLayout={desktopLayout}
+                horarioChegadaPorReserva={horarioChegadaPorReserva}
                 onPress={() => abrirSuite(item)}
                 onAbrirReserva={abrirReserva}
                 onNovaReserva={() => {
@@ -1203,6 +1324,15 @@ export default function TabSuites() {
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
         dataReferencia={dataReferencia}
+        onDetalheAtualizado={(detalhe: ReservaAdminDetalhe) => {
+          const id = detalhe.idReservaHospedagem ?? detalhe.id;
+          if (id && detalhe.dataHoraChegadaReal) {
+            setHorarioChegadaPorReserva((prev) => ({
+              ...prev,
+              [id]: detalhe.dataHoraChegadaReal!,
+            }));
+          }
+        }}
       />
     </View>
   );

@@ -254,6 +254,9 @@ export type ReservaAdminDetalhe = {
   checkout: string;
   dataHoraCheckinReal?: string | null;
   dataHoraCheckoutRealizado?: string | null;
+  dataHoraChegadaReal?: string | null;
+  idUsuarioChegada?: number | null;
+  idVendaJango?: number | null;
   idUsuarioCheckout?: number | null;
   noites: number;
   preco: number;
@@ -542,6 +545,18 @@ export async function getHospedagemRefreshVersion(): Promise<
   return api.request<{ version: string }>(
     `/hospedagem/refresh-version`,
     "GET",
+  );
+}
+
+/** Registro de chegada física: mantém Confirmada (conta Jango no backend). */
+export async function postRegistrarChegada(
+  idReservaHospedagem: number,
+  dataHora?: string | null,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/registrar-chegada`,
+    "POST",
+    dataHora ? { dataHora } : null,
   );
 }
 
