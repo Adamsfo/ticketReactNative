@@ -4,7 +4,10 @@ import {
   Alert,
   Animated,
   FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -122,6 +125,12 @@ function dataNoMes(mes: string, dataAtual: string): string {
   const ultimo = new Date(y, m, 0).getDate();
   const dia = Math.min(Math.max(diaAtual, 1), ultimo);
   return `${mes}-${String(dia).padStart(2, "0")}`;
+}
+
+function formatDataReferenciaBr(data: string): string {
+  const [y, m, d] = data.split("-");
+  if (!y || !m || !d) return data;
+  return `${d}/${m}/${y}`;
 }
 
 function IndicadoresDots({
@@ -1126,6 +1135,10 @@ export default function TabSuites() {
     Record<number, string>
   >({});
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [cabecalhoListaAltura, setCabecalhoListaAltura] = useState(0);
+  const [mostrarResumoSticky, setMostrarResumoSticky] = useState(false);
+  const scrollListaYRef = useRef(0);
+  const suitesListaRef = useRef<FlatList<SuiteOperacionalCard>>(null);
   const { refreshVersion, requestRefresh, lastRefreshAt } =
     useHospedagemAdminRefresh();
   const [agoraTick, setAgoraTick] = useState(() => Date.now());
@@ -1135,6 +1148,54 @@ export default function TabSuites() {
     const id = setInterval(() => setAgoraTick(Date.now()), 5_000);
     return () => clearInterval(id);
   }, [lastRefreshAt]);
+
+  useEffect(() => {
+    if (!layoutMobile) {
+      setMostrarResumoSticky(false);
+      setCabecalhoListaAltura(0);
+      scrollListaYRef.current = 0;
+    }
+  }, [layoutMobile]);
+
+  const filtroLabelAtual = useMemo(
+    () => FILTROS.find((item) => item.key === filtro)?.label ?? "Todas",
+    [filtro],
+  );
+
+  const atualizarResumoSticky = useCallback(
+    (scrollY: number, alturaCabecalho: number) => {
+      if (alturaCabecalho <= 0) {
+        setMostrarResumoSticky(false);
+        return;
+      }
+      const cabecalhoFora = scrollY >= alturaCabecalho - 1;
+      setMostrarResumoSticky((prev) =>
+        prev === cabecalhoFora ? prev : cabecalhoFora,
+      );
+    },
+    [],
+  );
+
+  const aoRolarListaMobile = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const scrollY = event.nativeEvent.contentOffset.y;
+      scrollListaYRef.current = scrollY;
+      atualizarResumoSticky(scrollY, cabecalhoListaAltura);
+    },
+    [atualizarResumoSticky, cabecalhoListaAltura],
+  );
+
+  const aoMedirCabecalhoLista = useCallback(
+    (altura: number) => {
+      setCabecalhoListaAltura((prev) => (prev === altura ? prev : altura));
+      atualizarResumoSticky(scrollListaYRef.current, altura);
+    },
+    [atualizarResumoSticky],
+  );
+
+  const voltarAoTopoSuites = useCallback(() => {
+    suitesListaRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
 
   const carregar = useCallback(
     async (isRefresh = false) => {
@@ -1247,7 +1308,11 @@ export default function TabSuites() {
 
   const cabecalhoSuites = useCallback(
     () => (
-      <>
+      <View
+        onLayout={(event) => {
+          aoMedirCabecalhoLista(event.nativeEvent.layout.height);
+        }}
+      >
         <CalendarioHorizontal
           mesVisivel={mesVisivel}
           dataSelecionada={dataReferencia}
@@ -1326,7 +1391,7 @@ export default function TabSuites() {
             </TouchableOpacity>
           </View>
         </View>
-      </>
+      </View>
     ),
     [
       mesVisivel,
@@ -1340,6 +1405,7 @@ export default function TabSuites() {
       lastRefreshAt,
       agoraTick,
       requestRefresh,
+      aoMedirCabecalhoLista,
     ],
   );
 
@@ -1423,12 +1489,42 @@ export default function TabSuites() {
 
   return (
     <View style={styles.container}>
+      {layoutMobile && mostrarResumoSticky ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.resumoSticky,
+            pressed && styles.resumoStickyPressed,
+          ]}
+          onPress={voltarAoTopoSuites}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar ao calendário e filtros"
+        >
+          <View style={styles.resumoStickyInner}>
+            <View style={styles.resumoStickyGrupo}>
+              <Feather name="filter" size={12} color="#667085" />
+              <Text style={styles.resumoStickyFiltro} numberOfLines={1}>
+                {filtroLabelAtual}
+              </Text>
+            </View>
+            <View style={styles.resumoStickyGrupo}>
+              <Feather name="calendar" size={12} color="#667085" />
+              <Text style={styles.resumoStickyData} numberOfLines={1}>
+                {formatDataReferenciaBr(dataReferencia)}
+              </Text>
+            </View>
+          </View>
+        </Pressable>
+      ) : null}
+
       {layoutMobile ? (
         <FlatList
+          ref={suitesListaRef}
           key={`suites-cols-${suiteColumns}`}
           {...suitesFlatListProps}
           ListHeaderComponent={cabecalhoSuites}
           ListEmptyComponent={listEmptySuitesMobile}
+          onScroll={aoRolarListaMobile}
+          scrollEventThrottle={16}
         />
       ) : (
         <>
@@ -1479,6 +1575,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 0,
+    position: "relative",
+  },
+  resumoSticky: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.12)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  resumoStickyPressed: {
+    backgroundColor: "rgba(255,255,255,0.98)",
+    opacity: 0.92,
+  },
+  resumoStickyInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    minHeight: 24,
+  },
+  resumoStickyGrupo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minWidth: 0,
+  },
+  resumoStickyFiltro: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  resumoStickyData: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#667085",
   },
   calendarioWrap: {
     backgroundColor: "rgba(255,255,255,0.92)",
