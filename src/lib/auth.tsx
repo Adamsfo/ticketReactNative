@@ -92,6 +92,63 @@ class ApiAuth {
   ): Promise<ApiResponse> {
     return api.request("/loginemailcodigo", "POST", { info, codigo, id });
   }
+
+  /** Magic login: POST /reserva/:token/autenticar — armazena JWT como o login normal. */
+  public async autenticarReservaPublica(
+    tokenReserva: string,
+  ): Promise<ApiResponse<{ data: string }>> {
+    const tokenLimpo = String(tokenReserva || "").trim();
+    if (!tokenLimpo) {
+      return { success: false, message: "Token inválido." };
+    }
+
+    const req = await api.request<{ data: string }>(
+      `/reserva/${encodeURIComponent(tokenLimpo)}/autenticar`,
+      "POST",
+      {},
+    );
+
+    if (!req.success || !req.data?.data) {
+      return {
+        success: false,
+        message: req.message || "Não foi possível autenticar pelo link.",
+      };
+    }
+
+    const jwt = String(req.data.data);
+    if (Platform.OS === "web") {
+      localStorage.setItem("token", jwt);
+    } else {
+      await AsyncStorage.setItem("token", jwt);
+    }
+
+    return { success: true, data: req.data };
+  }
+
+  /** Lê JWT armazenado e retorna Usuario ativo (mesma rotina pós-login). */
+  public async carregarUsuarioDaSessaoArmazenada(): Promise<Usuario | null> {
+    const jwt =
+      Platform.OS === "web"
+        ? localStorage.getItem("token") || ""
+        : (await AsyncStorage.getItem("token")) || "";
+
+    if (!jwt) {
+      return null;
+    }
+
+    const response = await this.getUsurioToken<Usuario>(jwt);
+    if (
+      !response ||
+      typeof response !== "object" ||
+      !("id" in response) ||
+      !(response as Usuario).ativo
+    ) {
+      return null;
+    }
+
+    await AsyncStorage.setItem("usuario", JSON.stringify(response));
+    return response as Usuario;
+  }
 }
 
 export const apiAuth = new ApiAuth(); // Use o ambiente correto conforme necessário

@@ -24,6 +24,10 @@ import {
   corStatusReserva,
   labelStatusReserva,
 } from "@/src/lib/hospedagemAdmin";
+import { useAuth } from "@/src/contexts_/AuthContext";
+import { useCart } from "@/src/contexts_/CartContext";
+import { apiAuth } from "@/src/lib/auth";
+import { Transacao, Usuario } from "@/src/types/geral";
 
 const { width } = Dimensions.get("window");
 
@@ -40,12 +44,13 @@ function formatDateTime(iso: string): string {
 }
 
 /**
- * Página pública /reserva/TOKEN — resume a reserva e redireciona
- * ao checkout de pagamentos já existente (tipoCompra=hospedagem).
+ * Página pública /reserva/TOKEN — resume a reserva, magic login e pagamento.
  */
 export default function ReservaPublicaPage() {
   const navigation = useNavigation() as any;
   const route = useRoute();
+  const { user, setAuth } = useAuth();
+  const { dispatch: dispatchCart } = useCart();
   const params = (route.params || {}) as { token?: string };
 
   const tokenFromUrl = (() => {
@@ -60,7 +65,74 @@ export default function ReservaPublicaPage() {
 
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [conflitoConta, setConflitoConta] = useState<string | null>(null);
+  const [avisoAutenticacao, setAvisoAutenticacao] = useState<string | null>(
+    null,
+  );
+  const [magicLoginOk, setMagicLoginOk] = useState(false);
   const [data, setData] = useState<any | null>(null);
+
+  const resolverUsuarioSessao = useCallback(async (): Promise<Usuario | null> => {
+    if (user?.id) {
+      return user;
+    }
+    return apiAuth.carregarUsuarioDaSessaoArmazenada();
+  }, [user]);
+
+  const tentarMagicLogin = useCallback(
+    async (reservaData: any) => {
+      setConflitoConta(null);
+      setAvisoAutenticacao(null);
+      setMagicLoginOk(false);
+
+      const idUsuarioReserva = Number(reservaData?.cliente?.idUsuario);
+      const usuarioAtual = await resolverUsuarioSessao();
+
+      if (
+        usuarioAtual?.id &&
+        Number.isFinite(idUsuarioReserva) &&
+        idUsuarioReserva > 0 &&
+        Number(usuarioAtual.id) !== idUsuarioReserva
+      ) {
+        setConflitoConta(
+          "Este link pertence a outra conta. Para pagar com segurança, saia da conta atual e abra o link novamente, ou entre com a conta correta.",
+        );
+        return;
+      }
+
+      if (
+        usuarioAtual?.id &&
+        Number.isFinite(idUsuarioReserva) &&
+        idUsuarioReserva > 0 &&
+        Number(usuarioAtual.id) === idUsuarioReserva
+      ) {
+        setAuth(usuarioAtual);
+        setMagicLoginOk(true);
+        return;
+      }
+
+      const authResp = await apiAuth.autenticarReservaPublica(token);
+      if (!authResp.success) {
+        setAvisoAutenticacao(
+          authResp.message ||
+            "Não foi possível iniciar sua sessão para pagamento.",
+        );
+        return;
+      }
+
+      const usuario = await apiAuth.carregarUsuarioDaSessaoArmazenada();
+      if (!usuario?.id || !usuario.ativo) {
+        setAvisoAutenticacao(
+          "Não foi possível recuperar sua conta para pagamento.",
+        );
+        return;
+      }
+
+      setAuth(usuario);
+      setMagicLoginOk(true);
+    },
+    [token, resolverUsuarioSessao, setAuth],
+  );
 
   const carregar = useCallback(async () => {
     if (!token) {
@@ -71,6 +143,8 @@ export default function ReservaPublicaPage() {
     }
     setLoading(true);
     setErro(null);
+    setConflitoConta(null);
+    setAvisoAutenticacao(null);
     try {
       const resp = await getReservaPublicaPorToken(token);
       if (!resp.success || !resp.data) {
@@ -79,13 +153,14 @@ export default function ReservaPublicaPage() {
         return;
       }
       setData(resp.data);
+      await tentarMagicLogin(resp.data);
     } catch {
       setErro("Erro ao carregar a reserva.");
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, tentarMagicLogin]);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,38 +169,40 @@ export default function ReservaPublicaPage() {
   );
 
   const handlePagar = () => {
+    if (conflitoConta || !magicLoginOk) {
+      return;
+    }
     if (data?.expirada || data?.status === "Expirada" || !data?.podePagar) {
       return;
     }
-    if (!data?.pagamento?.registroTransacao || !data?.pagamento?.idEvento) {
+    const registroApi = data?.pagamento?.registroTransacao;
+    const idTransacao = Number(registroApi?.id);
+    if (!Number.isFinite(idTransacao) || idTransacao <= 0) {
       return;
     }
-    const periodo = data.periodo;
-    const suites = (data.suites || []).map((s: any) => ({
-      nomeSuite: s.nome,
-      adultos: s.adultos,
-      criancas: s.criancas,
-      subtotal: Number(s.preco ?? 0),
-    }));
+    if (!data?.pagamento?.idEvento) {
+      return;
+    }
+
+    if (registroApi && typeof registroApi === "object") {
+      const transacao: Transacao = {
+        ...(registroApi as Transacao),
+        id: idTransacao,
+      };
+      dispatchCart({ type: "ADD_TRANSACAO", transacao });
+    }
 
     navigation.navigate("pagamento", {
-      idEvento: data.pagamento.idEvento,
-      registroTransacao: data.pagamento.registroTransacao,
+      idEvento: Number(data.pagamento.idEvento),
+      registroTransacao: idTransacao,
       tipoCompra: "hospedagem",
-      resumoHospedagemBootstrap: {
-        checkin: String(periodo.checkin),
-        checkout: String(periodo.checkout),
-        noites: Number(periodo.noites || 0),
-        suites,
-        subtotalGeral: Number(data.valores?.preco ?? 0),
-        taxaServico: Number(data.valores?.taxaServico ?? 0),
-        valorTotal: Number(data.valores?.valorTotal ?? 0),
-      },
     });
   };
 
   const status = data?.status || "AguardandoPagamento";
   const cor = corStatusReserva(status);
+  const podeIrPagamento =
+    !!data?.podePagar && magicLoginOk && !conflitoConta && !avisoAutenticacao;
 
   return (
     <LinearGradient
@@ -152,6 +229,17 @@ export default function ReservaPublicaPage() {
             </View>
           ) : (
             <>
+              {conflitoConta ? (
+                <View style={styles.card}>
+                  <Text style={styles.erro}>{conflitoConta}</Text>
+                </View>
+              ) : null}
+              {avisoAutenticacao ? (
+                <View style={styles.card}>
+                  <Text style={styles.erro}>{avisoAutenticacao}</Text>
+                </View>
+              ) : null}
+
               <View style={styles.card}>
                 <Text style={styles.titulo}>
                   {data.evento?.nome || "Pousada"}
@@ -224,10 +312,18 @@ export default function ReservaPublicaPage() {
                 </View>
               </View>
 
-              {data.podePagar ? (
+              {podeIrPagamento ? (
                 <TouchableOpacity style={styles.btnPri} onPress={handlePagar}>
                   <Text style={styles.btnPriText}>Ir para o pagamento</Text>
                 </TouchableOpacity>
+              ) : data.podePagar ? (
+                <View style={styles.card}>
+                  <Text style={styles.meta}>
+                    {loading
+                      ? "Preparando pagamento..."
+                      : "Aguardando autenticação para prosseguir ao pagamento."}
+                  </Text>
+                </View>
               ) : (
                 <View style={styles.card}>
                   {data.expirada || status === "Expirada" ? (
