@@ -300,13 +300,13 @@ function Routes() {
             options={{
               headerShown: false,
               title: "🧹 Limpeza das Suítes",
-              drawerIcon: ({ focused, size, color }) => (
-                <Ionicons
-                  name={focused ? "brush" : "brush-outline"}
-                  size={size}
-                  color={color}
-                />
-              ),
+              // drawerIcon: ({ focused, size, color }) => (
+              //   <Ionicons
+              //     name={focused ? "brush" : "brush-outline"}
+              //     size={size}
+              //     color={color}
+              //   />
+              // ),
             }}
           />
           <Drawer.Screen
