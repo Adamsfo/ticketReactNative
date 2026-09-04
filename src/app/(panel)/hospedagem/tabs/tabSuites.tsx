@@ -634,10 +634,42 @@ function CardSuiteCheckoutComNovaReserva({
   onNovaReserva: () => void;
   compact?: boolean;
 }) {
-  const cor = corStatusOperacionalPadrao("CHECKOUT_HOJE");
-  const badgeTexto = (
-    item.badgeLabel || badgeStatusOperacional("CHECKOUT_HOJE")
-  ).toUpperCase();
+  const clienteHospedado = clienteHospedadoNoCard(item);
+  const cor = corStatusOperacionalPadrao(
+    clienteHospedado ? "HOSPEDADA" : "CHECKOUT_HOJE",
+  );
+  const badgeTexto = clienteHospedado
+    ? "HOSPEDADO"
+    : (
+        item.badgeLabel || badgeStatusOperacional("CHECKOUT_HOJE")
+      ).toUpperCase();
+
+  const abrirAtual = () => {
+    if (!item.idReservaHospedagem) return;
+    onAbrirReserva({
+      idReservaHospedagem: item.idReservaHospedagem,
+      suiteNome: item.nome,
+      inicio: item.checkin,
+      fim: item.checkout,
+      status: item.status,
+      statusReserva: item.statusReserva ?? item.status,
+      dataHoraCheckinReal: item.dataHoraCheckinReal,
+      responsavel: item.responsavel,
+      adultos: item.adultos,
+      criancas: item.criancas,
+      valorTotal: item.valorHospedagem,
+      valorPago: item.valorPago,
+      saldoPendente: item.saldoPendente,
+      idEvento: item.idEvento,
+      idEventoSuite: item.idEventoSuite,
+    });
+  };
+
+  const subtituloNovaReserva =
+    item.mensagemDisponibilidadeSecundaria ||
+    (clienteHospedado
+      ? "Suíte disponível para nova reserva após a hospedagem atual"
+      : "Disponível para nova reserva hoje");
 
   return (
     <View
@@ -664,27 +696,8 @@ function CardSuiteCheckoutComNovaReserva({
         </View>
 
         <BlocoReservaClicavel
-          titulo="Checkout hoje"
-          onPress={() => {
-            if (!item.idReservaHospedagem) return;
-            onAbrirReserva({
-              idReservaHospedagem: item.idReservaHospedagem,
-              suiteNome: item.nome,
-              inicio: item.checkin,
-              fim: item.checkout,
-              status: item.status,
-              statusReserva: item.statusReserva ?? item.status,
-              dataHoraCheckinReal: item.dataHoraCheckinReal,
-              responsavel: item.responsavel,
-              adultos: item.adultos,
-              criancas: item.criancas,
-              valorTotal: item.valorHospedagem,
-              valorPago: item.valorPago,
-              saldoPendente: item.saldoPendente,
-              idEvento: item.idEvento,
-              idEventoSuite: item.idEventoSuite,
-            });
-          }}
+          titulo={clienteHospedado ? "Hospedado" : "Checkout hoje"}
+          onPress={abrirAtual}
         >
           <MetaLinha icon="user" strong>
             {item.responsavel?.trim() || "Hóspede"}
@@ -693,14 +706,33 @@ function CardSuiteCheckoutComNovaReserva({
             Sai às {horaCheckinCurta(item.checkout)}
           </MetaLinha>
         </BlocoReservaClicavel>
+        {clienteHospedado ? (
+          <TouchableOpacity
+            onPress={abrirAtual}
+            activeOpacity={0.85}
+            style={styles.novaReservaBtnAlign}
+          >
+            <View
+              style={[
+                styles.reservarChip,
+                styles.reservarChipCompact,
+                styles.reservarChipCentered,
+                { backgroundColor: CORES_STATUS_OPERACIONAL.hospedada },
+              ]}
+            >
+              <Text style={styles.reservarTexto}>Realizar Check-out</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.blocoSeparador} />
 
         <View style={styles.blocoReserva}>
           <View style={styles.blocoReservaRow}>
             <View style={styles.blocoReservaConteudo}>
-              <Text style={styles.blocoTitulo}>
-                Disponível para nova reserva hoje
+              <Text style={styles.blocoTitulo}>Nova reserva</Text>
+              <Text style={styles.metaSecundario} numberOfLines={2}>
+                {subtituloNovaReserva}
               </Text>
               <TouchableOpacity
                 onPress={onNovaReserva}
@@ -792,12 +824,16 @@ function CardSuite({
   }
 
   /** CHECKOUT HOJE sem outra entrada no mesmo dia → layout Checkout + Nova Reserva. */
+  const podeNovaReservaAposCheckout =
+    item.disponivelHojeAposCheckout === true ||
+    item.acoesDisponiveis?.reservar === true;
+
   const modoCheckoutComNovaReserva =
     isCheckoutHoje &&
     Boolean(item.idReservaHospedagem) &&
     dataSelecionada >= hoje &&
     item.bloqueadaPorCheckinNaData !== true &&
-    !azaleiaHospedadaCheckoutHoje;
+    podeNovaReservaAposCheckout;
 
   if (modoCheckoutComNovaReserva) {
     return (

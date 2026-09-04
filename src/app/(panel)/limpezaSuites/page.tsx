@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -26,6 +26,8 @@ import {
   postIniciarLimpezaSuite,
 } from "@/src/lib/limpezaSuites";
 import { useHospedagemDesktopLayout } from "../hospedagem/useHospedagemDesktopLayout";
+
+const AUTO_REFRESH_MS = 15_000;
 
 const FILTROS: Array<{ key: FiltroLimpezaSuites; label: string }> = [
   { key: "pendente", label: "Pendente" },
@@ -69,18 +71,26 @@ function CardLimpeza({
   acaoLoading,
   onIniciar,
   onConcluir,
+  gradeMultiCol,
 }: {
   item: LimpezaSuiteCard;
   acaoLoading: boolean;
   onIniciar: (id: number) => void;
   onConcluir: (id: number) => void;
+  gradeMultiCol?: boolean;
 }) {
   const cor = corStatusLimpeza(item.status);
   const podeIniciar = item.status === "Pendente";
   const podeConcluir = item.status === "EmAndamento";
 
   return (
-    <View style={[styles.card, { borderLeftColor: cor }]}>
+    <View
+      style={[
+        styles.card,
+        gradeMultiCol && styles.cardGradeMultiCol,
+        { borderLeftColor: cor },
+      ]}
+    >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.suiteNome}>{item.nomeSuite ?? "Suíte"}</Text>
@@ -159,7 +169,8 @@ function CardLimpeza({
 }
 
 export default function LimpezaSuitesPage() {
-  const { isDesktop } = useHospedagemDesktopLayout();
+  const { isDesktop, suiteColumns, contentMaxWidth } = useHospedagemDesktopLayout();
+  const desktopLayout = suiteColumns >= 3;
   const [filtro, setFiltro] = useState<FiltroLimpezaSuites>("pendente");
   const [itens, setItens] = useState<LimpezaSuiteCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,9 +179,14 @@ export default function LimpezaSuitesPage() {
   const [total, setTotal] = useState(0);
   const [acaoId, setAcaoId] = useState<number | null>(null);
   const [mensagemAcao, setMensagemAcao] = useState<string | null>(null);
+  const requisicaoEmAndamentoRef = useRef(false);
+  const acaoEmAndamentoRef = useRef(false);
 
   const carregar = useCallback(async (silencioso = false, filtroOverride?: FiltroLimpezaSuites) => {
+    if (requisicaoEmAndamentoRef.current) return;
+
     const filtroAtivo = filtroOverride ?? filtro;
+    requisicaoEmAndamentoRef.current = true;
     if (!silencioso) setLoading(true);
     setErro(null);
     try {
@@ -188,15 +204,23 @@ export default function LimpezaSuitesPage() {
       setItens([]);
       setTotal(0);
     } finally {
+      requisicaoEmAndamentoRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
   }, [filtro]);
 
+  const carregarAuto = useCallback(() => {
+    if (acaoEmAndamentoRef.current) return;
+    void carregar(true);
+  }, [carregar]);
+
   useFocusEffect(
     useCallback(() => {
-      void carregar();
-    }, [carregar]),
+      void carregar(true);
+      const timer = setInterval(() => carregarAuto(), AUTO_REFRESH_MS);
+      return () => clearInterval(timer);
+    }, [carregar, carregarAuto]),
   );
 
   const onRefresh = () => {
@@ -209,10 +233,13 @@ export default function LimpezaSuitesPage() {
     tipo: "iniciar" | "concluir",
   ) => {
     setAcaoId(id);
+    acaoEmAndamentoRef.current = true;
     setMensagemAcao(null);
     setErro(null);
+    let sucesso = false;
+    let novoFiltro: FiltroLimpezaSuites | null = null;
     try {
-      const novoFiltro: FiltroLimpezaSuites =
+      novoFiltro =
         tipo === "iniciar" ? "em_andamento" : "concluida";
       if (tipo === "iniciar") {
         await postIniciarLimpezaSuite(id);
@@ -222,13 +249,20 @@ export default function LimpezaSuitesPage() {
         setMensagemAcao("Limpeza concluída com sucesso.");
       }
       setFiltro(novoFiltro);
-      await carregar(true, novoFiltro);
+      sucesso = true;
     } catch (e: unknown) {
       const msg =
         e instanceof Error ? e.message : "Não foi possível concluir a operação.";
       setErro(msg);
     } finally {
       setAcaoId(null);
+      acaoEmAndamentoRef.current = false;
+    }
+    if (sucesso && novoFiltro) {
+      while (requisicaoEmAndamentoRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      await carregar(true, novoFiltro);
     }
   };
 
@@ -242,7 +276,7 @@ export default function LimpezaSuitesPage() {
       <ScreenContainer
         style={[
           styles.screen,
-          isDesktop && styles.screenDesktop,
+          isDesktop && { maxWidth: contentMaxWidth, width: "100%", alignSelf: "center" },
         ]}
       >
         <View style={styles.container}>
@@ -310,20 +344,35 @@ export default function LimpezaSuitesPage() {
             </Text>
           ) : (
             <FlatList
+              key={`limpeza-cols-${suiteColumns}`}
               data={itens}
               keyExtractor={(item) => String(item.id)}
+              numColumns={suiteColumns}
+              columnWrapperStyle={
+                suiteColumns > 1 ? styles.columnWrapper : undefined
+              }
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listaContent}
               renderItem={({ item }) => (
-                <CardLimpeza
-                  item={item}
-                  acaoLoading={acaoId === item.id}
-                  onIniciar={(id) => void executarAcao(id, "iniciar")}
-                  onConcluir={(id) => void executarAcao(id, "concluir")}
-                />
+                <View
+                  style={[
+                    suiteColumns > 1 ? styles.gridItem : undefined,
+                    desktopLayout && styles.gridItemDesktop,
+                  ]}
+                >
+                  <CardLimpeza
+                    item={item}
+                    acaoLoading={acaoId === item.id}
+                    gradeMultiCol={suiteColumns > 1}
+                    onIniciar={(id) => void executarAcao(id, "iniciar")}
+                    onConcluir={(id) => void executarAcao(id, "concluir")}
+                  />
+                </View>
               )}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
-              contentContainerStyle={{ paddingBottom: 40 }}
+              ListFooterComponent={<View style={{ height: 40 }} />}
             />
           )}
         </View>
@@ -336,11 +385,6 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   screen: {
     marginTop: Platform.OS === "web" ? 80 : 120,
-  },
-  screenDesktop: {
-    maxWidth: 1450,
-    width: "100%",
-    alignSelf: "center",
   },
   container: {
     flex: 1,
@@ -409,6 +453,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 6,
   },
+  listaContent: {
+    paddingBottom: 24,
+    flexGrow: 1,
+  },
+  columnWrapper: {
+    gap: 10,
+    alignItems: "stretch",
+    marginBottom: 10,
+  },
+  gridItem: {
+    flex: 1,
+    minWidth: 0,
+  },
+  gridItemDesktop: {
+    alignSelf: "stretch",
+  },
   card: {
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 14,
@@ -420,6 +480,12 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+    flex: 1,
+    minHeight: 148,
+  },
+  cardGradeMultiCol: {
+    marginBottom: 0,
+    minHeight: 156,
   },
   cardHeader: {
     flexDirection: "row",
