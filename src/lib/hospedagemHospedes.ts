@@ -35,6 +35,7 @@ export type HospedeAdultoForm = {
   tipo: "adulto";
   ordem: number;
   nomeCompleto: string;
+  idReservaHospede?: number;
 };
 
 export type HospedeCriancaForm = {
@@ -42,10 +43,12 @@ export type HospedeCriancaForm = {
   ordem: number;
   nomeCompleto: string;
   dataNascimento: Date | null;
+  idReservaHospede?: number;
 };
 
 export type HospedesSuiteForm = {
   idEventoSuite: number;
+  idReservaSuite?: number;
   nomeSuite: string;
   adultos: HospedeAdultoForm[];
   criancas: HospedeCriancaForm[];
@@ -229,4 +232,81 @@ export function hospedesSuiteParaCheckout(
   }));
 
   return [...adultos, ...criancas];
+}
+
+export type ReservaPublicaHospedeApi = {
+  id: number;
+  nome: string;
+  tipo: string;
+  dataNascimento?: string | null;
+};
+
+export type ReservaPublicaSuiteApi = {
+  idReservaSuite: number;
+  idEventoSuite: number;
+  nome: string;
+  adultos: number;
+  criancas: number;
+  hospedes?: ReservaPublicaHospedeApi[];
+};
+
+function parseDataNascimentoApi(valor?: string | null): Date | null {
+  if (!valor) return null;
+  const base = String(valor).split("T")[0];
+  const parsed = new Date(`${base}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** Monta formulário a partir do GET público /reserva/:token. */
+export function hospedesReservaPublicaParaForm(
+  suites: ReservaPublicaSuiteApi[],
+): HospedesSuiteForm[] {
+  return suites.map((suite) => {
+    const adultosDb = (suite.hospedes ?? []).filter(
+      (hospede) => String(hospede.tipo).toLowerCase() === "adulto",
+    );
+    const criancasDb = (suite.hospedes ?? []).filter(
+      (hospede) => String(hospede.tipo).toLowerCase() === "crianca",
+    );
+
+    return {
+      idEventoSuite: suite.idEventoSuite,
+      idReservaSuite: suite.idReservaSuite,
+      nomeSuite: suite.nome,
+      adultos: adultosDb.map((hospede, index) => ({
+        tipo: "adulto" as const,
+        ordem: index + 1,
+        nomeCompleto: String(hospede.nome || "").trim(),
+        idReservaHospede: hospede.id,
+      })),
+      criancas: criancasDb.map((hospede, index) => ({
+        tipo: "crianca" as const,
+        ordem: index + 1,
+        nomeCompleto: String(hospede.nome || "").trim(),
+        dataNascimento: parseDataNascimentoApi(hospede.dataNascimento),
+        idReservaHospede: hospede.id,
+      })),
+    };
+  });
+}
+
+export function hospedesFormParaSalvarPublico(hospedes: HospedesSuiteForm[]) {
+  return {
+    suites: hospedes.map((suite) => ({
+      idReservaSuite: Number(suite.idReservaSuite),
+      hospedes: [
+        ...suite.adultos.map((adulto) => ({
+          id: Number(adulto.idReservaHospede),
+          nome: adulto.nomeCompleto.trim(),
+        })),
+        ...suite.criancas.map((crianca) => ({
+          id: Number(crianca.idReservaHospede),
+          nome: crianca.nomeCompleto.trim(),
+          ...(crianca.dataNascimento
+            ? { dataNascimento: crianca.dataNascimento.toISOString() }
+            : {}),
+        })),
+      ],
+    })),
+  };
 }

@@ -886,6 +886,26 @@ export async function getReservaPublicaPorToken(
   return api.request(`/reserva/${encodeURIComponent(token)}`, "GET");
 }
 
+export async function putHospedesReservaPublicaPorToken(
+  token: string,
+  body: {
+    suites: Array<{
+      idReservaSuite: number;
+      hospedes: Array<{
+        id: number;
+        nome: string;
+        dataNascimento?: string;
+      }>;
+    }>;
+  },
+): Promise<ApiResponse<any>> {
+  return api.request(
+    `/reserva/${encodeURIComponent(token)}/hospedes`,
+    "PUT",
+    body,
+  );
+}
+
 /** Indicadores do calendário horizontal (e base para agenda/timeline futura). */
 export type IndicadoresDiaCalendario = {
   checkin: number;
