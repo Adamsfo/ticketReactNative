@@ -161,6 +161,46 @@ export default function ReservaOperacaoSheet({
   const observacoesSalvoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  /** Evita useEffect sobrescrever texto local após falha de PATCH observações. */
+  const observacoesSyncBloqueadoRef = useRef(false);
+
+  const mesclarObservacoesDetalhe = (item: ReservaAdminDetalhe): string =>
+    item.observacoes ??
+    [item.observacaoImportada, item.observacaoOperador]
+      .filter((parte) => String(parte || "").length > 0)
+      .join("\n\n");
+
+  const extrairDetalheObservacoesSalvo = (
+    payload: unknown,
+    idReservaEsperado: number,
+  ): ReservaAdminDetalhe | null => {
+    if (!payload || typeof payload !== "object") return null;
+
+    const envelope = payload as {
+      success?: boolean;
+      data?: ReservaAdminDetalhe;
+    };
+
+    const candidato =
+      envelope.data &&
+      typeof envelope.data === "object" &&
+      (envelope.data.id != null || envelope.data.idReservaHospedagem != null)
+        ? envelope.data
+        : (payload as ReservaAdminDetalhe);
+
+    const idResposta = Number(
+      candidato.idReservaHospedagem ?? candidato.id ?? 0,
+    );
+    if (
+      !Number.isFinite(idResposta) ||
+      idResposta <= 0 ||
+      idResposta !== idReservaEsperado
+    ) {
+      return null;
+    }
+
+    return candidato;
+  };
 
   const hojeOperacao = useMemo(
     () => formatInTimeZone(new Date(), HOSPEDAGEM_TZ, "yyyy-MM-dd"),
@@ -181,6 +221,7 @@ export default function ReservaOperacaoSheet({
       setObservacoesSalvando(false);
       setObservacoesSalvoOk(false);
       setObservacoesErro(null);
+      observacoesSyncBloqueadoRef.current = false;
       setCadastroClienteVisible(false);
       setErroCadastroCliente(null);
       setVinculandoCliente(false);
@@ -222,11 +263,9 @@ export default function ReservaOperacaoSheet({
 
   useEffect(() => {
     if (!detalhe) return;
-    const merged =
-      detalhe.observacoes ??
-      [detalhe.observacaoImportada, detalhe.observacaoOperador]
-        .filter((parte) => String(parte || "").length > 0)
-        .join("\n\n");
+    if (observacoesSyncBloqueadoRef.current) return;
+
+    const merged = mesclarObservacoesDetalhe(detalhe);
     setObservacoesTexto(merged);
     setObservacoesSalvas(merged);
     setObservacoesSalvoOk(false);
@@ -243,37 +282,50 @@ export default function ReservaOperacaoSheet({
     if (!reserva?.idReservaHospedagem || observacoesSalvando) return;
     if (observacoesTexto === observacoesSalvas) return;
 
+    const textoDigitado = observacoesTexto;
+    const idReserva = reserva.idReservaHospedagem;
+
     setObservacoesSalvando(true);
     setObservacoesSalvoOk(false);
     setObservacoesErro(null);
+    observacoesSyncBloqueadoRef.current = false;
 
     try {
-      const resp = await patchObservacoesReserva(
-        reserva.idReservaHospedagem,
-        observacoesTexto,
-      );
-      if (resp.success && resp.data) {
-        const detalheAtualizado =
-          (resp.data as { data?: ReservaAdminDetalhe }).data ??
-          (resp.data as ReservaAdminDetalhe);
-        const salvo = detalheAtualizado.observacoes ?? observacoesTexto;
-        setDetalhe(detalheAtualizado);
-        setObservacoesTexto(salvo);
-        setObservacoesSalvas(salvo);
-        setObservacoesSalvoOk(true);
-        if (observacoesSalvoTimerRef.current) {
-          clearTimeout(observacoesSalvoTimerRef.current);
-        }
-        observacoesSalvoTimerRef.current = setTimeout(() => {
-          setObservacoesSalvoOk(false);
-          observacoesSalvoTimerRef.current = null;
-        }, 3000);
-      } else {
+      const resp = await patchObservacoesReserva(idReserva, textoDigitado);
+      if (!resp.success) {
+        observacoesSyncBloqueadoRef.current = true;
         setObservacoesErro(
           resp.message || "Não foi possível salvar as observações.",
         );
+        return;
       }
+
+      const detalheAtualizado = extrairDetalheObservacoesSalvo(
+        resp.data,
+        idReserva,
+      );
+      if (!detalheAtualizado) {
+        observacoesSyncBloqueadoRef.current = true;
+        setObservacoesErro("Não foi possível salvar as observações.");
+        return;
+      }
+
+      const salvo =
+        mesclarObservacoesDetalhe(detalheAtualizado) || textoDigitado;
+      observacoesSyncBloqueadoRef.current = false;
+      setDetalhe(detalheAtualizado);
+      setObservacoesTexto(salvo);
+      setObservacoesSalvas(salvo);
+      setObservacoesSalvoOk(true);
+      if (observacoesSalvoTimerRef.current) {
+        clearTimeout(observacoesSalvoTimerRef.current);
+      }
+      observacoesSalvoTimerRef.current = setTimeout(() => {
+        setObservacoesSalvoOk(false);
+        observacoesSalvoTimerRef.current = null;
+      }, 3000);
     } catch {
+      observacoesSyncBloqueadoRef.current = true;
       setObservacoesErro("Não foi possível salvar as observações.");
     } finally {
       setObservacoesSalvando(false);
@@ -1604,6 +1656,7 @@ export default function ReservaOperacaoSheet({
                   onCadastrado={handleClienteCadastrado}
                   onCancelar={() => setCadastroClienteVisible(false)}
                   observacoesReserva={observacoesTexto}
+                  cadastroSomenteMysql={true}
                 />
                 {erroCadastroCliente ? (
                   <Text style={styles.cadastroErro}>{erroCadastroCliente}</Text>

@@ -167,21 +167,28 @@ export function preencherPrimeiroAdultoSeVazio(
   });
 }
 
+export type ValidarHospedesOptions = {
+  /** Recepção/atendente: nome do hóspede é opcional. */
+  nomeOpcional?: boolean;
+};
+
 export function validarHospedes(
   hospedes: HospedesSuiteForm[],
+  options?: ValidarHospedesOptions,
 ): Record<string, string> {
   const errors: Record<string, string> = {};
+  const nomeOpcional = options?.nomeOpcional === true;
 
   hospedes.forEach((suite) => {
     suite.adultos.forEach((adulto) => {
-      if (!adulto.nomeCompleto.trim()) {
+      if (!nomeOpcional && !adulto.nomeCompleto.trim()) {
         errors[`${suite.idEventoSuite}-adulto-${adulto.ordem}-nome`] =
           "Informe o nome completo do adulto.";
       }
     });
 
     suite.criancas.forEach((crianca) => {
-      if (!crianca.nomeCompleto.trim()) {
+      if (!nomeOpcional && !crianca.nomeCompleto.trim()) {
         errors[`${suite.idEventoSuite}-crianca-${crianca.ordem}-nome`] =
           "Informe o nome completo da criança.";
       }

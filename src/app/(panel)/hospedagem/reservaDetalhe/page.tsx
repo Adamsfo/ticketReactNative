@@ -661,6 +661,7 @@ function HospedagemReservaDetalheContent() {
                   onCadastrado={handleOnCadastrado}
                   onCancelar={() => setModalOpen(false)}
                   observacoesReserva={observacoesReservaCadastro}
+                  cadastroSomenteMysql={true}
                 />
                 {erroCadastroCliente ? (
                   <Text style={styles.erroCadastro}>{erroCadastroCliente}</Text>

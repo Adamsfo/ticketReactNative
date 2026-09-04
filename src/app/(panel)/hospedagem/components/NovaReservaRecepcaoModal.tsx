@@ -611,7 +611,10 @@ export default function NovaReservaRecepcaoModal() {
       case 3:
         return carrinho.length > 0 && !carrinhoTemDescontoInvalido;
       case 4:
-        return Object.keys(validarHospedes(hospedes)).length === 0;
+        return (
+          Object.keys(validarHospedes(hospedes, { nomeOpcional: true }))
+            .length === 0
+        );
       case 5:
         return (
           Boolean(cliente?.id) &&
@@ -649,10 +652,10 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
     if (step === 4) {
-      const errs = validarHospedes(hospedes);
+      const errs = validarHospedes(hospedes, { nomeOpcional: true });
       setHospedesErrors(errs);
       if (Object.keys(errs).length > 0) {
-        setErroGeral("Preencha todos os dados dos hóspedes.");
+        setErroGeral("Revise os dados dos hóspedes.");
         return;
       }
     }
@@ -923,7 +926,7 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
 
-    const errs = validarHospedes(hospedes);
+    const errs = validarHospedes(hospedes, { nomeOpcional: true });
     setHospedesErrors(errs);
     if (Object.keys(errs).length > 0) {
       setErroGeral("Revise os dados dos hóspedes.");
@@ -971,7 +974,7 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
 
-    const errs = validarHospedes(hospedes);
+    const errs = validarHospedes(hospedes, { nomeOpcional: true });
     setHospedesErrors(errs);
     if (Object.keys(errs).length > 0) {
       setErroGeral("Revise os dados dos hóspedes.");
@@ -1458,7 +1461,8 @@ export default function NovaReservaRecepcaoModal() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Dados dos hóspedes</Text>
               <Text style={styles.hint}>
-                Informe o nome de cada hóspede conforme a reserva.
+                Informe os nomes que souber; os demais podem ficar em branco.
+                Crianças ainda precisam de data de nascimento válida.
               </Text>
 
               {hospedes.map((suite) => (

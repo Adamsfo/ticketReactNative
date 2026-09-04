@@ -1086,6 +1086,7 @@ export default function TabSuites() {
   const navigation = useNavigation() as any;
   const { openNovaReserva } = useNovaReservaRecepcao();
   const { suiteColumns } = useHospedagemDesktopLayout();
+  const mostrarTextoAtualizadoHa = suiteColumns > 1;
   const cardsCompactos = suiteColumns > 1;
   /** Desktop (≥3 cols / ≥1200px): botões fixos na base do card. */
   const desktopLayout = suiteColumns >= 3;
@@ -1265,7 +1266,7 @@ export default function TabSuites() {
           }}
         />
         <View style={styles.refreshBox}>
-          {lastRefreshAt != null ? (
+          {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
             <Text style={styles.refreshMeta} numberOfLines={1}>
               {textoAtualizadoHa(lastRefreshAt, agoraTick)}
             </Text>

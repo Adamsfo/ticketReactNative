@@ -20,6 +20,8 @@ type Props = {
   cpfInicial?: string;
   /** Texto livre da reserva — somente exibição, sem parsing ou preenchimento automático. */
   observacoesReserva?: string | null;
+  /** Hospedagem: cadastro/consulta somente no MySQL/site, sem Jango/Firebird. */
+  cadastroSomenteMysql?: boolean;
 };
 
 function isValidCPF(cpf: string): boolean {
@@ -66,13 +68,14 @@ function isEmail(value: string): boolean {
 
 /**
  * Cadastro rápido de cliente — mesmas APIs da Cortesia
- * (/clientejango, /clientejangoadd, addlogin).
+ * (/clientejango, /clientejangoadd, addlogin), ou somente MySQL quando cadastroSomenteMysql.
  */
 export default function CadastroClienteRapido({
   onCadastrado,
   onCancelar,
   cpfInicial = "",
   observacoesReserva,
+  cadastroSomenteMysql = false,
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const textoObservacoes = observacoesReserva ?? "";
@@ -80,6 +83,8 @@ export default function CadastroClienteRapido({
   const layoutLadoALado = mostrarObservacoes && windowWidth >= 768;
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [usuarioMysqlEncontrado, setUsuarioMysqlEncontrado] = useState(false);
+  const [ultimoCpfConsultado, setUltimoCpfConsultado] = useState("");
   const [formData, setFormData] = useState<Usuario>({
     id: 0,
     login: "",
@@ -116,6 +121,111 @@ export default function CadastroClienteRapido({
     }));
   };
 
+  const buscarMysqlPorCpf = async (cpf: string) => {
+    const cpfDigits = cpf.replace(/\D/g, "");
+    setUltimoCpfConsultado(cpfDigits);
+
+    const busca = await apiAuth.getUsuario({
+      filters: { cpf },
+    });
+    const usuario = (busca.data as Usuario[])?.[0];
+
+    if (usuario?.id) {
+      setFormData((prev) => ({
+        ...prev,
+        id: usuario.id,
+        nomeCompleto: usuario.nomeCompleto || "",
+        sobreNome: usuario.sobreNome || "",
+        telefone: usuario.telefone
+          ? formatPhone(String(usuario.telefone))
+          : prev.telefone,
+        email: usuario.email || "",
+        id_cliente: usuario.id_cliente || 0,
+        cpf: formatCPF(cpf),
+      }));
+      setUsuarioMysqlEncontrado(true);
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      id: 0,
+      id_cliente: 0,
+    }));
+    setUsuarioMysqlEncontrado(false);
+  };
+
+  const handleCpfBlur = () => {
+    if (!formData.cpf || !isValidCPF(formData.cpf)) {
+      return;
+    }
+    if (cadastroSomenteMysql) {
+      void buscarMysqlPorCpf(formData.cpf);
+    } else {
+      void buscarJangoPorCpf(formData.cpf);
+    }
+  };
+
+  const handleCpfChange = (value: string) => {
+    const formatted = formatCPF(value);
+    const newDigits = formatted.replace(/\D/g, "");
+
+    setFormData((prev) => {
+      const prevDigits = String(prev.cpf ?? "").replace(/\D/g, "");
+      if (!cadastroSomenteMysql || newDigits === prevDigits) {
+        return { ...prev, cpf: formatted };
+      }
+      return {
+        ...prev,
+        cpf: formatted,
+        id: 0,
+        id_cliente: 0,
+      };
+    });
+
+    if (cadastroSomenteMysql && newDigits !== ultimoCpfConsultado) {
+      setUsuarioMysqlEncontrado(false);
+    }
+  };
+
+  const buscarUsuarioPorCpf = async (): Promise<Usuario | null> => {
+    const busca = await apiAuth.getUsuario({
+      filters: { cpf: formData.cpf },
+    });
+    return (busca.data as Usuario[])?.[0] ?? null;
+  };
+
+  const handleCadastrarMysql = async () => {
+    if (Number(formData.id) > 0 && usuarioMysqlEncontrado) {
+      const usuario = await buscarUsuarioPorCpf();
+      if (!usuario?.id) {
+        setErro("Cliente não encontrado. Consulte o CPF novamente.");
+        return;
+      }
+      onCadastrado(usuario);
+      return;
+    }
+
+    const resp = await apiAuth.addlogin({
+      ...formData,
+      login: formData.email,
+      senha: String(formData.cpf ?? "").replace(/\D/g, "").slice(0, 6) || "123456",
+      preCadastro: true,
+    } as Usuario & { preCadastro?: boolean });
+
+    if (!resp.success) {
+      setErro(resp.message || "Não foi possível cadastrar o cliente.");
+      return;
+    }
+
+    const usuario = await buscarUsuarioPorCpf();
+    if (!usuario?.id) {
+      setErro("Cliente cadastrado, mas não foi possível selecioná-lo.");
+      return;
+    }
+    onCadastrado(usuario);
+  };
+
   const handleCadastrar = async () => {
     setErro(null);
     if (!formData.cpf || !isValidCPF(formData.cpf)) {
@@ -137,6 +247,11 @@ export default function CadastroClienteRapido({
 
     setLoading(true);
     try {
+      if (cadastroSomenteMysql) {
+        await handleCadastrarMysql();
+        return;
+      }
+
       if (!formData.id_cliente) {
         await apiGeral.createResource("/clientejangoadd", {
           cpf: formData.cpf.replace(/\D/g, ""),
@@ -158,10 +273,7 @@ export default function CadastroClienteRapido({
         return;
       }
 
-      const busca = await apiAuth.getUsuario({
-        filters: { cpf: formData.cpf },
-      });
-      const usuario = (busca.data as Usuario[])?.[0];
+      const usuario = await buscarUsuarioPorCpf();
       if (!usuario?.id) {
         setErro("Cliente cadastrado, mas não foi possível selecioná-lo.");
         return;
@@ -174,12 +286,14 @@ export default function CadastroClienteRapido({
     }
   };
 
+  const hintTexto = cadastroSomenteMysql
+    ? "Cadastro do cliente no site de ingressos. A integração com o Jango ocorre posteriormente, no registro de chegada."
+    : "Mesmo cadastro utilizado na Cortesia (Jango + pré-cadastro).";
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.titulo}>Cadastrar novo cliente</Text>
-      <Text style={styles.hint}>
-        Mesmo cadastro utilizado na Cortesia (Jango + pré-cadastro).
-      </Text>
+      <Text style={styles.hint}>{hintTexto}</Text>
 
       <View
         style={[styles.corpo, layoutLadoALado && styles.corpoDesktop]}
@@ -190,12 +304,8 @@ export default function CadastroClienteRapido({
             style={styles.input}
             value={formData.cpf}
             keyboardType="numeric"
-            onChangeText={(t) => setField("cpf", formatCPF(t))}
-            onBlur={() => {
-              if (formData.cpf && isValidCPF(formData.cpf)) {
-                buscarJangoPorCpf(formData.cpf);
-              }
-            }}
+            onChangeText={handleCpfChange}
+            onBlur={handleCpfBlur}
             placeholder="000.000.000-00"
           />
 

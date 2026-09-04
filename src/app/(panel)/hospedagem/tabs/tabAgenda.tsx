@@ -24,6 +24,7 @@ import {
 import ReservaOperacaoSheet from "../components/ReservaOperacaoSheet";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
+import { useHospedagemDesktopLayout } from "../useHospedagemDesktopLayout";
 import {
   AGENDA_DAY_WIDTH,
   AGENDA_HEADER_HEIGHT,
@@ -217,6 +218,8 @@ function LinhaSuite({
 export default function TabAgenda() {
   const navigation = useNavigation() as any;
   const { openNovaReserva } = useNovaReservaRecepcao();
+  const { suiteColumns } = useHospedagemDesktopLayout();
+  const mostrarTextoAtualizadoHa = suiteColumns > 1;
   const hoje = useMemo(() => hojeStrCuiaba(), []);
   const [dataInicio, setDataInicio] = useState(hoje);
   const [mesVisivel, setMesVisivel] = useState(() => mesDeData(hoje));
@@ -408,7 +411,7 @@ export default function TabAgenda() {
           })}
         </View>
         <View style={styles.refreshBox}>
-          {lastRefreshAt != null ? (
+          {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
             <Text style={styles.refreshMeta} numberOfLines={1}>
               {textoAtualizadoHa(lastRefreshAt, agoraTick)}
             </Text>
