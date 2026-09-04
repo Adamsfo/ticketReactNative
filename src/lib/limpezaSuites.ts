@@ -56,6 +56,19 @@ export function labelStatusLimpeza(status: StatusLimpezaSuite): string {
   }
 }
 
+export function mensagemStatusLimpeza(status: StatusLimpezaSuite): string {
+  switch (status) {
+    case "Pendente":
+      return "Limpeza ainda não iniciada.";
+    case "EmAndamento":
+      return "Limpeza em andamento.";
+    case "Concluida":
+      return "Limpeza concluída.";
+    default:
+      return String(status);
+  }
+}
+
 export async function getLimpezasSuites(params?: {
   filtro?: FiltroLimpezaSuites | string;
   page?: number;

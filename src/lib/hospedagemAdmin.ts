@@ -133,6 +133,8 @@ export type SuiteOperacionalCard = {
   idReservaHospedagem?: number | null;
   numeroReserva?: number | null;
   statusReserva?: string | null;
+  /** Status da limpeza de turnover (checkout anterior) na mesma EventoSuite. */
+  statusLimpezaSuite?: "Pendente" | "EmAndamento" | "Concluida" | null;
   ocupadaAgora?: boolean;
   hospedada?: boolean;
   checkinHoje?: boolean;

@@ -32,6 +32,7 @@ import {
   BadgeHospedeChegou,
   PainelHospedeChegou,
 } from "../components/HospedeChegouDestaque";
+import PainelStatusLimpezaSuite from "../components/PainelStatusLimpezaSuite";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador, {
   labelChipOrigemReserva,
@@ -372,14 +373,7 @@ function MetaLinha({
 const MSG_CHECKIN_AGUARDA_CHECKOUT =
   "É necessário realizar o check-out do hóspede atual antes de efetuar o check-in da próxima reserva.";
 
-/** Apresentação específica: Suite Azaléia hospedada no dia do checkout (sem próxima reserva). */
-function isSuiteAzaleiaCard(item: SuiteOperacionalCard): boolean {
-  return (
-    item.idEventoSuite === 10 ||
-    /azal[eé]ia/i.test(String(item.nome || ""))
-  );
-}
-
+/** Apresentação no card: hóspede já hospedado no dia do checkout (badge CHECKOUT_HOJE da API). */
 function clienteHospedadoNoCard(item: SuiteOperacionalCard): boolean {
   return (
     String(item.statusReserva || item.status || "").toUpperCase() ===
@@ -774,10 +768,9 @@ function CardSuite({
     item.status === "CheckOutHoje" ||
     statusExibicao === "CHECKOUT_HOJE";
 
-  const suiteAzaleia = isSuiteAzaleiaCard(item);
   const clienteHospedado = clienteHospedadoNoCard(item);
   const azaleiaHospedadaCheckoutHoje =
-    suiteAzaleia && clienteHospedado && isCheckoutHoje;
+    clienteHospedado && isCheckoutHoje;
 
   const modoDupla =
     Boolean(item.modoDuplaReserva) &&
@@ -922,10 +915,18 @@ function CardSuite({
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
               {aguardandoAcomodacao ? (
-                <PainelHospedeChegou
-                  dataHoraChegadaReal={dataHoraChegadaReal}
-                  compact={compact}
-                />
+                <>
+                  <PainelHospedeChegou
+                    dataHoraChegadaReal={dataHoraChegadaReal}
+                    compact={compact}
+                  />
+                  {item.statusLimpezaSuite ? (
+                    <PainelStatusLimpezaSuite
+                      status={item.statusLimpezaSuite}
+                      compact={compact}
+                    />
+                  ) : null}
+                </>
               ) : statusExibicao === "CHECKIN_HOJE" && item.checkin ? (
                 <MetaLinha icon="log-in">
                   Entra às {horaCheckinCurta(item.checkin)}

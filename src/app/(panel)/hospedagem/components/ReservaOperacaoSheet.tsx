@@ -721,8 +721,16 @@ export default function ReservaOperacaoSheet({
         visible={visible}
         transparent
         animationType="slide"
-        onRequestClose={onClose}
+        onRequestClose={() => {
+          if (confirmMode != null && !executando) {
+            setConfirmMode(null);
+            setErroConfirmacao(null);
+            return;
+          }
+          onClose();
+        }}
       >
+        <View style={styles.modalRoot}>
         <Pressable
           style={[styles.backdrop, isDesktopLayout && styles.backdropDesktop]}
           onPress={onClose}
@@ -1398,82 +1406,93 @@ export default function ReservaOperacaoSheet({
             </ScrollView>
           </Pressable>
         </Pressable>
-      </Modal>
 
-      <Modal
-        visible={confirmMode != null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => !executando && setConfirmMode(null)}
-      >
-        <View style={styles.confirmBackdrop}>
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitulo}>{confirmTitulo}</Text>
-            <Text style={styles.confirmSub}>{confirmSub}</Text>
-
-            <Text style={styles.confirmLabel}>
-              {confirmMode === "checkout"
-                ? "Data/hora do check-out"
-                : confirmMode === "chegada"
-                  ? "Data/hora da chegada"
-                  : "Data/hora do check-in"}
-            </Text>
-            <View style={styles.confirmDateTimeRow}>
-              <View style={styles.confirmDateField}>
-                <DatePickerComponente
-                  value={operacaoDate}
-                  onChange={(d) => {
-                    setOperacaoDate(d);
-                    setErroConfirmacao(null);
-                  }}
-                />
-              </View>
-              <View style={styles.confirmTimeField}>
-                <TimePickerComponente
-                  value={operacaoTime}
-                  onChange={(t) => {
-                    setOperacaoTime(t);
-                    setErroConfirmacao(null);
-                  }}
-                />
-              </View>
-            </View>
-            <Text style={styles.confirmHint}>
-              Padrão: agora. Altere apenas para registro retroativo.
-            </Text>
-            {erroConfirmacao ? (
-              <Text style={styles.confirmErro}>{erroConfirmacao}</Text>
-            ) : null}
-
-            <View style={styles.confirmBtns}>
-              <TouchableOpacity
-                style={styles.btnCancelar}
-                onPress={() => {
+        {confirmMode != null ? (
+          <View style={styles.confirmOverlayLayer} pointerEvents="box-none">
+            <Pressable
+              style={styles.confirmBackdrop}
+              onPress={() => {
+                if (!executando) {
                   setConfirmMode(null);
                   setErroConfirmacao(null);
-                }}
-                disabled={executando}
-              >
-                <Text style={styles.btnCancelarTexto}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.btnConfirmar,
-                  confirmMode === "checkout" && {
-                    backgroundColor: CORES_STATUS_OPERACIONAL.aguardandoAcao,
-                  },
-                ]}
-                onPress={confirmarOperacao}
-                disabled={executando}
-              >
-                {executando ? (
-                  <ActivityIndicator color={colors.branco} />
-                ) : (
-                  <Text style={styles.btnConfirmarTexto}>{confirmBtnLabel}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                }
+              }}
+            >
+              <Pressable onPress={(e) => e.stopPropagation()}>
+                <View style={styles.confirmBox}>
+                  <Text style={styles.confirmTitulo}>{confirmTitulo}</Text>
+                  <Text style={styles.confirmSub}>{confirmSub}</Text>
+
+                  <Text style={styles.confirmLabel}>
+                    {confirmMode === "checkout"
+                      ? "Data/hora do check-out"
+                      : confirmMode === "chegada"
+                        ? "Data/hora da chegada"
+                        : "Data/hora do check-in"}
+                  </Text>
+                  <View style={styles.confirmDateTimeRow}>
+                    <View style={styles.confirmDateField}>
+                      <DatePickerComponente
+                        value={operacaoDate}
+                        onChange={(d) => {
+                          setOperacaoDate(d);
+                          setErroConfirmacao(null);
+                        }}
+                      />
+                    </View>
+                    <View style={styles.confirmTimeField}>
+                      <TimePickerComponente
+                        value={operacaoTime}
+                        onChange={(t) => {
+                          setOperacaoTime(t);
+                          setErroConfirmacao(null);
+                        }}
+                      />
+                    </View>
+                  </View>
+                  <Text style={styles.confirmHint}>
+                    Padrão: agora. Altere apenas para registro retroativo.
+                  </Text>
+                  {erroConfirmacao ? (
+                    <Text style={styles.confirmErro}>{erroConfirmacao}</Text>
+                  ) : null}
+
+                  <View style={styles.confirmBtns}>
+                    <TouchableOpacity
+                      style={styles.btnCancelar}
+                      onPress={() => {
+                        setConfirmMode(null);
+                        setErroConfirmacao(null);
+                      }}
+                      disabled={executando}
+                    >
+                      <Text style={styles.btnCancelarTexto}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.btnConfirmar,
+                        confirmMode === "checkout" && {
+                          backgroundColor:
+                            CORES_STATUS_OPERACIONAL.aguardandoAcao,
+                        },
+                      ]}
+                      onPress={confirmarOperacao}
+                      disabled={executando}
+                    >
+                      {executando ? (
+                        <ActivityIndicator color={colors.branco} />
+                      ) : (
+                        <Text style={styles.btnConfirmarTexto}>
+                          {confirmBtnLabel}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Pressable>
+            </Pressable>
           </View>
+        ) : null}
         </View>
       </Modal>
 
@@ -1812,6 +1831,14 @@ function parseDataNascimentoHospede(iso?: string | null): Date | null {
 }
 
 const styles = StyleSheet.create({
+  modalRoot: {
+    flex: 1,
+  },
+  confirmOverlayLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    elevation: 100,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

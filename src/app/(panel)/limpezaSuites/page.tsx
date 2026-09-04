@@ -2,8 +2,8 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -25,6 +25,7 @@ import {
   postConcluirLimpezaSuite,
   postIniciarLimpezaSuite,
 } from "@/src/lib/limpezaSuites";
+import { useHospedagemDesktopLayout } from "../hospedagem/useHospedagemDesktopLayout";
 
 const FILTROS: Array<{ key: FiltroLimpezaSuites; label: string }> = [
   { key: "pendente", label: "Pendente" },
@@ -56,7 +57,9 @@ function LinhaInfo({
   return (
     <View style={styles.linhaInfo}>
       <Text style={styles.rotulo}>{rotulo}</Text>
-      <Text style={styles.valor}>{valor}</Text>
+      <Text style={styles.valor} numberOfLines={2}>
+        {valor}
+      </Text>
     </View>
   );
 }
@@ -77,7 +80,7 @@ function CardLimpeza({
   const podeConcluir = item.status === "EmAndamento";
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { borderLeftColor: cor }]}>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.suiteNome}>{item.nomeSuite ?? "Suíte"}</Text>
@@ -156,6 +159,7 @@ function CardLimpeza({
 }
 
 export default function LimpezaSuitesPage() {
+  const { isDesktop } = useHospedagemDesktopLayout();
   const [filtro, setFiltro] = useState<FiltroLimpezaSuites>("pendente");
   const [itens, setItens] = useState<LimpezaSuiteCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,47 +239,58 @@ export default function LimpezaSuitesPage() {
     >
       <StatusBarPage style="dark" />
       <BarMenu />
-      <ScreenContainer>
+      <ScreenContainer
+        style={[
+          styles.screen,
+          isDesktop && styles.screenDesktop,
+        ]}
+      >
         <View style={styles.container}>
           <Text style={styles.titulo}>🧹 Limpeza das Suítes</Text>
           <Text style={styles.subtitulo}>
             Operação de limpeza — módulo independente da hospedagem.
           </Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtrosRow}
-          >
-            {FILTROS.map((f) => {
-              const ativo = filtro === f.key;
-              return (
-                <TouchableOpacity
-                  key={f.key}
-                  style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
-                  onPress={() => setFiltro(f.key)}
-                >
-                  <Text
-                    style={[
-                      styles.filtroChipTexto,
-                      ativo && styles.filtroChipTextoAtivo,
-                    ]}
+          <View style={styles.filtrosRow}>
+            <FlatList
+              horizontal
+              data={FILTROS}
+              keyExtractor={(item) => item.key}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtrosScroll}
+              style={styles.filtrosWrap}
+              renderItem={({ item }) => {
+                const ativo = filtro === item.key;
+                return (
+                  <TouchableOpacity
+                    style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
+                    onPress={() => setFiltro(item.key)}
                   >
-                    {f.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <View style={styles.resumoRow}>
-            <Text style={styles.resumoTexto}>
-              {total} registro{total === 1 ? "" : "s"}
-            </Text>
-            <TouchableOpacity onPress={() => void carregar(true)}>
+                    <Text
+                      style={[
+                        styles.filtroTexto,
+                        ativo && styles.filtroTextoAtivo,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+            <TouchableOpacity
+              style={styles.refreshBtn}
+              onPress={() => void carregar(true)}
+              accessibilityLabel="Atualizar lista"
+              hitSlop={8}
+            >
               <Feather name="refresh-cw" size={18} color={colors.azul} />
             </TouchableOpacity>
           </View>
+
+          <Text style={styles.resumoTexto}>
+            {total} registro{total === 1 ? "" : "s"}
+          </Text>
 
           {mensagemAcao ? (
             <Text style={styles.sucesso}>{mensagemAcao}</Text>
@@ -319,82 +334,114 @@ export default function LimpezaSuitesPage() {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
+  screen: {
+    marginTop: Platform.OS === "web" ? 80 : 120,
+  },
+  screenDesktop: {
+    maxWidth: 1450,
+    width: "100%",
+    alignSelf: "center",
+  },
   container: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingHorizontal: 0,
   },
   titulo: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.cinza,
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 4,
+    color: colors.cinza,
   },
   subtitulo: {
-    color: colors.cinza,
     fontSize: 13,
-    marginBottom: 12,
+    color: "#6b7280",
+    textAlign: "center",
+    marginBottom: 10,
   },
   filtrosRow: {
-    gap: 8,
-    paddingBottom: 12,
-  },
-  filtroChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#eef2f7",
-    marginRight: 8,
-  },
-  filtroChipAtivo: {
-    backgroundColor: colors.laranjado,
-  },
-  filtroChipTexto: {
-    color: colors.cinza,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  filtroChipTextoAtivo: {
-    color: colors.white,
-  },
-  resumoRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 6,
+    gap: 6,
+  },
+  filtrosWrap: {
+    flex: 1,
+    maxHeight: 48,
+    flexGrow: 1,
+  },
+  filtrosScroll: {
+    paddingRight: 8,
+    alignItems: "center",
+  },
+  filtroChip: {
+    backgroundColor: "rgba(255,255,255,0.85)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 8,
+    minHeight: 40,
+    justifyContent: "center",
+  },
+  filtroChipAtivo: {
+    backgroundColor: colors.azul,
+  },
+  filtroTexto: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.cinza,
+  },
+  filtroTextoAtivo: {
+    color: colors.branco,
+  },
+  refreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   resumoTexto: {
-    color: colors.cinza,
-    fontSize: 13,
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 6,
   },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 14,
+    padding: 12,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#e8edf3",
+    borderLeftWidth: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 8,
   },
   suiteNome: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.cinza,
   },
   eventoNome: {
     fontSize: 12,
-    color: colors.cinza,
+    color: "#6b7280",
     marginTop: 2,
   },
   badge: {
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    flexShrink: 0,
   },
   badgeTexto: {
     color: colors.white,
@@ -402,18 +449,27 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   linhaInfo: {
-    marginTop: 6,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 4,
+    paddingVertical: 2,
   },
   rotulo: {
     fontSize: 11,
-    color: colors.cinza,
+    color: "#6b7280",
     textTransform: "uppercase",
     letterSpacing: 0.4,
+    flexShrink: 0,
+    minWidth: 108,
   },
   valor: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.cinza,
-    marginTop: 2,
+    flex: 1,
+    textAlign: "right",
+    fontWeight: "500",
   },
   erro: {
     color: "#c0392b",
@@ -432,11 +488,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   botaoAcao: {
-    marginTop: 14,
+    marginTop: 10,
     backgroundColor: colors.laranjado,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
+    width: "100%",
   },
   botaoAcaoConcluir: {
     backgroundColor: colors.greenEscuro,
