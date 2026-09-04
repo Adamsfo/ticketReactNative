@@ -126,13 +126,15 @@ function dataNoMes(mes: string, dataAtual: string): string {
 
 function IndicadoresDots({
   indicadores,
+  layoutMobile = false,
 }: {
   indicadores?: IndicadoresDiaCalendario | null;
+  layoutMobile?: boolean;
 }) {
   const dots = dotsIndicadoresCalendario(indicadores);
 
   return (
-    <View style={styles.dotsRow}>
+    <View style={[styles.dotsRow, layoutMobile && styles.dotsRowMobile]}>
       {dots.map((d) => (
         <View key={d.key} style={[styles.dot, { backgroundColor: d.cor }]} />
       ))}
@@ -148,12 +150,14 @@ function DiaCalendarioChip({
   indicadores,
   onPress,
   estiloExtra,
+  layoutMobile = false,
 }: {
   label: string;
   selecionado: boolean;
   indicadores?: IndicadoresDiaCalendario | null;
   onPress: () => void;
   estiloExtra?: object;
+  layoutMobile?: boolean;
 }) {
   const labelNumerico = /^\d+$/.test(label);
   const anim = useRef(new Animated.Value(selecionado ? 1 : 0)).current;
@@ -185,6 +189,7 @@ function DiaCalendarioChip({
       <Animated.View
         style={[
           styles.diaChipInner,
+          layoutMobile && styles.diaChipInnerMobile,
           {
             borderWidth,
             borderColor: CALENDARIO_SELECAO_BORDA,
@@ -203,7 +208,10 @@ function DiaCalendarioChip({
         >
           {label}
         </Text>
-        <IndicadoresDots indicadores={indicadores} />
+        <IndicadoresDots
+          indicadores={indicadores}
+          layoutMobile={layoutMobile}
+        />
       </Animated.View>
     </TouchableOpacity>
   );
@@ -217,6 +225,7 @@ function CalendarioHorizontal({
   onMesAnterior,
   onMesProximo,
   onSelecionarData,
+  layoutMobile = false,
 }: {
   mesVisivel: string;
   dataSelecionada: string;
@@ -225,6 +234,7 @@ function CalendarioHorizontal({
   onMesAnterior: () => void;
   onMesProximo: () => void;
   onSelecionarData: (data: string) => void;
+  layoutMobile?: boolean;
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const dias = useMemo(() => diasDoMes(mesVisivel), [mesVisivel]);
@@ -250,11 +260,13 @@ function CalendarioHorizontal({
   }, [mesVisivel, dataSelecionada, scrollParaSelecionado]);
 
   return (
-    <View style={styles.calendarioWrap}>
-      <View style={styles.mesNav}>
+    <View
+      style={[styles.calendarioWrap, layoutMobile && styles.calendarioWrapMobile]}
+    >
+      <View style={[styles.mesNav, layoutMobile && styles.mesNavMobile]}>
         <TouchableOpacity
           onPress={onMesAnterior}
-          style={styles.mesNavBtn}
+          style={[styles.mesNavBtn, layoutMobile && styles.mesNavBtnMobile]}
           accessibilityLabel="Mês anterior"
         >
           <Feather name="chevron-left" size={22} color={colors.cinza} />
@@ -262,7 +274,7 @@ function CalendarioHorizontal({
         <Text style={styles.mesNavTitulo}>{labelMesAno(mesVisivel)}</Text>
         <TouchableOpacity
           onPress={onMesProximo}
-          style={styles.mesNavBtn}
+          style={[styles.mesNavBtn, layoutMobile && styles.mesNavBtnMobile]}
           accessibilityLabel="Próximo mês"
         >
           <Feather name="chevron-right" size={22} color={colors.cinza} />
@@ -272,6 +284,7 @@ function CalendarioHorizontal({
       <ScrollView
         ref={scrollRef}
         horizontal
+        nestedScrollEnabled={layoutMobile}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.diasScroll}
       >
@@ -281,6 +294,7 @@ function CalendarioHorizontal({
           indicadores={byData.get(hoje)?.indicadores}
           onPress={() => onSelecionarData(hoje)}
           estiloExtra={styles.diaChipHojeAtalho}
+          layoutMobile={layoutMobile}
         />
 
         {dias.map((data) => {
@@ -295,6 +309,7 @@ function CalendarioHorizontal({
               selecionado={selecionado}
               indicadores={indicadores}
               onPress={() => onSelecionarData(data)}
+              layoutMobile={layoutMobile}
             />
           );
         })}
@@ -588,7 +603,10 @@ function CardSuiteDuplaReserva({
 
         <View style={styles.blocoSeparador} />
 
-        <BlocoReservaClicavel titulo="Próxima reserva" onPress={abrirProxima}>
+        <BlocoReservaClicavel
+          titulo="Próxima reserva"
+          onPress={abrirProxima}
+        >
           <MetaLinha icon="user" strong>
             {proxima.responsavel?.trim() || "Hóspede"}
           </MetaLinha>
@@ -1086,6 +1104,7 @@ export default function TabSuites() {
   const navigation = useNavigation() as any;
   const { openNovaReserva } = useNovaReservaRecepcao();
   const { suiteColumns } = useHospedagemDesktopLayout();
+  const layoutMobile = suiteColumns === 1;
   const mostrarTextoAtualizadoHa = suiteColumns > 1;
   const cardsCompactos = suiteColumns > 1;
   /** Desktop (≥3 cols / ≥1200px): botões fixos na base do card. */
@@ -1226,135 +1245,215 @@ export default function TabSuites() {
     setDataReferencia(dataNoMes(novoMes, dataReferencia));
   };
 
-  return (
-    <View style={styles.container}>
-      <CalendarioHorizontal
-        mesVisivel={mesVisivel}
-        dataSelecionada={dataReferencia}
-        hoje={hoje}
-        calendario={calendario}
-        onMesAnterior={() => irMes(-1)}
-        onMesProximo={() => irMes(1)}
-        onSelecionarData={(data) => {
-          setDataReferencia(data);
-          setMesVisivel(mesDeData(data));
-        }}
-      />
+  const cabecalhoSuites = useCallback(
+    () => (
+      <>
+        <CalendarioHorizontal
+          mesVisivel={mesVisivel}
+          dataSelecionada={dataReferencia}
+          hoje={hoje}
+          calendario={calendario}
+          onMesAnterior={() => irMes(-1)}
+          onMesProximo={() => irMes(1)}
+          onSelecionarData={(data) => {
+            setDataReferencia(data);
+            setMesVisivel(mesDeData(data));
+          }}
+          layoutMobile={layoutMobile}
+        />
 
-      <View style={styles.filtrosRow}>
-        <FlatList
-          horizontal
-          data={FILTROS}
-          keyExtractor={(item) => item.key}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtrosScroll}
-          style={styles.filtrosWrap}
-          renderItem={({ item }) => {
-            const ativo = filtro === item.key;
-            return (
-              <TouchableOpacity
-                style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
-                onPress={() => setFiltro(item.key)}
-              >
-                <Text
-                  style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
+        <View
+          style={[styles.filtrosRow, layoutMobile && styles.filtrosRowMobile]}
+        >
+          <FlatList
+            horizontal
+            nestedScrollEnabled={layoutMobile}
+            data={FILTROS}
+            keyExtractor={(item) => item.key}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtrosScroll}
+            style={[styles.filtrosWrap, layoutMobile && styles.filtrosWrapMobile]}
+            renderItem={({ item }) => {
+              const ativo = filtro === item.key;
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.filtroChip,
+                    layoutMobile && styles.filtroChipMobile,
+                    ativo && styles.filtroChipAtivo,
+                  ]}
+                  onPress={() => setFiltro(item.key)}
                 >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      ativo && styles.filtroTextoAtivo,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+          <View style={styles.refreshBox}>
+            {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
+              <Text style={styles.refreshMeta} numberOfLines={1}>
+                {textoAtualizadoHa(lastRefreshAt, agoraTick)}
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              style={[
+                styles.refreshBtn,
+                layoutMobile && styles.refreshBtnMobile,
+                refreshing && styles.refreshBtnDisabled,
+              ]}
+              onPress={() => {
+                if (refreshing) return;
+                requestRefresh();
+              }}
+              disabled={refreshing}
+              accessibilityLabel="Atualizar agora"
+              // @ts-expect-error title = tooltip no web
+              title={Platform.OS === "web" ? "Atualizar agora" : undefined}
+              hitSlop={8}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color={colors.azul} />
+              ) : (
+                <Feather name="refresh-cw" size={18} color={colors.azul} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </>
+    ),
+    [
+      mesVisivel,
+      dataReferencia,
+      hoje,
+      calendario,
+      filtro,
+      layoutMobile,
+      refreshing,
+      mostrarTextoAtualizadoHa,
+      lastRefreshAt,
+      agoraTick,
+      requestRefresh,
+    ],
+  );
+
+  const renderSuiteCard = useCallback(
+    ({ item }: { item: SuiteOperacionalCard }) => (
+      <View
+        style={[
+          suiteColumns > 1 ? styles.gridItem : undefined,
+          desktopLayout && styles.gridItemDesktop,
+        ]}
+      >
+        <CardSuite
+          item={item}
+          filtroAtivo={filtro}
+          dataSelecionada={dataReferencia}
+          hoje={hoje}
+          compact={cardsCompactos}
+          desktopLayout={desktopLayout}
+          horarioChegadaPorReserva={horarioChegadaPorReserva}
+          onPress={() => abrirSuite(item)}
+          onAbrirReserva={abrirReserva}
+          onNovaReserva={() => {
+            if (!item.idEvento) return;
+            openNovaReserva({
+              idEvento: item.idEvento,
+              idEventoSuite: item.idEventoSuite ?? item.id,
+              checkinDate: dataReferencia,
+            });
           }}
         />
-        <View style={styles.refreshBox}>
-          {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
-            <Text style={styles.refreshMeta} numberOfLines={1}>
-              {textoAtualizadoHa(lastRefreshAt, agoraTick)}
-            </Text>
-          ) : null}
-          <TouchableOpacity
-            style={[
-              styles.refreshBtn,
-              refreshing && styles.refreshBtnDisabled,
-            ]}
-            onPress={() => {
-              if (refreshing) return;
-              requestRefresh();
-            }}
-            disabled={refreshing}
-            accessibilityLabel="Atualizar agora"
-            // @ts-expect-error title = tooltip no web
-            title={Platform.OS === "web" ? "Atualizar agora" : undefined}
-            hitSlop={8}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color={colors.azul} />
-            ) : (
-              <Feather name="refresh-cw" size={18} color={colors.azul} />
-            )}
-          </TouchableOpacity>
-        </View>
       </View>
+    ),
+    [
+      suiteColumns,
+      desktopLayout,
+      filtro,
+      dataReferencia,
+      hoje,
+      cardsCompactos,
+      horarioChegadaPorReserva,
+    ],
+  );
 
-      {loading && !refreshing ? (
+  const listEmptySuitesMobile = useCallback(() => {
+    if (loading && !refreshing) {
+      return (
         <View style={styles.estadoBox}>
           <ActivityIndicator size="large" color={colors.azul} />
           <Text style={styles.estadoTexto}>Carregando suítes...</Text>
         </View>
-      ) : (
+      );
+    }
+
+    return (
+      <View style={styles.vazioBox}>
+        <Feather name="home" size={48} color="#999" />
+        <Text style={styles.vazio}>
+          {metaMsg || "Nenhuma suíte encontrada."}
+        </Text>
+      </View>
+    );
+  }, [loading, refreshing, metaMsg]);
+
+  const suitesFlatListProps = {
+    data: suites,
+    keyExtractor: (item: SuiteOperacionalCard) =>
+      String(item.idEventoSuite || item.id),
+    numColumns: suiteColumns,
+    columnWrapperStyle: suiteColumns > 1 ? styles.columnWrapper : undefined,
+    showsVerticalScrollIndicator: false as const,
+    contentContainerStyle: styles.listaContent,
+    refreshControl: (
+      <RefreshControl
+        refreshing={refreshing}
+        onRefresh={() => carregar(true)}
+      />
+    ),
+    ListFooterComponent: <View style={{ height: 40 }} />,
+    renderItem: renderSuiteCard,
+  };
+
+  return (
+    <View style={styles.container}>
+      {layoutMobile ? (
         <FlatList
           key={`suites-cols-${suiteColumns}`}
-          data={suites}
-          keyExtractor={(item) => String(item.idEventoSuite || item.id)}
-          numColumns={suiteColumns}
-          columnWrapperStyle={
-            suiteColumns > 1 ? styles.columnWrapper : undefined
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listaContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => carregar(true)}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.vazioBox}>
-              <Feather name="home" size={48} color="#999" />
-              <Text style={styles.vazio}>
-                {metaMsg || "Nenhuma suíte encontrada."}
-              </Text>
-            </View>
-          }
-          ListFooterComponent={<View style={{ height: 40 }} />}
-          renderItem={({ item }) => (
-            <View
-              style={[
-                suiteColumns > 1 ? styles.gridItem : undefined,
-                desktopLayout && styles.gridItemDesktop,
-              ]}
-            >
-              <CardSuite
-                item={item}
-                filtroAtivo={filtro}
-                dataSelecionada={dataReferencia}
-                hoje={hoje}
-                compact={cardsCompactos}
-                desktopLayout={desktopLayout}
-                horarioChegadaPorReserva={horarioChegadaPorReserva}
-                onPress={() => abrirSuite(item)}
-                onAbrirReserva={abrirReserva}
-                onNovaReserva={() => {
-                  if (!item.idEvento) return;
-                  openNovaReserva({
-                    idEvento: item.idEvento,
-                    idEventoSuite: item.idEventoSuite ?? item.id,
-                    checkinDate: dataReferencia,
-                  });
-                }}
-              />
-            </View>
-          )}
+          {...suitesFlatListProps}
+          ListHeaderComponent={cabecalhoSuites}
+          ListEmptyComponent={listEmptySuitesMobile}
         />
+      ) : (
+        <>
+          {cabecalhoSuites()}
+
+          {loading && !refreshing ? (
+            <View style={styles.estadoBox}>
+              <ActivityIndicator size="large" color={colors.azul} />
+              <Text style={styles.estadoTexto}>Carregando suítes...</Text>
+            </View>
+          ) : (
+            <FlatList
+              key={`suites-cols-${suiteColumns}`}
+              {...suitesFlatListProps}
+              ListEmptyComponent={
+                <View style={styles.vazioBox}>
+                  <Feather name="home" size={48} color="#999" />
+                  <Text style={styles.vazio}>
+                    {metaMsg || "Nenhuma suíte encontrada."}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </>
       )}
 
       <ReservaOperacaoSheet
@@ -1388,6 +1487,11 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginBottom: 10,
   },
+  calendarioWrapMobile: {
+    paddingTop: 2,
+    paddingBottom: 4,
+    marginBottom: 4,
+  },
   mesNav: {
     flexDirection: "row",
     alignItems: "center",
@@ -1395,11 +1499,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     marginBottom: 6,
   },
+  mesNavMobile: {
+    marginBottom: 2,
+  },
   mesNavBtn: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
+  },
+  mesNavBtnMobile: {
+    width: 34,
+    height: 34,
   },
   mesNavTitulo: {
     fontSize: 16,
@@ -1423,6 +1534,11 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 6,
     borderRadius: 11,
+  },
+  diaChipInnerMobile: {
+    minHeight: 48,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   diaChipHojeAtalho: {
     marginRight: 8,
@@ -1454,6 +1570,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     gap: 3,
   },
+  dotsRowMobile: {
+    minHeight: 6,
+    marginTop: 2,
+  },
   dot: {
     width: 5,
     height: 5,
@@ -1465,10 +1585,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 6,
   },
+  filtrosRowMobile: {
+    marginBottom: 6,
+  },
   filtrosWrap: {
     flex: 1,
     maxHeight: 48,
     flexGrow: 1,
+  },
+  filtrosWrapMobile: {
+    maxHeight: 40,
   },
   filtrosScroll: {
     paddingRight: 8,
@@ -1494,6 +1620,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  refreshBtnMobile: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
   refreshBtnDisabled: {
     opacity: 0.55,
   },
@@ -1505,6 +1636,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
     minHeight: 40,
     justifyContent: "center",
+  },
+  filtroChipMobile: {
+    paddingVertical: 7,
+    minHeight: 36,
   },
   filtroChipAtivo: {
     backgroundColor: colors.azul,

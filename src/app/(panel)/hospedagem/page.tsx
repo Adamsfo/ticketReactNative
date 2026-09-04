@@ -35,7 +35,8 @@ type TabKey = "suites" | "agenda" | "reservas" | "hospedin" | "integracoes";
 
 function HospedagemAdminPageInner() {
   const { isAdministrador, isProdutor } = useAuth();
-  const { isDesktop } = useHospedagemDesktopLayout();
+  const { isDesktop, suiteColumns } = useHospedagemDesktopLayout();
+  const layoutMobile = suiteColumns === 1;
   const [activeTab, setActiveTab] = useState<TabKey>("suites");
   const {
     syncErros,
@@ -97,9 +98,15 @@ function HospedagemAdminPageInner() {
       <BarMenu />
 
       <ScreenContainer
-        style={[styles.container, isDesktop && styles.containerDesktop]}
+        style={[
+          styles.container,
+          layoutMobile &&
+            Platform.OS !== "web" &&
+            styles.containerMobile,
+          isDesktop && styles.containerDesktop,
+        ]}
       >
-        <Text style={styles.titulo}>
+        <Text style={[styles.titulo, layoutMobile && styles.tituloMobile]}>
           🏨 Hospedagem
           {syncErrosTotal > 0 ? `  🔴 ${syncErrosTotal}` : ""}
         </Text>
@@ -115,13 +122,19 @@ function HospedagemAdminPageInner() {
           </TouchableOpacity>
         ) : null}
 
-        <View style={styles.tabsRow}>
+        <View
+          style={[styles.tabsRow, layoutMobile && styles.tabsRowMobile]}
+        >
           {tabs.map((tab) => {
             const ativo = tabAtiva === tab.key;
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={[styles.tab, ativo && styles.tabAtiva]}
+                style={[
+                  styles.tab,
+                  layoutMobile && styles.tabMobile,
+                  ativo && styles.tabAtiva,
+                ]}
                 onPress={() => setActiveTab(tab.key)}
               >
                 <Text
@@ -221,6 +234,9 @@ const styles = StyleSheet.create({
   container: {
     marginTop: Platform.OS === "web" ? 80 : 120,
   },
+  containerMobile: {
+    marginTop: 102,
+  },
   containerDesktop: {
     maxWidth: 1450,
     width: "100%",
@@ -232,6 +248,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 12,
     color: colors.cinza,
+  },
+  tituloMobile: {
+    fontSize: 22,
+    marginBottom: 6,
   },
   alertaSync: {
     backgroundColor: "rgba(185, 28, 28, 0.1)",
@@ -257,11 +277,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
+  tabsRowMobile: {
+    padding: 2,
+    marginBottom: 6,
+  },
   tab: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
+  },
+  tabMobile: {
+    paddingVertical: 8,
   },
   tabAtiva: {
     backgroundColor: colors.azul,
