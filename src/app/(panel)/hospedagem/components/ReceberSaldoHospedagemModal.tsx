@@ -25,7 +25,6 @@ import {
   ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
 import {
-  FORMAS_PAGAMENTO_RECEPCAO,
   FormaPagamentoRecepcao,
   MSG_VALOR_MAIOR_QUE_SALDO,
   obterSaldoPendenteExibicao,
@@ -46,6 +45,18 @@ const FORMAS_TEF: FormaPagamentoRecepcao[] = [
   "CartaoCredito",
   "CartaoDebito",
   "PIX",
+];
+
+/** Seleção da tela Receber Saldo (atendente) — demais formas permanecem no sistema/outras telas. */
+const FORMAS_PAGAMENTO_RECEBER_SALDO: Array<{
+  value: FormaPagamentoRecepcao;
+  label: string;
+}> = [
+  { value: "PIX", label: "PIX" },
+  { value: "Dinheiro", label: "Dinheiro" },
+  { value: "CartaoCredito", label: "Cartão Crédito" },
+  { value: "CartaoDebito", label: "Cartão Débito" },
+  { value: "Antecipado", label: "Antecipado" },
 ];
 
 /** Mesmo mapeamento do PagamentoPDV (crédito=2, débito=1, pix=3). */
@@ -140,9 +151,7 @@ export default function ReceberSaldoHospedagemModal() {
     setDigitosValor(valorParaDigitosCentavos(saldoInicial));
     setDetalhe(null);
     setErro(null);
-    setFormaPagamento(
-      target.possivelPagamentoOta ? "RECEBIDO_OTA" : null,
-    );
+    setFormaPagamento(null);
     setComprovante(null);
     setObservacao("");
     setPaymentUniqueId("");
@@ -531,7 +540,7 @@ export default function ReceberSaldoHospedagemModal() {
                   </View>
                 )}
                 <View style={styles.formasWrap}>
-                  {FORMAS_PAGAMENTO_RECEPCAO.map((f) => {
+                  {FORMAS_PAGAMENTO_RECEBER_SALDO.map((f) => {
                     const ativo = formaPagamento === f.value;
                     return (
                       <TouchableOpacity

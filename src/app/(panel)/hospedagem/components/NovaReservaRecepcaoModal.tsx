@@ -65,7 +65,6 @@ import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshCon
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
 import {
   calcularSaldoPendente,
-  FORMAS_PAGAMENTO_RECEPCAO,
   FormaPagamentoRecepcao,
   MSG_VALOR_PAGO_MAIOR,
   parseValorMonetario,
@@ -74,6 +73,15 @@ import {
 } from "@/src/lib/hospedagemPagamentoRecepcao";
 
 const STEPS = ["Cliente", "Período", "Suíte", "Hóspedes", "Resumo"] as const;
+
+/** Seleção da tela Nova Reserva (atendente) — demais formas permanecem no sistema/outras telas. */
+const FORMAS_PAGAMENTO_NOVA_RESERVA: Array<{
+  value: FormaPagamentoRecepcao;
+  label: string;
+}> = [
+  { value: "PIX", label: "PIX" },
+  { value: "LinkPagamento", label: "Link de Pagamento" },
+];
 
 /** Recepção: seletor completo (00:00–23:30, slots de 30 min). */
 const DIA_INICIO = (() => {
@@ -1708,7 +1716,7 @@ export default function NovaReservaRecepcaoModal() {
                   Forma de pagamento
                 </Text>
                 <View style={styles.formasWrap}>
-                  {FORMAS_PAGAMENTO_RECEPCAO.map((f) => {
+                  {FORMAS_PAGAMENTO_NOVA_RESERVA.map((f) => {
                     const ativo = formaPagamento === f.value;
                     return (
                       <TouchableOpacity
