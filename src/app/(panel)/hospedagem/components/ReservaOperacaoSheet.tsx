@@ -23,6 +23,7 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import {
   getReservaAdminDetalhe,
   patchObservacoesReserva,
+  patchValorTotalReserva,
   atualizarUsuarioReserva,
   postCancelarReservaHospedagem,
   podeExibirCancelamentoReservaAdmin,
@@ -63,6 +64,11 @@ import {
   COR_SALDO_PENDENTE,
   MSG_CHECKIN_BLOQUEADO_SALDO,
 } from "@/src/lib/hospedagemPagamentoRecepcao";
+import {
+  digitosCentavosParaNumero,
+  digitosParaExibicaoMoeda,
+  valorParaDigitosCentavos,
+} from "@/src/lib/mascaraMoeda";
 import OrigemReservaIndicador, {
   labelCanalVenda,
   labelChipOrigemReserva,
@@ -158,6 +164,10 @@ export default function ReservaOperacaoSheet({
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [cancelandoReserva, setCancelandoReserva] = useState(false);
   const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
+  const [editandoValorTotal, setEditandoValorTotal] = useState(false);
+  const [digitosValorTotal, setDigitosValorTotal] = useState("");
+  const [valorTotalSalvando, setValorTotalSalvando] = useState(false);
+  const [valorTotalErro, setValorTotalErro] = useState<string | null>(null);
   const observacoesSalvoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -229,6 +239,10 @@ export default function ReservaOperacaoSheet({
       setMotivoCancelamento("");
       setCancelandoReserva(false);
       setErroCancelamento(null);
+      setEditandoValorTotal(false);
+      setDigitosValorTotal("");
+      setValorTotalSalvando(false);
+      setValorTotalErro(null);
       if (observacoesSalvoTimerRef.current) {
         clearTimeout(observacoesSalvoTimerRef.current);
         observacoesSalvoTimerRef.current = null;
@@ -329,6 +343,70 @@ export default function ReservaOperacaoSheet({
       setObservacoesErro("Não foi possível salvar as observações.");
     } finally {
       setObservacoesSalvando(false);
+    }
+  };
+
+  const entrarEdicaoValorTotal = () => {
+    if (editandoValorTotal || valorTotalSalvando) return;
+    setDigitosValorTotal(valorParaDigitosCentavos(valorTotal));
+    setValorTotalErro(null);
+    setEditandoValorTotal(true);
+  };
+
+  const cancelarEdicaoValorTotal = () => {
+    setEditandoValorTotal(false);
+    setDigitosValorTotal("");
+    setValorTotalErro(null);
+  };
+
+  const salvarValorTotal = async () => {
+    if (!reserva?.idReservaHospedagem || valorTotalSalvando) return;
+
+    const novoValor = digitosCentavosParaNumero(digitosValorTotal);
+    if (!(novoValor > 0)) {
+      setValorTotalErro("Informe um valor total válido.");
+      return;
+    }
+    if (novoValor < valorPago - 0.009) {
+      setValorTotalErro(
+        "O valor total não pode ser menor que o valor já recebido.",
+      );
+      return;
+    }
+    if (Math.abs(novoValor - valorTotal) <= 0.009) {
+      cancelarEdicaoValorTotal();
+      return;
+    }
+
+    const idReserva = reserva.idReservaHospedagem;
+    setValorTotalSalvando(true);
+    setValorTotalErro(null);
+
+    try {
+      const resp = await patchValorTotalReserva(idReserva, novoValor);
+      if (!resp.success || !resp.data) {
+        setValorTotalErro(
+          resp.message || "Não foi possível atualizar o valor total.",
+        );
+        return;
+      }
+
+      const detalheAtualizado = extrairDetalheObservacoesSalvo(
+        resp.data,
+        idReserva,
+      );
+      if (!detalheAtualizado) {
+        setValorTotalErro("Não foi possível atualizar o valor total.");
+        return;
+      }
+
+      setDetalhe(detalheAtualizado);
+      cancelarEdicaoValorTotal();
+      notifyOperacaoConcluida();
+    } catch {
+      setValorTotalErro("Não foi possível atualizar o valor total.");
+    } finally {
+      setValorTotalSalvando(false);
     }
   };
 
@@ -1021,7 +1099,11 @@ export default function ReservaOperacaoSheet({
                         isDesktopLayout ? styles.gridCell : undefined
                       }
                     >
-                      <Secao titulo="Financeiro" stretch={isDesktopLayout}>
+                      <Secao
+                        titulo="Financeiro"
+                        stretch={isDesktopLayout}
+                        onTituloPress={entrarEdicaoValorTotal}
+                      >
                         {detalhe?.possivelPagamentoOta ? (
                           <AlertaPossivelPagamentoOta
                             canalLabel={
@@ -1030,10 +1112,53 @@ export default function ReservaOperacaoSheet({
                             trecho={detalhe.possivelPagamentoOtaTrecho}
                           />
                         ) : null}
-                        <Linha
-                          label="Total"
-                          valor={formatCurrency(valorTotal)}
-                        />
+                        {editandoValorTotal ? (
+                          <View style={styles.linha}>
+                            <Text style={styles.linhaLabel}>Total</Text>
+                            <TextInput
+                              style={styles.linhaValorInput}
+                              value={digitosParaExibicaoMoeda(digitosValorTotal)}
+                              onChangeText={(texto) => {
+                                const only = texto.replace(/\D/g, "").slice(0, 12);
+                                setDigitosValorTotal(only || "0");
+                                setValorTotalErro(null);
+                              }}
+                              keyboardType="number-pad"
+                              editable={!valorTotalSalvando}
+                              autoFocus
+                            />
+                            <View style={styles.valorTotalAcoes}>
+                              <TouchableOpacity
+                                onPress={salvarValorTotal}
+                                disabled={valorTotalSalvando}
+                                hitSlop={6}
+                              >
+                                <Text style={styles.valorTotalAcaoSalvar}>
+                                  {valorTotalSalvando ? "Salvando…" : "Salvar"}
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={cancelarEdicaoValorTotal}
+                                disabled={valorTotalSalvando}
+                                hitSlop={6}
+                              >
+                                <Text style={styles.valorTotalAcaoCancelar}>
+                                  Cancelar
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                            {valorTotalErro ? (
+                              <Text style={styles.valorTotalErro}>
+                                {valorTotalErro}
+                              </Text>
+                            ) : null}
+                          </View>
+                        ) : (
+                          <Linha
+                            label="Total"
+                            valor={formatCurrency(valorTotal)}
+                          />
+                        )}
                         <Linha
                           label="Recebido"
                           valor={formatCurrency(valorPago)}
@@ -1674,15 +1799,73 @@ function Secao({
   titulo,
   children,
   stretch = false,
+  onTituloPress,
 }: {
   titulo: string;
   children: React.ReactNode;
   /** Desktop: preenche a altura da célula do grid. */
   stretch?: boolean;
+  /** Duplo toque/clique no título (ex.: Financeiro). */
+  onTituloPress?: () => void;
 }) {
+  const tituloUltimoPressRef = useRef(0);
+
+  const onTituloDuploClique = () => {
+    if (!onTituloPress) return;
+    const agora = Date.now();
+    if (agora - tituloUltimoPressRef.current <= 350) {
+      tituloUltimoPressRef.current = 0;
+      onTituloPress();
+      return;
+    }
+    tituloUltimoPressRef.current = agora;
+  };
+
+  const tituloWebProps =
+    Platform.OS === "web" && onTituloPress
+      ? ({
+          onClick: (event: {
+            preventDefault: () => void;
+            stopPropagation: () => void;
+            detail?: number;
+          }) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onTituloDuploClique();
+          },
+          onMouseDown: (event: { preventDefault: () => void; detail?: number }) => {
+            if ((event.detail ?? 0) > 1) {
+              event.preventDefault();
+            }
+          },
+        } as object)
+      : {};
+
+  const tituloNode =
+    Platform.OS === "web" && onTituloPress ? (
+      <Text
+        style={[styles.secaoTitulo, styles.secaoTituloSemSelecaoWeb]}
+        {...tituloWebProps}
+      >
+        {titulo}
+      </Text>
+    ) : (
+      <Text style={styles.secaoTitulo}>{titulo}</Text>
+    );
+
   return (
     <View style={[styles.secao, stretch && styles.secaoStretch]}>
-      <Text style={styles.secaoTitulo}>{titulo}</Text>
+      {onTituloPress ? (
+        Platform.OS === "web" ? (
+          tituloNode
+        ) : (
+          <Pressable onPress={onTituloDuploClique} hitSlop={4}>
+            {tituloNode}
+          </Pressable>
+        )
+      ) : (
+        <Text style={styles.secaoTitulo}>{titulo}</Text>
+      )}
       <View
         style={[styles.secaoCorpo, stretch && styles.secaoCorpoStretch]}
       >
@@ -2083,6 +2266,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     marginBottom: 10,
   },
+  secaoTituloSemSelecaoWeb: {
+    userSelect: "none",
+  },
   secaoCorpo: {
     gap: 8,
   },
@@ -2104,6 +2290,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.cinza,
+  },
+  linhaValorInput: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.cinza,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 8,
+    backgroundColor: colors.branco,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  valorTotalAcoes: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 6,
+  },
+  valorTotalAcaoSalvar: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.azul,
+  },
+  valorTotalAcaoCancelar: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#888",
+  },
+  valorTotalErro: {
+    fontSize: 12,
+    color: "#c62828",
+    marginTop: 4,
   },
   periodoLabel: {
     fontSize: 12,

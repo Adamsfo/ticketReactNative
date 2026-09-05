@@ -683,6 +683,18 @@ export async function patchObservacoesReserva(
   );
 }
 
+/** Ajuste manual do valor total financeiro da reserva (sem novo lançamento). */
+export async function patchValorTotalReserva(
+  idReservaHospedagem: number,
+  valorTotal: number,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/valor-total`,
+    "PATCH",
+    { valorTotal },
+  );
+}
+
 /** Recebe saldo (parcial/total) — módulo isolado da hospedagem. */
 export async function postReceberSaldoHospedagem(
   idReservaHospedagem: number,
