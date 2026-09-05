@@ -33,7 +33,6 @@ import {
   digitosCentavosParaNumero,
   digitosParaExibicaoMoeda,
   roundMoney,
-  valorParaDigitosCentavos,
 } from "@/src/lib/mascaraMoeda";
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
@@ -142,13 +141,7 @@ export default function ReceberSaldoHospedagemModal() {
       return;
     }
 
-    // Prefill imediato com os valores da agenda (evita iniciar em R$ 0,00).
-    const saldoInicial = obterSaldoPendenteExibicao({
-      valorTotal: target.valorTotal,
-      valorPago: target.valorPago,
-      saldoPendente: target.saldoPendente,
-    });
-    setDigitosValor(valorParaDigitosCentavos(saldoInicial));
+    setDigitosValor("0");
     setDetalhe(null);
     setErro(null);
     setFormaPagamento(null);
@@ -180,22 +173,10 @@ export default function ReceberSaldoHospedagemModal() {
           return;
         }
         setDetalhe(resp.data);
-        const saldo = obterSaldoPendenteExibicao({
-          valorTotal: resp.data.valorTotal,
-          valorPago: resp.data.valorPago,
-          saldoPendente: resp.data.saldoPendente,
-        });
-        setDigitosValor(valorParaDigitosCentavos(saldo));
       })
       .catch(() => {
         if (!cancelado) {
           setErro("Não foi possível carregar o saldo da reserva.");
-          const saldoFallback = obterSaldoPendenteExibicao({
-            valorTotal: target.valorTotal,
-            valorPago: target.valorPago,
-            saldoPendente: target.saldoPendente,
-          });
-          setDigitosValor(valorParaDigitosCentavos(saldoFallback));
         }
       })
       .finally(() => {
