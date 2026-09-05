@@ -450,7 +450,7 @@ function labelChipAcaoOperacional(params: {
   ) {
     return {
       label: "Registrar Chegada",
-      cor: CORES_STATUS_OPERACIONAL.livre,
+      cor: CORES_STATUS_OPERACIONAL.aguardandoAcao,
     };
   }
   if (!modoLivreAposCheckout && botao === "ver_reserva") {
@@ -638,7 +638,12 @@ function CardSuiteDuplaReserva({
               styles.reservarChip,
               styles.reservarChipCompact,
               styles.reservarChipCentered,
-              { backgroundColor: CORES_STATUS_OPERACIONAL.livre },
+              {
+                backgroundColor:
+                  labelProximaAcao === "Registrar Chegada"
+                    ? CORES_STATUS_OPERACIONAL.aguardandoAcao
+                    : CORES_STATUS_OPERACIONAL.livre,
+              },
             ]}
           >
             <Text style={styles.reservarTexto}>{labelProximaAcao}</Text>
