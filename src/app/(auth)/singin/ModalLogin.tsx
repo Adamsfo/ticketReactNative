@@ -8,7 +8,7 @@ import {
   Platform,
   Modal,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
 import { Pressable, TextInput } from "react-native-gesture-handler";
 import { apiAuth } from "@/src/lib/auth";
@@ -33,12 +33,17 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
   const [modalMsg, setModalMsg] = useState(false);
   const [msg, setMsg] = useState("");
   const [usuarioAtivar, setUsuarioAtivar] = useState<Usuario | null>(null);
+  const [manterOutrasConexoes, setManterOutrasConexoes] = useState(false);
 
   async function handleLogin() {
     setError("");
     setLoading(true);
 
-    const result = await apiAuth.login({ login: email, senha: password });
+    const result = await apiAuth.login({
+      login: email,
+      senha: password,
+      manterOutrasConexoes,
+    });
     if (result.success) {
       let _token;
 
@@ -174,6 +179,24 @@ export default function ModalLogin({ onClose }: ModalMsgProps) {
             />
           </View>
 
+          <TouchableOpacity
+            style={style.checkboxRow}
+            onPress={() => setManterOutrasConexoes((prev) => !prev)}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                style.checkbox,
+                manterOutrasConexoes && style.checkboxChecked,
+              ]}
+            >
+              {manterOutrasConexoes && (
+                <Ionicons name="checkmark" size={16} color={colors.white} />
+              )}
+            </View>
+            <Text style={style.checkboxLabel}>Manter outras conexões ativas</Text>
+          </TouchableOpacity>
+
           {error && (
             <Text style={style.labelError}>
               {error}
@@ -302,6 +325,30 @@ const style = StyleSheet.create({
     color: colors.red,
     marginTop: -12,
     marginBottom: 18,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 4,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.laranjado,
+    borderColor: colors.laranjado,
+  },
+  checkboxLabel: {
+    color: colors.zinc,
+    flex: 1,
   },
 });
 

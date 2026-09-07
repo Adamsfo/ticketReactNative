@@ -88,9 +88,15 @@ class ApiAuth {
   public async loginCodigo(
     info: string,
     codigo: string,
-    id: number
+    id: number,
+    manterOutrasConexoes: boolean = false
   ): Promise<ApiResponse> {
-    return api.request("/loginemailcodigo", "POST", { info, codigo, id });
+    return api.request("/loginemailcodigo", "POST", {
+      info,
+      codigo,
+      id,
+      manterOutrasConexoes,
+    });
   }
 
   /** Magic login: POST /reserva/:token/autenticar — armazena JWT como o login normal. */

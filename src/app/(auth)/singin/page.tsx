@@ -42,12 +42,17 @@ export default function Login({ onClose }: ModalMsgProps) {
     null
   );
   const [showPassword, setShowPassword] = useState(false);
+  const [manterOutrasConexoes, setManterOutrasConexoes] = useState(false);
 
   async function handleLogin() {
     setError("");
     setLoading(true);
 
-    const result = await apiAuth.login({ login: email, senha: password });
+    const result = await apiAuth.login({
+      login: email,
+      senha: password,
+      manterOutrasConexoes,
+    });
     console.log("result login:", result);
 
     if (result.success) {
@@ -256,6 +261,24 @@ export default function Login({ onClose }: ModalMsgProps) {
             </View>
           </View>
 
+          <TouchableOpacity
+            style={style.checkboxRow}
+            onPress={() => setManterOutrasConexoes((prev) => !prev)}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                style.checkbox,
+                manterOutrasConexoes && style.checkboxChecked,
+              ]}
+            >
+              {manterOutrasConexoes && (
+                <Ionicons name="checkmark" size={16} color={colors.white} />
+              )}
+            </View>
+            <Text style={style.checkboxLabel}>Manter outras conexões ativas</Text>
+          </TouchableOpacity>
+
           <Pressable style={style.button} onPress={handleLogin}>
             <Text style={style.buttonText}>
               {loading ? "Carregando..." : "Entrar com senha"}
@@ -333,6 +356,7 @@ export default function Login({ onClose }: ModalMsgProps) {
                   navigation.navigate("home");
                 }}
                 user={usuarioLoginCodigo}
+                manterOutrasConexoes={manterOutrasConexoes}
               />
             </Modal>
           )}
@@ -409,5 +433,29 @@ const style = StyleSheet.create({
     color: colors.red,
     marginBottom: 18,
     textAlign: "center",
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    borderRadius: 4,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.laranjado,
+    borderColor: colors.laranjado,
+  },
+  checkboxLabel: {
+    color: colors.zinc,
+    flex: 1,
   },
 });

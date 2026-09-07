@@ -22,9 +22,14 @@ import { useNavigation } from "@react-navigation/native";
 interface Props {
   onClose: () => void;
   user: Usuario;
+  manterOutrasConexoes?: boolean;
 }
 
-export default function ModalVerificacaoLogin({ onClose, user }: Props) {
+export default function ModalVerificacaoLogin({
+  onClose,
+  user,
+  manterOutrasConexoes = false,
+}: Props) {
   const [selectedOption, setSelectedOption] = useState<
     "email" | "sms" | "whatsapp"
   >("email");
@@ -118,7 +123,8 @@ Não compartilhe com ninguém.`;
     const result = await apiAuth.loginCodigo(
       selectedOption === "email" ? user?.email ?? "" : user?.telefone ?? "",
       code,
-      user?.id ?? 0
+      user?.id ?? 0,
+      manterOutrasConexoes
     );
 
     const error = result.data?.error as string;

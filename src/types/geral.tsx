@@ -15,6 +15,7 @@ export interface ApiResponse<T = any> {
 export interface Login {
   login: string;
   senha: string;
+  manterOutrasConexoes?: boolean;
 }
 
 export interface Usuario {
