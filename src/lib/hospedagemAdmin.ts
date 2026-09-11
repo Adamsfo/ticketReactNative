@@ -130,8 +130,10 @@ export type SuiteOperacionalCard = {
   nomeUsuarioCriacao?: string | null;
   dataCriacao?: string | null;
   valorSuite?: number | null;
+  idReservaSuite?: number | null;
   idReservaHospedagem?: number | null;
   numeroReserva?: number | null;
+  dataHoraChegadaReal?: string | null;
   statusReserva?: string | null;
   /** Status da limpeza de turnover (checkout anterior) na mesma EventoSuite. */
   statusLimpezaSuite?: "Pendente" | "EmAndamento" | "Concluida" | null;
@@ -305,6 +307,9 @@ export type ReservaAdminDetalhe = {
     idReservaSuite: number;
     idEventoSuite?: number;
     nome: string;
+    status?: string;
+    dataHoraChegadaReal?: string | null;
+    dataHoraCheckinReal?: string | null;
     adultos: number;
     criancas: number;
     preco: number;
@@ -392,7 +397,29 @@ export type ReservaTaxaAdicional = {
   descricao: string;
   valor: number;
   ordem: number;
+  idReservaSuite?: number | null;
 };
+
+export type TaxaAdicionalCheckoutPayload = {
+  descricao: string;
+  valor: number;
+  ordem: number;
+  idEventoSuite: number;
+};
+
+export function resolverVinculoTaxaLabel(
+  taxa: Pick<ReservaTaxaAdicional, "idReservaSuite">,
+  suites: Array<{ idReservaSuite?: number; nome?: string }>,
+): string {
+  const idReservaSuite = Number(taxa.idReservaSuite ?? 0);
+  if (Number.isFinite(idReservaSuite) && idReservaSuite > 0) {
+    const suite = suites.find((item) => item.idReservaSuite === idReservaSuite);
+    if (suite?.nome) {
+      return suite.nome;
+    }
+  }
+  return "Reserva";
+}
 
 export type PermissoesServicosSuite = {
   podeVisualizar: boolean;
@@ -549,9 +576,16 @@ export async function getReservasAdmin(params?: {
 export async function getReservaAdminDetalhe(
   id: number,
   dataSelecionada?: string | null,
+  opcoes?: { idReservaSuite?: number; idEventoSuite?: number },
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   const query: Record<string, string> = {};
   if (dataSelecionada) query.data = dataSelecionada;
+  if (opcoes?.idReservaSuite) {
+    query.idReservaSuite = String(opcoes.idReservaSuite);
+  }
+  if (opcoes?.idEventoSuite) {
+    query.idEventoSuite = String(opcoes.idEventoSuite);
+  }
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${id}`,
     "GET",
@@ -594,6 +628,19 @@ export async function postRegistrarChegada(
   );
 }
 
+/** Registro de chegada física de uma ReservaSuite. */
+export async function postRegistrarChegadaSuite(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  dataHora?: string | null,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/registrar-chegada`,
+    "POST",
+    dataHora ? { dataHora } : null,
+  );
+}
+
 /** Check-in operacional: Confirmada → Hospedada. */
 export async function postRealizarCheckin(
   idReservaHospedagem: number,
@@ -601,6 +648,19 @@ export async function postRealizarCheckin(
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/checkin`,
+    "POST",
+    dataHora ? { dataHora } : null,
+  );
+}
+
+/** Check-in operacional de uma ReservaSuite. */
+export async function postRealizarCheckinSuite(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  dataHora?: string | null,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/checkin`,
     "POST",
     dataHora ? { dataHora } : null,
   );
@@ -753,7 +813,7 @@ export async function deleteServicoSuiteReserva(
 
 export async function postTaxaAdicionalReserva(
   idReservaHospedagem: number,
-  payload: { descricao: string; valor: number },
+  payload: { descricao: string; valor: number; idReservaSuite: number },
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/taxas`,
@@ -765,7 +825,11 @@ export async function postTaxaAdicionalReserva(
 export async function patchTaxaAdicionalReserva(
   idReservaHospedagem: number,
   idTaxa: number,
-  payload: { descricao: string; valor: number },
+  payload: {
+    descricao: string;
+    valor: number;
+    idReservaSuite?: number | null;
+  },
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/taxas/${idTaxa}`,
@@ -804,6 +868,18 @@ export async function patchValorSuitesReserva(
     `/hospedagem/reservas/${idReservaHospedagem}/valor-suites`,
     "PATCH",
     { valorSuites },
+  );
+}
+
+export async function patchValorBaseReservaSuite(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  valor: number,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/valor`,
+    "PATCH",
+    { valor },
   );
 }
 
@@ -961,7 +1037,7 @@ export async function postReservaRecepcao(body: {
   checkin: string;
   checkout: string;
   suites: SuiteRecepcaoPayload[];
-  taxasAdicionais?: ReservaTaxaAdicional[];
+  taxasAdicionais?: TaxaAdicionalCheckoutPayload[];
   observacoes?: string | null;
   pagamento?: {
     valor: number;
@@ -984,7 +1060,7 @@ export async function postReservaRecepcaoEnviarCliente(body: {
   checkin: string;
   checkout: string;
   suites: SuiteRecepcaoPayload[];
-  taxasAdicionais?: ReservaTaxaAdicional[];
+  taxasAdicionais?: TaxaAdicionalCheckoutPayload[];
   observacoes?: string | null;
 }): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(

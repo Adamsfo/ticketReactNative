@@ -23,7 +23,7 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import {
   getReservaAdminDetalhe,
   patchObservacoesReserva,
-  patchValorSuitesReserva,
+  patchValorBaseReservaSuite,
   atualizarUsuarioReserva,
   postCancelarReservaHospedagem,
   podeExibirCancelamentoReservaAdmin,
@@ -83,6 +83,53 @@ import TrocaSuiteModal from "./TrocaSuiteModal";
 import AlterarPeriodoModal from "./AlterarPeriodoModal";
 import CadastroClienteRapido from "./CadastroClienteRapido";
 import TaxasAdicionaisReservaPanel from "./TaxasAdicionaisReservaPanel";
+
+function resolverValorBaseSuiteReserva(
+  suite: ReservaAdminDetalhe["suites"][number],
+): number {
+  const valorHospedagem =
+    suite.valorHospedagem != null
+      ? Number(suite.valorHospedagem)
+      : Number(suite.preco ?? 0) + Number(suite.taxaServico ?? 0);
+  const valorServicos =
+    suite.valorServicos != null
+      ? Number(suite.valorServicos)
+      : (suite.servicosAdicionais ?? []).reduce(
+          (acc, item) => acc + Number(item.valor ?? 0),
+          0,
+        );
+  return valorHospedagem + valorServicos;
+}
+
+function resolverValorSuitesBaseReserva(
+  detalhe: ReservaAdminDetalhe | null | undefined,
+): number {
+  const suites = detalhe?.suites ?? [];
+  if (suites.length > 0) {
+    return suites.reduce(
+      (acc, suite) => acc + resolverValorBaseSuiteReserva(suite),
+      0,
+    );
+  }
+  return Number(detalhe?.valorSuitesReserva ?? 0);
+}
+
+function calcularValorSuitesAgregadoParaSave(
+  detalhe: ReservaAdminDetalhe | null | undefined,
+  idReservaSuiteEmEdicao: number | null,
+  novoValorBaseSuiteEditada: number,
+): number {
+  const suites = detalhe?.suites ?? [];
+  if (!suites.length || idReservaSuiteEmEdicao == null) {
+    return novoValorBaseSuiteEditada;
+  }
+
+  const outrasSuites = suites
+    .filter((suite) => suite.idReservaSuite !== idReservaSuiteEmEdicao)
+    .reduce((acc, suite) => acc + resolverValorBaseSuiteReserva(suite), 0);
+
+  return novoValorBaseSuiteEditada + outrasSuites;
+}
 
 type HospedeConferencia = {
   key: string;
@@ -166,6 +213,12 @@ export default function ReservaOperacaoSheet({
   const [cancelandoReserva, setCancelandoReserva] = useState(false);
   const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
   const [editandoValorSuites, setEditandoValorSuites] = useState(false);
+  const [idReservaSuiteEmEdicao, setIdReservaSuiteEmEdicao] = useState<
+    number | null
+  >(null);
+  const [nomeSuiteEmEdicao, setNomeSuiteEmEdicao] = useState<string | null>(
+    null,
+  );
   const [digitosValorSuites, setDigitosValorSuites] = useState("");
   const [valorSuitesSalvando, setValorSuitesSalvando] = useState(false);
   const [valorSuitesErro, setValorSuitesErro] = useState<string | null>(null);
@@ -221,6 +274,14 @@ export default function ReservaOperacaoSheet({
   );
   const dataSelecionada = dataReferencia || hojeOperacao;
 
+  const opcoesDetalhe = useMemo(
+    () => ({
+      idReservaSuite: reserva?.idReservaSuite ?? undefined,
+      idEventoSuite: reserva?.idEventoSuite ?? undefined,
+    }),
+    [reserva?.idReservaSuite, reserva?.idEventoSuite],
+  );
+
   useEffect(() => {
     if (!visible || !reserva?.idReservaHospedagem) {
       setDetalhe(null);
@@ -243,6 +304,8 @@ export default function ReservaOperacaoSheet({
       setCancelandoReserva(false);
       setErroCancelamento(null);
       setEditandoValorSuites(false);
+      setIdReservaSuiteEmEdicao(null);
+      setNomeSuiteEmEdicao(null);
       setDigitosValorSuites("");
       setValorSuitesSalvando(false);
       setValorSuitesErro(null);
@@ -258,7 +321,11 @@ export default function ReservaOperacaoSheet({
     setErroAcao(null);
     setAbaAtiva("operacao");
 
-    getReservaAdminDetalhe(reserva.idReservaHospedagem, dataSelecionada)
+    getReservaAdminDetalhe(
+      reserva.idReservaHospedagem,
+      dataSelecionada,
+      opcoesDetalhe,
+    )
       .then((resp) => {
         if (!cancelado && resp.success && resp.data) {
           setDetalhe(resp.data);
@@ -276,6 +343,8 @@ export default function ReservaOperacaoSheet({
     reserva?.idReservaHospedagem,
     dataSelecionada,
     refreshVersion,
+    opcoesDetalhe.idReservaSuite,
+    opcoesDetalhe.idEventoSuite,
   ]);
 
   useEffect(() => {
@@ -349,9 +418,11 @@ export default function ReservaOperacaoSheet({
     }
   };
 
-  const valorSuitesReserva = Number(detalhe?.valorSuitesReserva ?? 0);
+  const valorSuitesBaseReserva = resolverValorSuitesBaseReserva(detalhe);
 
-  const entrarEdicaoValorSuites = () => {
+  const entrarEdicaoValorSuites = (
+    suite?: ReservaAdminDetalhe["suites"][number],
+  ) => {
     if (editandoValorSuites || valorSuitesSalvando) return;
     const origemHospedin =
       String(detalhe?.origemReserva ?? "").toUpperCase() === "HOSPEDIN";
@@ -359,13 +430,26 @@ export default function ReservaOperacaoSheet({
       setModalEdicaoValorHospedinOpen(true);
       return;
     }
-    setDigitosValorSuites(valorParaDigitosCentavos(valorSuitesReserva));
+
+    if (suite) {
+      const valorBaseSuite = resolverValorBaseSuiteReserva(suite);
+      setIdReservaSuiteEmEdicao(suite.idReservaSuite);
+      setNomeSuiteEmEdicao(suite.nome);
+      setDigitosValorSuites(valorParaDigitosCentavos(valorBaseSuite));
+    } else {
+      setIdReservaSuiteEmEdicao(null);
+      setNomeSuiteEmEdicao(null);
+      setDigitosValorSuites(valorParaDigitosCentavos(valorSuitesBaseReserva));
+    }
+
     setValorSuitesErro(null);
     setEditandoValorSuites(true);
   };
 
   const cancelarEdicaoValorSuites = () => {
     setEditandoValorSuites(false);
+    setIdReservaSuiteEmEdicao(null);
+    setNomeSuiteEmEdicao(null);
     setDigitosValorSuites("");
     setValorSuitesErro(null);
   };
@@ -373,21 +457,41 @@ export default function ReservaOperacaoSheet({
   const salvarValorSuites = async () => {
     if (!reserva?.idReservaHospedagem || valorSuitesSalvando) return;
 
-    const novoValor = digitosCentavosParaNumero(digitosValorSuites);
-    if (!(novoValor > 0)) {
+    const novoValorBaseSuite = digitosCentavosParaNumero(digitosValorSuites);
+    if (!(novoValorBaseSuite > 0)) {
       setValorSuitesErro("Informe um valor das suítes válido.");
       return;
     }
+
+    const suiteEmEdicao = detalhe?.suites?.find(
+      (suite) => suite.idReservaSuite === idReservaSuiteEmEdicao,
+    );
+    const valorBaseAtualSuite = suiteEmEdicao
+      ? resolverValorBaseSuiteReserva(suiteEmEdicao)
+      : valorSuitesBaseReserva;
+
+    if (Math.abs(novoValorBaseSuite - valorBaseAtualSuite) <= 0.009) {
+      cancelarEdicaoValorSuites();
+      return;
+    }
+
+    const idSuiteEdicao =
+      idReservaSuiteEmEdicao ?? detalhe?.suites?.[0]?.idReservaSuite ?? null;
+    if (!idSuiteEdicao) {
+      setValorSuitesErro("Não foi possível identificar a suíte para edição.");
+      return;
+    }
+
     const novoTotalEstimado =
-      novoValor + Number(detalhe?.valorTaxasAdicionais ?? 0);
+      calcularValorSuitesAgregadoParaSave(
+        detalhe,
+        idSuiteEdicao,
+        novoValorBaseSuite,
+      ) + Number(detalhe?.valorTaxasAdicionais ?? 0);
     if (novoTotalEstimado < valorPago - 0.009) {
       setValorSuitesErro(
         "O valor total não pode ser menor que o valor já recebido.",
       );
-      return;
-    }
-    if (Math.abs(novoValor - valorSuitesReserva) <= 0.009) {
-      cancelarEdicaoValorSuites();
       return;
     }
 
@@ -396,7 +500,11 @@ export default function ReservaOperacaoSheet({
     setValorSuitesErro(null);
 
     try {
-      const resp = await patchValorSuitesReserva(idReserva, novoValor);
+      const resp = await patchValorBaseReservaSuite(
+        idReserva,
+        idSuiteEdicao,
+        novoValorBaseSuite,
+      );
       if (!resp.success || !resp.data) {
         setValorSuitesErro(
           resp.message || "Não foi possível atualizar o valor das suítes.",
@@ -423,7 +531,29 @@ export default function ReservaOperacaoSheet({
     }
   };
 
+  const suiteLinhaFoco = useMemo(() => {
+    const suites = detalhe?.suites ?? [];
+    if (suites.length === 0) return null;
+    if (reserva?.idReservaSuite) {
+      return (
+        suites.find((s) => s.idReservaSuite === reserva.idReservaSuite) ??
+        suites[0]
+      );
+    }
+    if (reserva?.idEventoSuite) {
+      return (
+        suites.find((s) => s.idEventoSuite === reserva.idEventoSuite) ??
+        suites[0]
+      );
+    }
+    return suites[0];
+  }, [detalhe?.suites, reserva?.idReservaSuite, reserva?.idEventoSuite]);
+
+  const idReservaSuiteOperacao =
+    suiteLinhaFoco?.idReservaSuite ?? reserva?.idReservaSuite ?? null;
+
   const statusDb =
+    suiteLinhaFoco?.status ??
     detalhe?.statusOriginal ??
     detalhe?.status ??
     reserva?.statusReserva ??
@@ -465,6 +595,7 @@ export default function ReservaOperacaoSheet({
       const reload = await getReservaAdminDetalhe(
         reserva!.idReservaHospedagem,
         dataSelecionada,
+        opcoesDetalhe,
       );
       if (reload.success && reload.data) {
         setDetalhe(reload.data);
@@ -593,14 +724,26 @@ export default function ReservaOperacaoSheet({
   const exibirTaxasAdicionais =
     detalhe?.permissoesTaxas?.podeVisualizar === true;
 
-  const chegadaRegistrada = detalhe?.dataHoraChegadaReal != null;
+  const monoSuite = (detalhe?.suites?.length ?? 0) <= 1;
+  const chegadaRegistrada = Boolean(
+    suiteLinhaFoco?.dataHoraChegadaReal ??
+      (monoSuite ? detalhe?.dataHoraChegadaReal : null),
+  );
   const checkinRealizado =
-    statusDb === "Hospedada" || Boolean(detalhe?.dataHoraCheckinReal);
+    statusDb === "Hospedada" ||
+    Boolean(
+      suiteLinhaFoco?.dataHoraCheckinReal ??
+        (monoSuite ? detalhe?.dataHoraCheckinReal : null),
+    );
 
   const aguardandoAcomodacao = isAguardandoAcomodacaoReserva({
     statusReserva: statusDb,
-    dataHoraChegadaReal: detalhe?.dataHoraChegadaReal,
-    dataHoraCheckinReal: detalhe?.dataHoraCheckinReal,
+    dataHoraChegadaReal:
+      suiteLinhaFoco?.dataHoraChegadaReal ??
+      (monoSuite ? detalhe?.dataHoraChegadaReal : null),
+    dataHoraCheckinReal:
+      suiteLinhaFoco?.dataHoraCheckinReal ??
+      (monoSuite ? detalhe?.dataHoraCheckinReal : null),
   });
 
   const badgeLabelExibicao = aguardandoAcomodacao
@@ -620,11 +763,11 @@ export default function ReservaOperacaoSheet({
     checkinCuiaba != null && dataSelecionada >= checkinCuiaba;
 
   const mostrarBotaoCheckin =
-    !checkinRealizado && Boolean(disp?.podeCheckin);
+    !checkinRealizado && Boolean(disp?.podeCheckin) && Boolean(idReservaSuiteOperacao);
   const mostrarBotaoRegistrarChegada =
     !checkinRealizado &&
     !mostrarBotaoCheckin &&
-    statusDb === "Confirmada" &&
+    String(statusDb) === "Confirmada" &&
     !chegadaRegistrada &&
     agendaNaoFutura &&
     checkinPermitidoNaData &&
@@ -640,7 +783,7 @@ export default function ReservaOperacaoSheet({
     detalhe,
     reserva?.statusReserva ?? reserva?.status ?? null,
   );
-  const idReservaSuiteTroca = detalhe?.suites?.[0]?.idReservaSuite ?? null;
+  const idReservaSuiteTroca = idReservaSuiteOperacao;
 
   const podeExecutarCheckin =
     mostrarBotaoCheckin && !bloqueadoPorSaldo && !executando && !loading;
@@ -648,8 +791,8 @@ export default function ReservaOperacaoSheet({
     mostrarBotaoRegistrarChegada && !executando && !loading;
   const podeExecutarCheckout = mostrarBotaoCheckout && !executando;
 
-  const adultos = detalhe?.suites?.[0]?.adultos ?? reserva?.adultos ?? 0;
-  const criancas = detalhe?.suites?.[0]?.criancas ?? reserva?.criancas ?? 0;
+  const adultos = suiteLinhaFoco?.adultos ?? reserva?.adultos ?? 0;
+  const criancas = suiteLinhaFoco?.criancas ?? reserva?.criancas ?? 0;
   const noites = Number(detalhe?.noites ?? 0);
 
   const pagamentos = detalhe?.pagamentos ?? [];
@@ -661,7 +804,7 @@ export default function ReservaOperacaoSheet({
     (statusOp === "CHECKOUT_HOJE" || Boolean(disp?.checkoutHoje));
 
   const suiteNomeExibicao =
-    detalhe?.suites?.[0]?.nome ?? reserva?.suiteNome ?? "Suíte";
+    suiteLinhaFoco?.nome ?? reserva?.suiteNome ?? "Suíte";
 
   const isOrigemHospedin =
     String(
@@ -708,6 +851,13 @@ export default function ReservaOperacaoSheet({
   const confirmarOperacao = async () => {
     if (!reserva.idReservaHospedagem || !confirmMode) return;
     const mode = confirmMode;
+    if (
+      (mode === "chegada" || mode === "checkin") &&
+      !idReservaSuiteOperacao
+    ) {
+      setErroAcao("Não foi possível identificar a suíte da operação.");
+      return;
+    }
     if (mode === "checkin" && bloqueadoPorSaldo) {
       setConfirmMode(null);
       setErroAcao(MSG_CHECKIN_BLOQUEADO_SALDO);
@@ -748,11 +898,13 @@ export default function ReservaOperacaoSheet({
         mode === "chegada"
           ? await executarRegistrarChegadaOperacional(
               reserva.idReservaHospedagem,
+              idReservaSuiteOperacao!,
               iso,
             )
           : mode === "checkin"
             ? await executarCheckinOperacional(
                 reserva.idReservaHospedagem,
+                idReservaSuiteOperacao!,
                 iso,
               )
             : await executarCheckoutOperacional(
@@ -776,6 +928,7 @@ export default function ReservaOperacaoSheet({
         const refreshed = await getReservaAdminDetalhe(
           reserva.idReservaHospedagem,
           dataSelecionada,
+          opcoesDetalhe,
         );
         if (refreshed.success && refreshed.data) {
           setDetalhe(refreshed.data);
@@ -1103,42 +1256,55 @@ export default function ReservaOperacaoSheet({
                     </View>
                   </View>
 
-                  {exibirTaxasAdicionais ? (
-                    <TaxasAdicionaisReservaPanel
-                      idReservaHospedagem={reserva.idReservaHospedagem!}
-                      taxasAdicionais={detalhe?.taxasAdicionais ?? []}
-                      valorTaxasAdicionais={detalhe?.valorTaxasAdicionais}
-                      valorSuitesReserva={valorSuitesReserva}
-                      permissoes={detalhe?.permissoesTaxas}
-                      valorTotalReserva={valorTotal}
-                      editandoValorSuites={editandoValorSuites}
-                      digitosValorSuites={digitosValorSuites}
-                      valorSuitesSalvando={valorSuitesSalvando}
-                      valorSuitesErro={valorSuitesErro}
-                      onIniciarEdicaoValorSuites={entrarEdicaoValorSuites}
-                      onCancelarEdicaoValorSuites={cancelarEdicaoValorSuites}
-                      onSalvarValorSuites={salvarValorSuites}
-                      onAlterarDigitosValorSuites={(digitos) => {
-                        setDigitosValorSuites(digitos);
-                        setValorSuitesErro(null);
-                      }}
-                      onDetalheAtualizado={(item) => {
-                        setDetalhe(item);
-                        notifyOperacaoConcluida();
-                      }}
-                      onOperacaoConcluida={notifyOperacaoConcluida}
-                    />
-                  ) : null}
-
-                  {/* Financeiro | Observações */}
+                  {/* Valor das Suítes | Financeiro */}
                   <View
                     style={
-                      isDesktopLayout ? styles.gridRow : styles.gridStack
+                      isDesktopLayout
+                        ? styles.gridRowAlignStart
+                        : styles.gridStack
                     }
                   >
+                    {exibirTaxasAdicionais ? (
+                      <View
+                        style={
+                          isDesktopLayout ? styles.gridCell : undefined
+                        }
+                      >
+                        <TaxasAdicionaisReservaPanel
+                          idReservaHospedagem={reserva.idReservaHospedagem!}
+                          taxasAdicionais={detalhe?.taxasAdicionais ?? []}
+                          suites={detalhe?.suites ?? []}
+                          valorTaxasAdicionais={detalhe?.valorTaxasAdicionais}
+                          valorSuitesReserva={valorSuitesBaseReserva}
+                          permissoes={detalhe?.permissoesTaxas}
+                          valorTotalReserva={valorTotal}
+                          editandoValorSuites={editandoValorSuites}
+                          digitosValorSuites={digitosValorSuites}
+                          nomeSuiteEmEdicao={nomeSuiteEmEdicao}
+                          valorSuitesSalvando={valorSuitesSalvando}
+                          valorSuitesErro={valorSuitesErro}
+                          onIniciarEdicaoValorSuites={entrarEdicaoValorSuites}
+                          onCancelarEdicaoValorSuites={cancelarEdicaoValorSuites}
+                          onSalvarValorSuites={salvarValorSuites}
+                          onAlterarDigitosValorSuites={(digitos) => {
+                            setDigitosValorSuites(digitos);
+                            setValorSuitesErro(null);
+                          }}
+                          onDetalheAtualizado={(item) => {
+                            setDetalhe(item);
+                            notifyOperacaoConcluida();
+                          }}
+                          onOperacaoConcluida={notifyOperacaoConcluida}
+                        />
+                      </View>
+                    ) : null}
                     <View
                       style={
-                        isDesktopLayout ? styles.gridCell : undefined
+                        isDesktopLayout
+                          ? exibirTaxasAdicionais
+                            ? styles.gridCell
+                            : styles.gridCellFull
+                          : undefined
                       }
                     >
                       <Secao titulo="Financeiro" stretch={isDesktopLayout}>
@@ -1217,59 +1383,49 @@ export default function ReservaOperacaoSheet({
                         ) : null}
                       </Secao>
                     </View>
-                    <View
-                      style={
-                        isDesktopLayout ? styles.gridCell : undefined
-                      }
-                    >
-                      <Secao titulo="Observações" stretch={isDesktopLayout}>
-                        <View
-                          style={
-                            isDesktopLayout
-                              ? styles.observacoesWrapDesktop
-                              : undefined
-                          }
-                        >
-                          <TextInput
-                            style={[
-                              styles.observacoesInput,
-                              isDesktopLayout &&
-                                styles.observacoesInputDesktop,
-                            ]}
-                            value={observacoesTexto}
-                            onChangeText={(texto) => {
-                              setObservacoesTexto(texto);
-                              setObservacoesSalvoOk(false);
-                              setObservacoesErro(null);
-                            }}
-                            onBlur={() => {
-                              void salvarObservacoes();
-                            }}
-                            placeholder="Observação não informada."
-                            placeholderTextColor="#888"
-                            multiline
-                            numberOfLines={isDesktopLayout ? undefined : 5}
-                            textAlignVertical="top"
-                            scrollEnabled
-                          />
-                          <View style={styles.observacoesStatusRow}>
-                            {observacoesSalvando ? (
-                              <Text style={styles.observacoesStatusTexto}>
-                                Salvando...
-                              </Text>
-                            ) : observacoesSalvoOk ? (
-                              <Text style={styles.observacoesStatusSalvo}>
-                                ✓ Salvo
-                              </Text>
-                            ) : observacoesErro ? (
-                              <Text style={styles.observacoesStatusErro}>
-                                {observacoesErro}
-                              </Text>
-                            ) : null}
-                          </View>
-                        </View>
-                      </Secao>
-                    </View>
+                  </View>
+
+                  {/* Observações — largura total */}
+                  <View
+                    style={
+                      isDesktopLayout ? styles.gridCellFull : undefined
+                    }
+                  >
+                    <Secao titulo="Observações">
+                      <TextInput
+                        style={styles.observacoesInput}
+                        value={observacoesTexto}
+                        onChangeText={(texto) => {
+                          setObservacoesTexto(texto);
+                          setObservacoesSalvoOk(false);
+                          setObservacoesErro(null);
+                        }}
+                        onBlur={() => {
+                          void salvarObservacoes();
+                        }}
+                        placeholder="Observação não informada."
+                        placeholderTextColor="#888"
+                        multiline
+                        numberOfLines={5}
+                        textAlignVertical="top"
+                        scrollEnabled
+                      />
+                      <View style={styles.observacoesStatusRow}>
+                        {observacoesSalvando ? (
+                          <Text style={styles.observacoesStatusTexto}>
+                            Salvando...
+                          </Text>
+                        ) : observacoesSalvoOk ? (
+                          <Text style={styles.observacoesStatusSalvo}>
+                            ✓ Salvo
+                          </Text>
+                        ) : observacoesErro ? (
+                          <Text style={styles.observacoesStatusErro}>
+                            {observacoesErro}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Secao>
                   </View>
 
                   {/* Origem | Próxima reserva */}
@@ -2256,6 +2412,11 @@ const styles = StyleSheet.create({
   gridRow: {
     flexDirection: "row",
     alignItems: "stretch",
+    gap: 12,
+  },
+  gridRowAlignStart: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 12,
   },
   gridCell: {

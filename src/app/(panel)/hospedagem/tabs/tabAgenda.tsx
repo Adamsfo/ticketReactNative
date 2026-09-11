@@ -312,6 +312,7 @@ export default function TabAgenda() {
   const abrirBarra = (barra: BarraAgendaReserva) => {
     setReservaOperacao({
       idReservaHospedagem: barra.idReservaHospedagem,
+      idEventoSuite: barra.idEventoSuite,
       suiteNome: barra.suiteNome,
       inicio: barra.inicio,
       fim: barra.fim,
@@ -324,7 +325,6 @@ export default function TabAgenda() {
       valorTotal: barra.valorTotal,
       valorPago: barra.valorPago,
       saldoPendente: barra.saldoPendente,
-      idEventoSuite: barra.idEventoSuite,
     });
     setSheetVisible(true);
   };

@@ -6,8 +6,8 @@
  */
 
 import {
-  postRegistrarChegada,
-  postRealizarCheckin,
+  postRegistrarChegadaSuite,
+  postRealizarCheckinSuite,
   postRealizarCheckout,
   ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
@@ -28,6 +28,7 @@ export {
 /** Referência mínima para abrir o sheet de ações em qualquer aba. */
 export type ReservaOperacaoRef = {
   idReservaHospedagem: number;
+  idReservaSuite?: number | null;
   suiteNome: string;
   inicio?: string | null;
   fim?: string | null;
@@ -46,16 +47,21 @@ export type ReservaOperacaoRef = {
   idEventoSuite?: number | null;
 };
 
-/** Registra chegada física via único endpoint do backend. */
+/** Registra chegada física da ReservaSuite em foco. */
 export async function executarRegistrarChegadaOperacional(
   idReservaHospedagem: number,
+  idReservaSuite: number,
   dataHora?: string | null,
 ): Promise<{
   success: boolean;
   message?: string;
   data?: ReservaAdminDetalhe;
 }> {
-  const resp = await postRegistrarChegada(idReservaHospedagem, dataHora);
+  const resp = await postRegistrarChegadaSuite(
+    idReservaHospedagem,
+    idReservaSuite,
+    dataHora,
+  );
   return {
     success: Boolean(resp.success),
     message: resp.message,
@@ -63,16 +69,21 @@ export async function executarRegistrarChegadaOperacional(
   };
 }
 
-/** Executa check-in via único endpoint do backend. */
+/** Executa check-in da ReservaSuite em foco. */
 export async function executarCheckinOperacional(
   idReservaHospedagem: number,
+  idReservaSuite: number,
   dataHora?: string | null,
 ): Promise<{
   success: boolean;
   message?: string;
   data?: ReservaAdminDetalhe;
 }> {
-  const resp = await postRealizarCheckin(idReservaHospedagem, dataHora);
+  const resp = await postRealizarCheckinSuite(
+    idReservaHospedagem,
+    idReservaSuite,
+    dataHora,
+  );
   return {
     success: Boolean(resp.success),
     message: resp.message,

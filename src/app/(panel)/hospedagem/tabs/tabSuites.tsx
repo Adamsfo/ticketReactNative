@@ -514,6 +514,7 @@ function CardSuiteDuplaReserva({
     if (!item.idReservaHospedagem) return;
     onAbrirReserva({
       idReservaHospedagem: item.idReservaHospedagem,
+      idReservaSuite: item.idReservaSuite ?? undefined,
       suiteNome: item.nome,
       inicio: item.checkin,
       fim: item.checkout,
@@ -680,6 +681,7 @@ function CardSuiteCheckoutComNovaReserva({
     if (!item.idReservaHospedagem) return;
     onAbrirReserva({
       idReservaHospedagem: item.idReservaHospedagem,
+      idReservaSuite: item.idReservaSuite ?? undefined,
       suiteNome: item.nome,
       inicio: item.checkin,
       fim: item.checkout,
@@ -1282,6 +1284,7 @@ export default function TabSuites() {
     if (item.idReservaHospedagem) {
       abrirReserva({
         idReservaHospedagem: item.idReservaHospedagem,
+        idReservaSuite: item.idReservaSuite ?? undefined,
         suiteNome: item.nome,
         inicio: item.checkin,
         fim: item.checkout,

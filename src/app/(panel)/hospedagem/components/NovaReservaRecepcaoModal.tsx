@@ -112,6 +112,7 @@ type TaxaAdicionalLocal = {
   id: string;
   descricao: string;
   valor: number;
+  idEventoSuite: number;
 };
 
 function calcularTotaisItemRecepcao(item: ItemCarrinhoRecepcao) {
@@ -307,6 +308,7 @@ export default function NovaReservaRecepcaoModal() {
   const [taxaEditandoId, setTaxaEditandoId] = useState<string | null>(null);
   const [taxaDescricaoInput, setTaxaDescricaoInput] = useState("");
   const [taxaValorInput, setTaxaValorInput] = useState("");
+  const [taxaSuiteInput, setTaxaSuiteInput] = useState<number | null>(null);
   const [taxaFormErro, setTaxaFormErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -358,6 +360,7 @@ export default function NovaReservaRecepcaoModal() {
     setTaxaEditandoId(null);
     setTaxaDescricaoInput("");
     setTaxaValorInput("");
+    setTaxaSuiteInput(null);
     setTaxaFormErro(null);
     setSalvando(false);
     setErroGeral(null);
@@ -929,7 +932,12 @@ export default function NovaReservaRecepcaoModal() {
       descricao: taxa.descricao,
       valor: taxa.valor,
       ordem: index + 1,
+      idEventoSuite: taxa.idEventoSuite,
     }));
+
+  const resolverNomeSuiteCarrinho = (idEventoSuite: number) =>
+    carrinho.find((item) => item.idEventoSuite === idEventoSuite)?.nomeSuite ??
+    "Suíte";
 
   const abrirTaxaModal = (taxaId?: string) => {
     if (taxaId) {
@@ -938,10 +946,14 @@ export default function NovaReservaRecepcaoModal() {
       setTaxaEditandoId(taxaId);
       setTaxaDescricaoInput(taxa.descricao);
       setTaxaValorInput(String(taxa.valor).replace(".", ","));
+      setTaxaSuiteInput(taxa.idEventoSuite);
     } else {
       setTaxaEditandoId(null);
       setTaxaDescricaoInput("");
       setTaxaValorInput("");
+      setTaxaSuiteInput(
+        carrinho.length === 1 ? carrinho[0].idEventoSuite : null,
+      );
     }
     setTaxaFormErro(null);
     setTaxaModalVisible(true);
@@ -952,6 +964,7 @@ export default function NovaReservaRecepcaoModal() {
     setTaxaEditandoId(null);
     setTaxaDescricaoInput("");
     setTaxaValorInput("");
+    setTaxaSuiteInput(null);
     setTaxaFormErro(null);
   };
 
@@ -966,12 +979,16 @@ export default function NovaReservaRecepcaoModal() {
       setTaxaFormErro("Informe um valor maior que zero.");
       return;
     }
+    if (!taxaSuiteInput) {
+      setTaxaFormErro("Selecione a suíte da taxa.");
+      return;
+    }
 
     if (taxaEditandoId) {
       setTaxasAdicionais((prev) =>
         prev.map((taxa) =>
           taxa.id === taxaEditandoId
-            ? { ...taxa, descricao, valor }
+            ? { ...taxa, descricao, valor, idEventoSuite: taxaSuiteInput }
             : taxa,
         ),
       );
@@ -982,6 +999,7 @@ export default function NovaReservaRecepcaoModal() {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           descricao,
           valor,
+          idEventoSuite: taxaSuiteInput,
         },
       ]);
     }
@@ -1794,7 +1812,10 @@ export default function NovaReservaRecepcaoModal() {
                     {taxasAdicionais.map((taxa) => (
                       <View key={taxa.id} style={styles.taxaLinha}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.taxaDescricao}>{taxa.descricao}</Text>
+                          <Text style={styles.taxaDescricao}>
+                            {taxa.descricao} —{" "}
+                            {resolverNomeSuiteCarrinho(taxa.idEventoSuite)}
+                          </Text>
                           <View style={styles.taxaAcoes}>
                             <TouchableOpacity onPress={() => abrirTaxaModal(taxa.id)}>
                               <Text style={styles.taxaAcaoTexto}>Editar</Text>
@@ -2027,6 +2048,31 @@ export default function NovaReservaRecepcaoModal() {
               onChangeText={setTaxaDescricaoInput}
               placeholder="Ex.: Decoração especial"
             />
+            <Text style={[styles.label, { marginTop: 10 }]}>Suíte</Text>
+            <View style={styles.taxaSuiteOpcoesWrap}>
+              {carrinho.map((item) => {
+                const selecionada = taxaSuiteInput === item.idEventoSuite;
+                return (
+                  <TouchableOpacity
+                    key={item.idEventoSuite}
+                    style={[
+                      styles.taxaSuiteChip,
+                      selecionada && styles.taxaSuiteChipAtivo,
+                    ]}
+                    onPress={() => setTaxaSuiteInput(item.idEventoSuite)}
+                  >
+                    <Text
+                      style={[
+                        styles.taxaSuiteChipTexto,
+                        selecionada && styles.taxaSuiteChipTextoAtivo,
+                      ]}
+                    >
+                      {item.nomeSuite}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <Text style={[styles.label, { marginTop: 10 }]}>Valor</Text>
             <TextInput
               style={styles.input}
@@ -2592,5 +2638,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginTop: 12,
+  },
+  taxaSuiteOpcoesWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  taxaSuiteChip: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: colors.branco,
+  },
+  taxaSuiteChipAtivo: {
+    borderColor: colors.azul,
+    backgroundColor: "#eff6ff",
+  },
+  taxaSuiteChipTexto: {
+    fontSize: 13,
+    color: colors.cinza,
+  },
+  taxaSuiteChipTextoAtivo: {
+    color: colors.azul,
+    fontWeight: "700",
   },
 });

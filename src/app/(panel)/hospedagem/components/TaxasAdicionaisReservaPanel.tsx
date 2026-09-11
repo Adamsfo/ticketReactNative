@@ -18,6 +18,7 @@ import {
   patchTaxaAdicionalReserva,
   PermissoesTaxasAdicionaisReserva,
   postTaxaAdicionalReserva,
+  resolverVinculoTaxaLabel,
   ReservaAdminDetalhe,
   ReservaTaxaAdicional,
 } from "@/src/lib/hospedagemAdmin";
@@ -27,18 +28,22 @@ import {
   valorParaDigitosCentavos,
 } from "@/src/lib/mascaraMoeda";
 
+type SuiteResumo = ReservaAdminDetalhe["suites"][number];
+
 type Props = {
   idReservaHospedagem: number;
   taxasAdicionais: ReservaTaxaAdicional[];
+  suites?: SuiteResumo[];
   valorTaxasAdicionais?: number;
   valorSuitesReserva?: number;
   permissoes?: PermissoesTaxasAdicionaisReserva | null;
   valorTotalReserva: number;
   editandoValorSuites?: boolean;
   digitosValorSuites?: string;
+  nomeSuiteEmEdicao?: string | null;
   valorSuitesSalvando?: boolean;
   valorSuitesErro?: string | null;
-  onIniciarEdicaoValorSuites?: () => void;
+  onIniciarEdicaoValorSuites?: (suite?: SuiteResumo) => void;
   onCancelarEdicaoValorSuites?: () => void;
   onSalvarValorSuites?: () => void;
   onAlterarDigitosValorSuites?: (digitos: string) => void;
@@ -50,6 +55,7 @@ type ModalTaxaState = {
   idTaxa?: number;
   descricao: string;
   digitosValor: string;
+  idReservaSuite: number | null;
 };
 
 function extrairDetalheResposta(
@@ -80,15 +86,33 @@ function extrairDetalheResposta(
   return candidato;
 }
 
+/** Valor base da suíte para exibição (hospedagem + serviços; sem taxas adicionais). */
+function resolverValorSuite(suite: SuiteResumo): number {
+  const valorHospedagem =
+    suite.valorHospedagem != null
+      ? Number(suite.valorHospedagem)
+      : Number(suite.preco ?? 0) + Number(suite.taxaServico ?? 0);
+  const valorServicos =
+    suite.valorServicos != null
+      ? Number(suite.valorServicos)
+      : (suite.servicosAdicionais ?? []).reduce(
+          (acc, item) => acc + Number(item.valor ?? 0),
+          0,
+        );
+  return valorHospedagem + valorServicos;
+}
+
 export default function TaxasAdicionaisReservaPanel({
   idReservaHospedagem,
   taxasAdicionais,
+  suites = [],
   valorTaxasAdicionais,
   valorSuitesReserva,
   permissoes,
   valorTotalReserva,
   editandoValorSuites = false,
   digitosValorSuites = "0",
+  nomeSuiteEmEdicao = null,
   valorSuitesSalvando = false,
   valorSuitesErro = null,
   onIniciarEdicaoValorSuites,
@@ -113,36 +137,91 @@ export default function TaxasAdicionaisReservaPanel({
   const totalTaxas =
     valorTaxasAdicionais ??
     taxasAdicionais.reduce((acc, taxa) => acc + Number(taxa.valor ?? 0), 0);
-  const valorSuitesHospedagem = Number(valorSuitesReserva ?? 0);
+  const valorSuitesHospedagem =
+    suites.length > 0
+      ? suites.reduce((acc, suite) => acc + resolverValorSuite(suite), 0)
+      : Number(valorSuitesReserva ?? 0);
 
-  const onValorSuitesDuploClique = () => {
+  const onValorSuitesDuploClique = (suite?: SuiteResumo) => {
     if (!onIniciarEdicaoValorSuites || editandoValorSuites || valorSuitesSalvando) {
       return;
     }
     const agora = Date.now();
     if (agora - valorSuitesUltimoPressRef.current <= 350) {
       valorSuitesUltimoPressRef.current = 0;
-      onIniciarEdicaoValorSuites();
+      onIniciarEdicaoValorSuites(suite);
       return;
     }
     valorSuitesUltimoPressRef.current = agora;
   };
 
+  const onLinhaSuitePress = (
+    suite?: SuiteResumo,
+    event?: {
+      preventDefault?: () => void;
+      detail?: number;
+    },
+  ) => {
+    if (!onIniciarEdicaoValorSuites || editandoValorSuites || valorSuitesSalvando) {
+      return;
+    }
+    if (Platform.OS === "web" && (event?.detail ?? 0) >= 2) {
+      event?.preventDefault?.();
+      valorSuitesUltimoPressRef.current = 0;
+      onIniciarEdicaoValorSuites(suite);
+      return;
+    }
+    onValorSuitesDuploClique(suite);
+  };
+
+  const webLinhaSuitePressProps = (suite?: SuiteResumo) =>
+    Platform.OS === "web"
+      ? ({
+          onClick: (event: {
+            preventDefault: () => void;
+            stopPropagation: () => void;
+            detail?: number;
+          }) => {
+            if ((event.detail ?? 0) >= 2) {
+              event.preventDefault();
+              event.stopPropagation();
+              onLinhaSuitePress(suite, event);
+            }
+          },
+          onMouseDown: (event: {
+            preventDefault: () => void;
+            detail?: number;
+          }) => {
+            if ((event.detail ?? 0) > 1) {
+              event.preventDefault();
+            }
+          },
+        } as object)
+      : {};
+
   const abrirNovo = () => {
     setErro(null);
+    const suiteUnica =
+      suites.length === 1 ? suites[0].idReservaSuite ?? null : null;
     setModal({
       descricao: "",
       digitosValor: "0",
+      idReservaSuite: suiteUnica,
     });
   };
 
   const abrirEditar = (taxa: ReservaTaxaAdicional) => {
     if (!taxa.id) return;
     setErro(null);
+    const idReservaSuite =
+      taxa.idReservaSuite != null && Number(taxa.idReservaSuite) > 0
+        ? Number(taxa.idReservaSuite)
+        : null;
     setModal({
       idTaxa: taxa.id,
       descricao: taxa.descricao,
       digitosValor: valorParaDigitosCentavos(taxa.valor),
+      idReservaSuite,
     });
   };
 
@@ -175,18 +254,31 @@ export default function TaxasAdicionaisReservaPanel({
       setErro("Informe um valor maior que zero.");
       return;
     }
+    if (!modal.idTaxa && !modal.idReservaSuite) {
+      setErro("Selecione a suíte da taxa.");
+      return;
+    }
 
     setSalvando(true);
     setErro(null);
     try {
+      const payload = {
+        descricao,
+        valor,
+        ...(modal.idReservaSuite != null
+          ? { idReservaSuite: modal.idReservaSuite }
+          : {}),
+      };
       const resp = modal.idTaxa
-        ? await patchTaxaAdicionalReserva(idReservaHospedagem, modal.idTaxa, {
-            descricao,
-            valor,
-          })
+        ? await patchTaxaAdicionalReserva(
+            idReservaHospedagem,
+            modal.idTaxa,
+            payload,
+          )
         : await postTaxaAdicionalReserva(idReservaHospedagem, {
             descricao,
             valor,
+            idReservaSuite: modal.idReservaSuite as number,
           });
 
       if (!resp.success) {
@@ -256,7 +348,11 @@ export default function TaxasAdicionaisReservaPanel({
     <View style={styles.wrap}>
       {editandoValorSuites ? (
         <View style={styles.edicaoValorSuitesWrap}>
-          <Text style={styles.linhaValorLabel}>Valor das suítes</Text>
+          <Text style={styles.linhaValorLabel}>
+            {nomeSuiteEmEdicao
+              ? `Editando ${nomeSuiteEmEdicao}`
+              : "Valor das suítes"}
+          </Text>
           <TextInput
             style={styles.edicaoValorSuitesInput}
             value={digitosParaExibicaoMoeda(digitosValorSuites)}
@@ -290,23 +386,55 @@ export default function TaxasAdicionaisReservaPanel({
             <Text style={styles.erro}>{valorSuitesErro}</Text>
           ) : null}
         </View>
-      ) : Platform.OS === "web" ? (
+      ) : suites.length > 0 ? (
+        <View style={styles.valorSuitesWrap}>
+          <Text style={styles.subtituloLista}>Valor das suítes</Text>
+          {suites.map((suite) => (
+            <Pressable
+              key={suite.idReservaSuite}
+              style={styles.linhaValor}
+              onPress={() => onLinhaSuitePress(suite)}
+              {...webLinhaSuitePressProps(suite)}
+            >
+              <Text
+                style={[
+                  styles.linhaValorItemLabel,
+                  Platform.OS === "web" && styles.linhaValorSemSelecaoWeb,
+                ]}
+              >
+                {suite.nome}
+              </Text>
+              <Text
+                style={[
+                  styles.linhaValorTexto,
+                  Platform.OS === "web" && styles.linhaValorSemSelecaoWeb,
+                ]}
+              >
+                {formatCurrency(resolverValorSuite(suite))}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
         <Pressable
           style={styles.linhaValor}
-          onPress={(event) => {
-            event?.preventDefault?.();
-            onValorSuitesDuploClique();
-          }}
+          onPress={() => onLinhaSuitePress()}
+          {...webLinhaSuitePressProps()}
         >
-          <Text style={styles.linhaValorLabel}>Valor das suítes</Text>
-          <Text style={styles.linhaValorTexto}>
-            {formatCurrency(valorSuitesHospedagem)}
+          <Text
+            style={[
+              styles.linhaValorLabel,
+              Platform.OS === "web" && styles.linhaValorSemSelecaoWeb,
+            ]}
+          >
+            Valor das suítes
           </Text>
-        </Pressable>
-      ) : (
-        <Pressable style={styles.linhaValor} onPress={onValorSuitesDuploClique}>
-          <Text style={styles.linhaValorLabel}>Valor das suítes</Text>
-          <Text style={styles.linhaValorTexto}>
+          <Text
+            style={[
+              styles.linhaValorTexto,
+              Platform.OS === "web" && styles.linhaValorSemSelecaoWeb,
+            ]}
+          >
             {formatCurrency(valorSuitesHospedagem)}
           </Text>
         </Pressable>
@@ -332,7 +460,9 @@ export default function TaxasAdicionaisReservaPanel({
         taxasAdicionais.map((taxa) => (
           <View key={taxa.id ?? taxa.ordem} style={styles.taxaRow}>
             <View style={styles.taxaInfo}>
-              <Text style={styles.taxaDescricao}>{taxa.descricao}</Text>
+              <Text style={styles.taxaDescricao} numberOfLines={2}>
+                {taxa.descricao} — {resolverVinculoTaxaLabel(taxa, suites)}
+              </Text>
               <Text style={styles.taxaValor}>{formatCurrency(taxa.valor)}</Text>
             </View>
             {(podeEditar || podeExcluir) && taxa.id ? (
@@ -453,6 +583,43 @@ export default function TaxasAdicionaisReservaPanel({
               editable={!salvando}
             />
 
+            <Text style={styles.inputLabel}>Suíte</Text>
+            <View style={styles.suiteOpcoesWrap}>
+              {suites.map((suite) => {
+                const selecionada =
+                  modal?.idReservaSuite === suite.idReservaSuite;
+                return (
+                  <TouchableOpacity
+                    key={suite.idReservaSuite}
+                    style={[
+                      styles.suiteOpcaoChip,
+                      selecionada && styles.suiteOpcaoChipAtivo,
+                    ]}
+                    onPress={() =>
+                      setModal((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              idReservaSuite: suite.idReservaSuite ?? null,
+                            }
+                          : prev,
+                      )
+                    }
+                    disabled={salvando}
+                  >
+                    <Text
+                      style={[
+                        styles.suiteOpcaoChipTexto,
+                        selecionada && styles.suiteOpcaoChipTextoAtivo,
+                      ]}
+                    >
+                      {suite.nome}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Text style={styles.inputLabel}>Valor</Text>
             <TextInput
               style={styles.input}
@@ -502,9 +669,9 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: "#fafbfc",
-    gap: 10,
+    gap: 6,
   },
   btnAdicionarRow: {
     flexDirection: "row",
@@ -524,11 +691,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  valorSuitesWrap: {
+    gap: 0,
+  },
   linhaValor: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 4,
+    paddingBottom: 2,
+  },
+  linhaValorItemLabel: {
+    fontSize: 13,
+    color: "#111827",
   },
   linhaValorLabel: {
     fontSize: 13,
@@ -539,6 +713,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#111827",
+  },
+  linhaValorSemSelecaoWeb: {
+    userSelect: "none",
   },
   edicaoValorSuitesWrap: {
     gap: 8,
@@ -574,8 +751,8 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     textTransform: "uppercase",
     letterSpacing: 0.3,
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: 2,
+    marginBottom: 2,
   },
   vazio: {
     fontSize: 12,
@@ -585,14 +762,14 @@ const styles = StyleSheet.create({
   divisor: {
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    marginTop: 8,
+    marginTop: 4,
   },
   taxaRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
@@ -648,7 +825,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 8,
+    paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: colors.line,
   },
@@ -699,6 +876,32 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#6b7280",
     marginTop: 4,
+  },
+  suiteOpcoesWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
+  suiteOpcaoChip: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+  },
+  suiteOpcaoChipAtivo: {
+    borderColor: "#0073E6",
+    backgroundColor: "#eff6ff",
+  },
+  suiteOpcaoChipTexto: {
+    fontSize: 13,
+    color: "#374151",
+  },
+  suiteOpcaoChipTextoAtivo: {
+    color: "#0073E6",
+    fontWeight: "700",
   },
   input: {
     borderWidth: 1,
