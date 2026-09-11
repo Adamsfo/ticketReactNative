@@ -108,6 +108,12 @@ type ItemCarrinhoRecepcao = ItemCarrinhoHospedagem & {
   desconto?: DescontoRecepcaoInput | null;
 };
 
+type TaxaAdicionalLocal = {
+  id: string;
+  descricao: string;
+  valor: number;
+};
+
 function calcularTotaisItemRecepcao(item: ItemCarrinhoRecepcao) {
   const valorOriginal = Number(item.cotacao.totais.valorTotal ?? 0);
   const valorFinal = calcularValorFinalComDesconto(valorOriginal, item.desconto);
@@ -294,6 +300,14 @@ export default function NovaReservaRecepcaoModal() {
   );
   const [observacaoPagamento, setObservacaoPagamento] = useState("");
   const [pagamentoErro, setPagamentoErro] = useState<string | null>(null);
+  const [taxasAdicionais, setTaxasAdicionais] = useState<TaxaAdicionalLocal[]>(
+    [],
+  );
+  const [taxaModalVisible, setTaxaModalVisible] = useState(false);
+  const [taxaEditandoId, setTaxaEditandoId] = useState<string | null>(null);
+  const [taxaDescricaoInput, setTaxaDescricaoInput] = useState("");
+  const [taxaValorInput, setTaxaValorInput] = useState("");
+  const [taxaFormErro, setTaxaFormErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
 
@@ -339,6 +353,12 @@ export default function NovaReservaRecepcaoModal() {
     setComprovantePagamento(null);
     setObservacaoPagamento("");
     setPagamentoErro(null);
+    setTaxasAdicionais([]);
+    setTaxaModalVisible(false);
+    setTaxaEditandoId(null);
+    setTaxaDescricaoInput("");
+    setTaxaValorInput("");
+    setTaxaFormErro(null);
     setSalvando(false);
     setErroGeral(null);
     prefillSuiteRef.current = null;
@@ -558,8 +578,18 @@ export default function NovaReservaRecepcaoModal() {
       criancas += item.criancas;
     }
 
-    return { preco, taxa, total, descontoTotal, adultos, criancas };
-  }, [carrinho]);
+    const totalTaxas = taxasAdicionais.reduce((acc, taxa) => acc + taxa.valor, 0);
+
+    return {
+      preco,
+      taxa,
+      total: total + totalTaxas,
+      totalTaxas,
+      descontoTotal,
+      adultos,
+      criancas,
+    };
+  }, [carrinho, taxasAdicionais]);
 
   const valorPagoNumero = useMemo(
     () => parseValorMonetario(valorPagoInput),
@@ -894,6 +924,74 @@ export default function NovaReservaRecepcaoModal() {
     }
   };
 
+  const montarTaxasPayload = () =>
+    taxasAdicionais.map((taxa, index) => ({
+      descricao: taxa.descricao,
+      valor: taxa.valor,
+      ordem: index + 1,
+    }));
+
+  const abrirTaxaModal = (taxaId?: string) => {
+    if (taxaId) {
+      const taxa = taxasAdicionais.find((t) => t.id === taxaId);
+      if (!taxa) return;
+      setTaxaEditandoId(taxaId);
+      setTaxaDescricaoInput(taxa.descricao);
+      setTaxaValorInput(String(taxa.valor).replace(".", ","));
+    } else {
+      setTaxaEditandoId(null);
+      setTaxaDescricaoInput("");
+      setTaxaValorInput("");
+    }
+    setTaxaFormErro(null);
+    setTaxaModalVisible(true);
+  };
+
+  const fecharTaxaModal = () => {
+    setTaxaModalVisible(false);
+    setTaxaEditandoId(null);
+    setTaxaDescricaoInput("");
+    setTaxaValorInput("");
+    setTaxaFormErro(null);
+  };
+
+  const salvarTaxaModal = () => {
+    const descricao = taxaDescricaoInput.trim();
+    if (!descricao) {
+      setTaxaFormErro("Descrição da taxa é obrigatória.");
+      return;
+    }
+    const valor = parseValorMonetario(taxaValorInput);
+    if (Number.isNaN(valor) || valor <= 0) {
+      setTaxaFormErro("Informe um valor maior que zero.");
+      return;
+    }
+
+    if (taxaEditandoId) {
+      setTaxasAdicionais((prev) =>
+        prev.map((taxa) =>
+          taxa.id === taxaEditandoId
+            ? { ...taxa, descricao, valor }
+            : taxa,
+        ),
+      );
+    } else {
+      setTaxasAdicionais((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          descricao,
+          valor,
+        },
+      ]);
+    }
+    fecharTaxaModal();
+  };
+
+  const removerTaxa = (taxaId: string) => {
+    setTaxasAdicionais((prev) => prev.filter((taxa) => taxa.id !== taxaId));
+  };
+
   const montarSuitesPayload = () =>
     carrinho.map((item) => {
       const suiteHospedes = hospedes.find(
@@ -950,6 +1048,7 @@ export default function NovaReservaRecepcaoModal() {
         checkin: getCheckinIso(),
         checkout: getCheckoutIso(),
         suites: montarSuitesPayload(),
+        taxasAdicionais: montarTaxasPayload(),
         observacoes: observacoes.trim() || null,
         pagamento: {
           valor: valorPago,
@@ -1006,6 +1105,7 @@ export default function NovaReservaRecepcaoModal() {
         checkin: getCheckinIso(),
         checkout: getCheckoutIso(),
         suites: montarSuitesPayload(),
+        taxasAdicionais: montarTaxasPayload(),
         observacoes: observacoes.trim() || null,
       });
 
@@ -1679,6 +1779,47 @@ export default function NovaReservaRecepcaoModal() {
                     {formatCurrency(totaisResumo.taxa)}
                   </Text>
                 </View>
+
+                <TouchableOpacity
+                  style={styles.btnAdicionarTaxa}
+                  onPress={() => abrirTaxaModal()}
+                >
+                  <Feather name="plus" size={16} color={colors.azul} />
+                  <Text style={styles.btnAdicionarTaxaText}>Adicionar taxa</Text>
+                </TouchableOpacity>
+
+                {taxasAdicionais.length > 0 ? (
+                  <View style={styles.taxasBox}>
+                    <Text style={styles.taxasTitulo}>Taxas adicionais</Text>
+                    {taxasAdicionais.map((taxa) => (
+                      <View key={taxa.id} style={styles.taxaLinha}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.taxaDescricao}>{taxa.descricao}</Text>
+                          <View style={styles.taxaAcoes}>
+                            <TouchableOpacity onPress={() => abrirTaxaModal(taxa.id)}>
+                              <Text style={styles.taxaAcaoTexto}>Editar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => removerTaxa(taxa.id)}>
+                              <Text style={[styles.taxaAcaoTexto, { color: colors.red }]}>
+                                Remover
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                        <Text style={styles.taxaValor}>
+                          {formatCurrency(taxa.valor)}
+                        </Text>
+                      </View>
+                    ))}
+                    <View style={styles.totalRow}>
+                      <Text style={styles.resumoSub}>Total taxas adicionais</Text>
+                      <Text style={styles.resumoValor}>
+                        {formatCurrency(totaisResumo.totalTaxas)}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
                 <View style={styles.totalRow}>
                   <Text style={styles.resumoLabel}>Total</Text>
                   <Text style={[styles.resumoValor, { color: colors.azul }]}>
@@ -1868,6 +2009,54 @@ export default function NovaReservaRecepcaoModal() {
           )}
         </View>
       </SafeAreaView>
+      <Modal
+        visible={taxaModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={fecharTaxaModal}
+      >
+        <View style={styles.taxaModalOverlay}>
+          <View style={styles.taxaModalCard}>
+            <Text style={styles.taxaModalTitulo}>
+              {taxaEditandoId ? "Editar taxa" : "Adicionar taxa"}
+            </Text>
+            <Text style={styles.label}>Descrição</Text>
+            <TextInput
+              style={styles.input}
+              value={taxaDescricaoInput}
+              onChangeText={setTaxaDescricaoInput}
+              placeholder="Ex.: Decoração especial"
+            />
+            <Text style={[styles.label, { marginTop: 10 }]}>Valor</Text>
+            <TextInput
+              style={styles.input}
+              value={taxaValorInput}
+              onChangeText={setTaxaValorInput}
+              placeholder="R$ 0,00"
+              keyboardType="decimal-pad"
+            />
+            {taxaFormErro ? (
+              <Text style={styles.erro}>{taxaFormErro}</Text>
+            ) : null}
+            <View style={styles.taxaModalBotoes}>
+              <TouchableOpacity
+                style={[styles.btnFooterSec, { flex: 1 }]}
+                onPress={fecharTaxaModal}
+              >
+                <Text style={styles.btnFooterSecText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btnFooterPri, { flex: 1 }]}
+                onPress={salvarTaxaModal}
+              >
+                <Text style={styles.btnFooterPriText}>
+                  {taxaEditandoId ? "Salvar" : "Adicionar"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -2331,5 +2520,77 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: colors.azul,
     fontSize: 15,
+  },
+  btnAdicionarTaxa: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  btnAdicionarTaxaText: {
+    color: colors.azul,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  taxasBox: {
+    marginTop: 8,
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  taxasTitulo: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  taxaLinha: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  taxaDescricao: {
+    fontSize: 13,
+    color: colors.cinza,
+    fontWeight: "600",
+  },
+  taxaValor: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  taxaAcoes: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  taxaAcaoTexto: {
+    fontSize: 12,
+    color: colors.azul,
+    fontWeight: "600",
+  },
+  taxaModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  taxaModalCard: {
+    backgroundColor: colors.branco,
+    borderRadius: 14,
+    padding: 16,
+    gap: 8,
+  },
+  taxaModalTitulo: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.cinza,
+    marginBottom: 4,
+  },
+  taxaModalBotoes: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 12,
   },
 });

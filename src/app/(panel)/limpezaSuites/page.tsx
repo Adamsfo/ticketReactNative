@@ -30,9 +30,9 @@ import { useHospedagemDesktopLayout } from "../hospedagem/useHospedagemDesktopLa
 const AUTO_REFRESH_MS = 15_000;
 
 const FILTROS: Array<{ key: FiltroLimpezaSuites; label: string }> = [
-  { key: "pendente", label: "Pendente" },
-  { key: "em_andamento", label: "Em andamento" },
-  { key: "concluida", label: "Concluída" },
+  { key: "todas", label: "Todas" },
+  { key: "pendente", label: "Pendentes" },
+  { key: "concluida", label: "Concluídas" },
 ];
 
 function corStatusLimpeza(status: string): string {
@@ -239,8 +239,7 @@ export default function LimpezaSuitesPage() {
     let sucesso = false;
     let novoFiltro: FiltroLimpezaSuites | null = null;
     try {
-      novoFiltro =
-        tipo === "iniciar" ? "em_andamento" : "concluida";
+      novoFiltro = tipo === "iniciar" ? "pendente" : "concluida";
       if (tipo === "iniciar") {
         await postIniciarLimpezaSuite(id);
         setMensagemAcao("Limpeza iniciada com sucesso.");
@@ -298,7 +297,11 @@ export default function LimpezaSuitesPage() {
                 return (
                   <TouchableOpacity
                     style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
-                    onPress={() => setFiltro(item.key)}
+                    onPress={() => {
+                      if (filtro === item.key) return;
+                      setFiltro(item.key);
+                      void carregar(true, item.key);
+                    }}
                   >
                     <Text
                       style={[

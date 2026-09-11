@@ -23,7 +23,7 @@ import TimePickerComponente from "@/src/components/TimePickerComponente";
 import {
   getReservaAdminDetalhe,
   patchObservacoesReserva,
-  patchValorTotalReserva,
+  patchValorSuitesReserva,
   atualizarUsuarioReserva,
   postCancelarReservaHospedagem,
   podeExibirCancelamentoReservaAdmin,
@@ -82,6 +82,7 @@ import ReservaOrigemIntegracaoPanel from "./ReservaOrigemIntegracaoPanel";
 import TrocaSuiteModal from "./TrocaSuiteModal";
 import AlterarPeriodoModal from "./AlterarPeriodoModal";
 import CadastroClienteRapido from "./CadastroClienteRapido";
+import TaxasAdicionaisReservaPanel from "./TaxasAdicionaisReservaPanel";
 
 type HospedeConferencia = {
   key: string;
@@ -164,10 +165,12 @@ export default function ReservaOperacaoSheet({
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [cancelandoReserva, setCancelandoReserva] = useState(false);
   const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
-  const [editandoValorTotal, setEditandoValorTotal] = useState(false);
-  const [digitosValorTotal, setDigitosValorTotal] = useState("");
-  const [valorTotalSalvando, setValorTotalSalvando] = useState(false);
-  const [valorTotalErro, setValorTotalErro] = useState<string | null>(null);
+  const [editandoValorSuites, setEditandoValorSuites] = useState(false);
+  const [digitosValorSuites, setDigitosValorSuites] = useState("");
+  const [valorSuitesSalvando, setValorSuitesSalvando] = useState(false);
+  const [valorSuitesErro, setValorSuitesErro] = useState<string | null>(null);
+  const [modalEdicaoValorHospedinOpen, setModalEdicaoValorHospedinOpen] =
+    useState(false);
   const observacoesSalvoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -239,10 +242,10 @@ export default function ReservaOperacaoSheet({
       setMotivoCancelamento("");
       setCancelandoReserva(false);
       setErroCancelamento(null);
-      setEditandoValorTotal(false);
-      setDigitosValorTotal("");
-      setValorTotalSalvando(false);
-      setValorTotalErro(null);
+      setEditandoValorSuites(false);
+      setDigitosValorSuites("");
+      setValorSuitesSalvando(false);
+      setValorSuitesErro(null);
       if (observacoesSalvoTimerRef.current) {
         clearTimeout(observacoesSalvoTimerRef.current);
         observacoesSalvoTimerRef.current = null;
@@ -346,47 +349,57 @@ export default function ReservaOperacaoSheet({
     }
   };
 
-  const entrarEdicaoValorTotal = () => {
-    if (editandoValorTotal || valorTotalSalvando) return;
-    setDigitosValorTotal(valorParaDigitosCentavos(valorTotal));
-    setValorTotalErro(null);
-    setEditandoValorTotal(true);
-  };
+  const valorSuitesReserva = Number(detalhe?.valorSuitesReserva ?? 0);
 
-  const cancelarEdicaoValorTotal = () => {
-    setEditandoValorTotal(false);
-    setDigitosValorTotal("");
-    setValorTotalErro(null);
-  };
-
-  const salvarValorTotal = async () => {
-    if (!reserva?.idReservaHospedagem || valorTotalSalvando) return;
-
-    const novoValor = digitosCentavosParaNumero(digitosValorTotal);
-    if (!(novoValor > 0)) {
-      setValorTotalErro("Informe um valor total válido.");
+  const entrarEdicaoValorSuites = () => {
+    if (editandoValorSuites || valorSuitesSalvando) return;
+    const origemHospedin =
+      String(detalhe?.origemReserva ?? "").toUpperCase() === "HOSPEDIN";
+    if (origemHospedin) {
+      setModalEdicaoValorHospedinOpen(true);
       return;
     }
-    if (novoValor < valorPago - 0.009) {
-      setValorTotalErro(
+    setDigitosValorSuites(valorParaDigitosCentavos(valorSuitesReserva));
+    setValorSuitesErro(null);
+    setEditandoValorSuites(true);
+  };
+
+  const cancelarEdicaoValorSuites = () => {
+    setEditandoValorSuites(false);
+    setDigitosValorSuites("");
+    setValorSuitesErro(null);
+  };
+
+  const salvarValorSuites = async () => {
+    if (!reserva?.idReservaHospedagem || valorSuitesSalvando) return;
+
+    const novoValor = digitosCentavosParaNumero(digitosValorSuites);
+    if (!(novoValor > 0)) {
+      setValorSuitesErro("Informe um valor das suítes válido.");
+      return;
+    }
+    const novoTotalEstimado =
+      novoValor + Number(detalhe?.valorTaxasAdicionais ?? 0);
+    if (novoTotalEstimado < valorPago - 0.009) {
+      setValorSuitesErro(
         "O valor total não pode ser menor que o valor já recebido.",
       );
       return;
     }
-    if (Math.abs(novoValor - valorTotal) <= 0.009) {
-      cancelarEdicaoValorTotal();
+    if (Math.abs(novoValor - valorSuitesReserva) <= 0.009) {
+      cancelarEdicaoValorSuites();
       return;
     }
 
     const idReserva = reserva.idReservaHospedagem;
-    setValorTotalSalvando(true);
-    setValorTotalErro(null);
+    setValorSuitesSalvando(true);
+    setValorSuitesErro(null);
 
     try {
-      const resp = await patchValorTotalReserva(idReserva, novoValor);
+      const resp = await patchValorSuitesReserva(idReserva, novoValor);
       if (!resp.success || !resp.data) {
-        setValorTotalErro(
-          resp.message || "Não foi possível atualizar o valor total.",
+        setValorSuitesErro(
+          resp.message || "Não foi possível atualizar o valor das suítes.",
         );
         return;
       }
@@ -396,17 +409,17 @@ export default function ReservaOperacaoSheet({
         idReserva,
       );
       if (!detalheAtualizado) {
-        setValorTotalErro("Não foi possível atualizar o valor total.");
+        setValorSuitesErro("Não foi possível atualizar o valor das suítes.");
         return;
       }
 
       setDetalhe(detalheAtualizado);
-      cancelarEdicaoValorTotal();
+      cancelarEdicaoValorSuites();
       notifyOperacaoConcluida();
     } catch {
-      setValorTotalErro("Não foi possível atualizar o valor total.");
+      setValorSuitesErro("Não foi possível atualizar o valor das suítes.");
     } finally {
-      setValorTotalSalvando(false);
+      setValorSuitesSalvando(false);
     }
   };
 
@@ -577,6 +590,8 @@ export default function ReservaOperacaoSheet({
     detalhe?.situacaoFinanceira ?? "Pendente",
   );
   const bloqueadoPorSaldo = saldoPendente > 0.009;
+  const exibirTaxasAdicionais =
+    detalhe?.permissoesTaxas?.podeVisualizar === true;
 
   const chegadaRegistrada = detalhe?.dataHoraChegadaReal != null;
   const checkinRealizado =
@@ -1088,6 +1103,33 @@ export default function ReservaOperacaoSheet({
                     </View>
                   </View>
 
+                  {exibirTaxasAdicionais ? (
+                    <TaxasAdicionaisReservaPanel
+                      idReservaHospedagem={reserva.idReservaHospedagem!}
+                      taxasAdicionais={detalhe?.taxasAdicionais ?? []}
+                      valorTaxasAdicionais={detalhe?.valorTaxasAdicionais}
+                      valorSuitesReserva={valorSuitesReserva}
+                      permissoes={detalhe?.permissoesTaxas}
+                      valorTotalReserva={valorTotal}
+                      editandoValorSuites={editandoValorSuites}
+                      digitosValorSuites={digitosValorSuites}
+                      valorSuitesSalvando={valorSuitesSalvando}
+                      valorSuitesErro={valorSuitesErro}
+                      onIniciarEdicaoValorSuites={entrarEdicaoValorSuites}
+                      onCancelarEdicaoValorSuites={cancelarEdicaoValorSuites}
+                      onSalvarValorSuites={salvarValorSuites}
+                      onAlterarDigitosValorSuites={(digitos) => {
+                        setDigitosValorSuites(digitos);
+                        setValorSuitesErro(null);
+                      }}
+                      onDetalheAtualizado={(item) => {
+                        setDetalhe(item);
+                        notifyOperacaoConcluida();
+                      }}
+                      onOperacaoConcluida={notifyOperacaoConcluida}
+                    />
+                  ) : null}
+
                   {/* Financeiro | Observações */}
                   <View
                     style={
@@ -1099,11 +1141,7 @@ export default function ReservaOperacaoSheet({
                         isDesktopLayout ? styles.gridCell : undefined
                       }
                     >
-                      <Secao
-                        titulo="Financeiro"
-                        stretch={isDesktopLayout}
-                        onTituloPress={entrarEdicaoValorTotal}
-                      >
+                      <Secao titulo="Financeiro" stretch={isDesktopLayout}>
                         {detalhe?.possivelPagamentoOta ? (
                           <AlertaPossivelPagamentoOta
                             canalLabel={
@@ -1112,53 +1150,10 @@ export default function ReservaOperacaoSheet({
                             trecho={detalhe.possivelPagamentoOtaTrecho}
                           />
                         ) : null}
-                        {editandoValorTotal ? (
-                          <View style={styles.linha}>
-                            <Text style={styles.linhaLabel}>Total</Text>
-                            <TextInput
-                              style={styles.linhaValorInput}
-                              value={digitosParaExibicaoMoeda(digitosValorTotal)}
-                              onChangeText={(texto) => {
-                                const only = texto.replace(/\D/g, "").slice(0, 12);
-                                setDigitosValorTotal(only || "0");
-                                setValorTotalErro(null);
-                              }}
-                              keyboardType="number-pad"
-                              editable={!valorTotalSalvando}
-                              autoFocus
-                            />
-                            <View style={styles.valorTotalAcoes}>
-                              <TouchableOpacity
-                                onPress={salvarValorTotal}
-                                disabled={valorTotalSalvando}
-                                hitSlop={6}
-                              >
-                                <Text style={styles.valorTotalAcaoSalvar}>
-                                  {valorTotalSalvando ? "Salvando…" : "Salvar"}
-                                </Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={cancelarEdicaoValorTotal}
-                                disabled={valorTotalSalvando}
-                                hitSlop={6}
-                              >
-                                <Text style={styles.valorTotalAcaoCancelar}>
-                                  Cancelar
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-                            {valorTotalErro ? (
-                              <Text style={styles.valorTotalErro}>
-                                {valorTotalErro}
-                              </Text>
-                            ) : null}
-                          </View>
-                        ) : (
-                          <Linha
-                            label="Total"
-                            valor={formatCurrency(valorTotal)}
-                          />
-                        )}
+                        <Linha
+                          label="Total"
+                          valor={formatCurrency(valorTotal)}
+                        />
                         <Linha
                           label="Recebido"
                           valor={formatCurrency(valorPago)}
@@ -1670,6 +1665,34 @@ export default function ReservaOperacaoSheet({
             </Pressable>
           </View>
         ) : null}
+        </View>
+      </Modal>
+
+      <Modal
+        visible={modalEdicaoValorHospedinOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalEdicaoValorHospedinOpen(false)}
+      >
+        <View style={styles.confirmBackdrop}>
+          <View style={styles.confirmBox}>
+            <Text style={styles.confirmTitulo}>
+              Reserva originada pela Hospedin
+            </Text>
+            <Text style={styles.confirmSub}>
+              O valor desta reserva deve ser alterado diretamente na Hospedin.
+              {"\n\n"}
+              Reservas criadas pelo Jango podem ter o valor alterado aqui.
+            </Text>
+            <View style={styles.confirmBtns}>
+              <TouchableOpacity
+                style={styles.btnConfirmar}
+                onPress={() => setModalEdicaoValorHospedinOpen(false)}
+              >
+                <Text style={styles.btnConfirmarTexto}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 

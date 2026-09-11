@@ -295,6 +295,12 @@ export type ReservaAdminDetalhe = {
   telefone?: string | null;
   email?: string | null;
   evento?: { id: number; nome: string } | null;
+  valorServicos?: number;
+  taxasAdicionais?: ReservaTaxaAdicional[];
+  valorTaxasAdicionais?: number;
+  valorSuitesReserva?: number;
+  permissoesServicos?: PermissoesServicosSuite;
+  permissoesTaxas?: PermissoesTaxasAdicionaisReserva;
   suites: Array<{
     idReservaSuite: number;
     idEventoSuite?: number;
@@ -303,6 +309,9 @@ export type ReservaAdminDetalhe = {
     criancas: number;
     preco: number;
     taxaServico?: number;
+    valorHospedagem?: number;
+    valorServicos?: number;
+    servicosAdicionais?: ReservaSuiteServicoAdicional[];
     valorTotal?: number;
     valorOriginal?: number | null;
     descontoTipo?: "PERCENTUAL" | "VALOR" | null;
@@ -370,6 +379,29 @@ export type ReservaAdminDetalhe = {
     nextRetryAt?: string | null;
   } | null;
 };
+
+export type ReservaSuiteServicoAdicional = {
+  id: number;
+  descricao: string;
+  valor: number;
+  ordem?: number;
+};
+
+export type ReservaTaxaAdicional = {
+  id?: number;
+  descricao: string;
+  valor: number;
+  ordem: number;
+};
+
+export type PermissoesServicosSuite = {
+  podeVisualizar: boolean;
+  podeAdicionar: boolean;
+  podeEditar: boolean;
+  podeExcluir: boolean;
+};
+
+export type PermissoesTaxasAdicionaisReserva = PermissoesServicosSuite;
 
 export type ReservaOrigemIntegracaoIdentificador = {
   id: number;
@@ -683,6 +715,75 @@ export async function patchObservacoesReserva(
   );
 }
 
+export async function postServicoSuiteReserva(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  payload: { descricao: string; valor: number },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/servicos`,
+    "POST",
+    payload,
+  );
+}
+
+export async function patchServicoSuiteReserva(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  idServico: number,
+  payload: { descricao: string; valor: number },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/servicos/${idServico}`,
+    "PATCH",
+    payload,
+  );
+}
+
+export async function deleteServicoSuiteReserva(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  idServico: number,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/servicos/${idServico}`,
+    "DELETE",
+  );
+}
+
+export async function postTaxaAdicionalReserva(
+  idReservaHospedagem: number,
+  payload: { descricao: string; valor: number },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/taxas`,
+    "POST",
+    payload,
+  );
+}
+
+export async function patchTaxaAdicionalReserva(
+  idReservaHospedagem: number,
+  idTaxa: number,
+  payload: { descricao: string; valor: number },
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/taxas/${idTaxa}`,
+    "PATCH",
+    payload,
+  );
+}
+
+export async function deleteTaxaAdicionalReserva(
+  idReservaHospedagem: number,
+  idTaxa: number,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/taxas/${idTaxa}`,
+    "DELETE",
+  );
+}
+
 /** Ajuste manual do valor total financeiro da reserva (sem novo lançamento). */
 export async function patchValorTotalReserva(
   idReservaHospedagem: number,
@@ -692,6 +793,17 @@ export async function patchValorTotalReserva(
     `/hospedagem/reservas/${idReservaHospedagem}/valor-total`,
     "PATCH",
     { valorTotal },
+  );
+}
+
+export async function patchValorSuitesReserva(
+  idReservaHospedagem: number,
+  valorSuites: number,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/valor-suites`,
+    "PATCH",
+    { valorSuites },
   );
 }
 
@@ -849,6 +961,7 @@ export async function postReservaRecepcao(body: {
   checkin: string;
   checkout: string;
   suites: SuiteRecepcaoPayload[];
+  taxasAdicionais?: ReservaTaxaAdicional[];
   observacoes?: string | null;
   pagamento?: {
     valor: number;
@@ -871,6 +984,7 @@ export async function postReservaRecepcaoEnviarCliente(body: {
   checkin: string;
   checkout: string;
   suites: SuiteRecepcaoPayload[];
+  taxasAdicionais?: ReservaTaxaAdicional[];
   observacoes?: string | null;
 }): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(

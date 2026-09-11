@@ -62,6 +62,32 @@ function labelTipoHospede(tipo: string): string {
   return "Adulto";
 }
 
+type SuiteDetalhe = ReservaAdminDetalhe["suites"][number];
+
+function resolverValorHospedagemSuite(suite: SuiteDetalhe): number {
+  if (suite.valorHospedagem != null) return Number(suite.valorHospedagem);
+  return Number(suite.preco ?? 0) + Number(suite.taxaServico ?? 0);
+}
+
+function resolverValorServicosSuite(suite: SuiteDetalhe): number {
+  if (suite.valorServicos != null) return Number(suite.valorServicos);
+  return (suite.servicosAdicionais ?? []).reduce(
+    (acc, item) => acc + Number(item.valor ?? 0),
+    0,
+  );
+}
+
+function resolverTotalSuite(suite: SuiteDetalhe): number {
+  if (suite.valorTotal != null) return Number(suite.valorTotal);
+  return resolverValorHospedagemSuite(suite) + resolverValorServicosSuite(suite);
+}
+
+function tituloSuiteDetalhe(suite: SuiteDetalhe, indice: number, total: number): string {
+  const prefixo =
+    total > 1 ? `Suíte ${String(indice + 1).padStart(2, "0")} — ` : "";
+  return `${prefixo}${suite.nome}`;
+}
+
 export default function HospedagemReservaDetalhePage() {
   return (
     <HospedagemAdminRefreshProvider>
@@ -389,80 +415,161 @@ function HospedagemReservaDetalheContent() {
 
                 <View style={styles.card}>
                   <Text style={styles.secaoTitulo}>SUÍTES E HÓSPEDES</Text>
-                  {(reserva.suites ?? []).map((suite) => (
-                    <View
-                      key={suite.idReservaSuite}
-                      style={styles.suiteBlock}
-                    >
-                      <Text style={styles.suiteNome}>{suite.nome}</Text>
-                      <Text style={styles.meta}>
-                        {suite.adultos}{" "}
-                        {suite.adultos === 1 ? "adulto" : "adultos"}
-                        {suite.criancas > 0
-                          ? ` · ${suite.criancas} ${
-                              suite.criancas === 1 ? "criança" : "crianças"
-                            }`
-                          : ""}
-                      </Text>
-                      <Text style={[styles.rotulo, { marginTop: 10 }]}>
-                        Hóspedes
-                      </Text>
-                      {(suite.hospedes ?? []).length === 0 ? (
-                        <Text style={styles.valor}>
-                          Nenhum hóspede cadastrado.
-                        </Text>
-                      ) : (
-                        suite.hospedes.map((hospede, idx) => (
-                          <View
-                            key={`${suite.idReservaSuite}-${idx}`}
-                            style={styles.hospedeItem}
-                          >
-                            <Text style={styles.hospedeTipo}>
-                              {labelTipoHospede(hospede.tipo)}
-                            </Text>
-                            <Text style={styles.hospedeNome}>
-                              {hospede.nome}
-                            </Text>
-                          </View>
-                        ))
-                      )}
-                      {suite.valorOriginal != null &&
+                  {(reserva.suites ?? []).map((suite, suiteIdx) => {
+                    const servicos = suite.servicosAdicionais ?? [];
+                    const valorHospedagem = resolverValorHospedagemSuite(suite);
+                    const valorServicos = resolverValorServicosSuite(suite);
+                    const totalSuite = resolverTotalSuite(suite);
+                    const suitesCount = reserva.suites?.length ?? 0;
+                    const temDesconto =
+                      suite.valorOriginal != null &&
                       suite.valorFinal != null &&
                       suite.descontoValor != null &&
-                      suite.descontoValor > 0 ? (
-                        <>
-                          <View style={styles.linhaResumo}>
-                            <Text style={styles.meta}>Valor original</Text>
-                            <Text style={styles.valor}>
-                              {formatCurrency(suite.valorOriginal)}
-                            </Text>
-                          </View>
-                          <View style={styles.linhaResumo}>
-                            <Text style={styles.meta}>Desconto</Text>
-                            <Text style={[styles.valor, { color: "#c0392b" }]}>
-                              -
-                              {formatCurrency(
-                                suite.valorOriginal - (suite.valorFinal ?? 0),
-                              )}
-                            </Text>
-                          </View>
-                          <Text style={styles.suiteValor}>
-                            Valor final:{" "}
-                            {formatCurrency(
-                              suite.valorFinal ??
-                                suite.valorTotal ??
-                                suite.preco,
-                            )}
-                          </Text>
-                        </>
-                      ) : (
-                        <Text style={styles.suiteValor}>
-                          Valor da suíte:{" "}
-                          {formatCurrency(suite.valorTotal ?? suite.preco)}
+                      suite.descontoValor > 0;
+
+                    return (
+                      <View
+                        key={suite.idReservaSuite}
+                        style={styles.suiteBlock}
+                      >
+                        <Text style={styles.suiteNome}>
+                          {tituloSuiteDetalhe(suite, suiteIdx, suitesCount)}
                         </Text>
-                      )}
+                        <Text style={styles.meta}>
+                          {suite.adultos}{" "}
+                          {suite.adultos === 1 ? "adulto" : "adultos"}
+                          {suite.criancas > 0
+                            ? ` · ${suite.criancas} ${
+                                suite.criancas === 1 ? "criança" : "crianças"
+                              }`
+                            : ""}
+                        </Text>
+                        <Text style={[styles.rotulo, { marginTop: 10 }]}>
+                          Hóspedes
+                        </Text>
+                        {(suite.hospedes ?? []).length === 0 ? (
+                          <Text style={styles.valor}>
+                            Nenhum hóspede cadastrado.
+                          </Text>
+                        ) : (
+                          suite.hospedes.map((hospede, idx) => (
+                            <View
+                              key={`${suite.idReservaSuite}-${idx}`}
+                              style={styles.hospedeItem}
+                            >
+                              <Text style={styles.hospedeTipo}>
+                                {labelTipoHospede(hospede.tipo)}
+                              </Text>
+                              <Text style={styles.hospedeNome}>
+                                {hospede.nome}
+                              </Text>
+                            </View>
+                          ))
+                        )}
+
+                        <Text style={[styles.rotulo, { marginTop: 14 }]}>
+                          Valores
+                        </Text>
+                        {temDesconto ? (
+                          <>
+                            <View style={styles.linhaResumo}>
+                              <Text style={styles.meta}>Valor original</Text>
+                              <Text style={styles.valor}>
+                                {formatCurrency(suite.valorOriginal!)}
+                              </Text>
+                            </View>
+                            <View style={styles.linhaResumo}>
+                              <Text style={styles.meta}>Desconto</Text>
+                              <Text style={[styles.valor, { color: "#c0392b" }]}>
+                                -
+                                {formatCurrency(
+                                  suite.valorOriginal! - (suite.valorFinal ?? 0),
+                                )}
+                              </Text>
+                            </View>
+                          </>
+                        ) : null}
+                        <View style={styles.linhaResumo}>
+                          <Text style={styles.meta}>Hospedagem</Text>
+                          <Text style={styles.valor}>
+                            {formatCurrency(valorHospedagem)}
+                          </Text>
+                        </View>
+
+                        <Text style={[styles.rotulo, { marginTop: 10 }]}>
+                          Serviços adicionais
+                        </Text>
+                        {servicos.length === 0 ? (
+                          <Text style={styles.servicoVazio}>
+                            Nenhum serviço adicional.
+                          </Text>
+                        ) : (
+                          servicos.map((servico) => (
+                            <View
+                              key={servico.id}
+                              style={styles.servicoLinha}
+                            >
+                              <Text style={styles.servicoDescricao}>
+                                {servico.descricao}
+                              </Text>
+                              <Text style={styles.servicoValor}>
+                                {formatCurrency(servico.valor)}
+                              </Text>
+                            </View>
+                          ))
+                        )}
+                        {valorServicos > 0 ? (
+                          <View style={styles.linhaResumo}>
+                            <Text style={styles.meta}>Serviços</Text>
+                            <Text style={styles.valor}>
+                              {formatCurrency(valorServicos)}
+                            </Text>
+                          </View>
+                        ) : null}
+                        <View style={[styles.linhaResumo, styles.totalSuiteLinha]}>
+                          <Text style={styles.totalSuiteLabel}>
+                            Total da suíte
+                          </Text>
+                          <Text style={styles.totalSuiteValor}>
+                            {formatCurrency(totalSuite)}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  {(reserva.taxasAdicionais ?? []).length > 0 ? (
+                    <View style={styles.taxasReservaBox}>
+                      <Text style={[styles.rotulo, { marginTop: 4 }]}>
+                        Taxas adicionais
+                      </Text>
+                      {(reserva.taxasAdicionais ?? []).map((taxa) => (
+                        <View key={taxa.id ?? taxa.descricao} style={styles.servicoLinha}>
+                          <Text style={styles.servicoDescricao}>
+                            {taxa.descricao}
+                          </Text>
+                          <Text style={styles.servicoValor}>
+                            {formatCurrency(taxa.valor)}
+                          </Text>
+                        </View>
+                      ))}
+                      <View style={styles.linhaResumo}>
+                        <Text style={styles.meta}>Total taxas adicionais</Text>
+                        <Text style={styles.valor}>
+                          {formatCurrency(reserva.valorTaxasAdicionais ?? 0)}
+                        </Text>
+                      </View>
                     </View>
-                  ))}
+                  ) : null}
+                  {(reserva.suites ?? []).length > 0 ? (
+                    <View style={styles.totalReservaBox}>
+                      <View style={styles.linhaResumo}>
+                        <Text style={styles.totalLabel}>Total da reserva</Text>
+                        <Text style={styles.totalValor}>
+                          {formatCurrency(reserva.valorTotal)}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={styles.card}>
@@ -849,6 +956,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: colors.cinza,
+  },
+  servicoVazio: {
+    fontSize: 14,
+    color: "#777",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  servicoLinha: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+    marginTop: 6,
+    paddingBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.line,
+  },
+  servicoDescricao: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.cinza,
+  },
+  servicoValor: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.cinza,
+  },
+  totalSuiteLinha: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  totalSuiteLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  totalSuiteValor: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.azul,
+  },
+  taxasReservaBox: {
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    gap: 4,
+  },
+  totalReservaBox: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
   },
   hospedeItem: {
     marginTop: 8,
