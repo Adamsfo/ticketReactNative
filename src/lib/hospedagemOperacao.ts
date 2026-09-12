@@ -9,6 +9,7 @@ import {
   postRegistrarChegadaSuite,
   postRealizarCheckinSuite,
   postRealizarCheckout,
+  postRealizarCheckoutSuite,
   ReservaAdminDetalhe,
 } from "@/src/lib/hospedagemAdmin";
 
@@ -91,16 +92,24 @@ export async function executarCheckinOperacional(
   };
 }
 
-/** Executa check-out via único endpoint do backend. */
+/** Executa check-out da ReservaSuite em foco (fallback global se sem idReservaSuite). */
 export async function executarCheckoutOperacional(
   idReservaHospedagem: number,
+  idReservaSuite: number | null | undefined,
   dataHora?: string | null,
 ): Promise<{
   success: boolean;
   message?: string;
   data?: ReservaAdminDetalhe;
 }> {
-  const resp = await postRealizarCheckout(idReservaHospedagem, dataHora);
+  const resp =
+    idReservaSuite != null && idReservaSuite > 0
+      ? await postRealizarCheckoutSuite(
+          idReservaHospedagem,
+          idReservaSuite,
+          dataHora,
+        )
+      : await postRealizarCheckout(idReservaHospedagem, dataHora);
   return {
     success: Boolean(resp.success),
     message: resp.message,

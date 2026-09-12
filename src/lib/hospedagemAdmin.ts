@@ -310,6 +310,7 @@ export type ReservaAdminDetalhe = {
     status?: string;
     dataHoraChegadaReal?: string | null;
     dataHoraCheckinReal?: string | null;
+    dataHoraCheckoutRealizado?: string | null;
     adultos: number;
     criancas: number;
     preco: number;
@@ -666,13 +667,26 @@ export async function postRealizarCheckinSuite(
   );
 }
 
-/** Check-out operacional: Hospedada → CheckOutRealizado. */
+/** Check-out operacional global (legado): todas as suítes da reserva. */
 export async function postRealizarCheckout(
   idReservaHospedagem: number,
   dataHora?: string | null,
 ): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/${idReservaHospedagem}/checkout`,
+    "POST",
+    dataHora ? { dataHora } : null,
+  );
+}
+
+/** Check-out operacional da ReservaSuite em foco. */
+export async function postRealizarCheckoutSuite(
+  idReservaHospedagem: number,
+  idReservaSuite: number,
+  dataHora?: string | null,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReservaHospedagem}/suites/${idReservaSuite}/checkout`,
     "POST",
     dataHora ? { dataHora } : null,
   );

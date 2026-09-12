@@ -772,7 +772,8 @@ export default function ReservaOperacaoSheet({
     agendaNaoFutura &&
     checkinPermitidoNaData &&
     !bloqueadoPorSaldo;
-  const mostrarBotaoCheckout = Boolean(disp?.podeCheckout);
+  const mostrarBotaoCheckout =
+    Boolean(disp?.podeCheckout) && Boolean(idReservaSuiteOperacao);
   const mostrarNovaReserva = disp?.botaoPrincipal === "nova_reserva";
 
   const statusParaTroca = detalhe?.statusOriginal ?? statusDb;
@@ -852,7 +853,7 @@ export default function ReservaOperacaoSheet({
     if (!reserva.idReservaHospedagem || !confirmMode) return;
     const mode = confirmMode;
     if (
-      (mode === "chegada" || mode === "checkin") &&
+      (mode === "chegada" || mode === "checkin" || mode === "checkout") &&
       !idReservaSuiteOperacao
     ) {
       setErroAcao("Não foi possível identificar a suíte da operação.");
@@ -877,7 +878,9 @@ export default function ReservaOperacaoSheet({
     }
     if (mode === "checkout") {
       const checkinReal =
-        detalhe?.dataHoraCheckinReal || reserva.dataHoraCheckinReal;
+        suiteLinhaFoco?.dataHoraCheckinReal ??
+        (monoSuite ? detalhe?.dataHoraCheckinReal : null) ??
+        reserva.dataHoraCheckinReal;
       if (checkinReal) {
         const ci = new Date(checkinReal);
         if (!Number.isNaN(ci.getTime()) && dataHora.getTime() < ci.getTime()) {
@@ -909,6 +912,7 @@ export default function ReservaOperacaoSheet({
               )
             : await executarCheckoutOperacional(
                 reserva.idReservaHospedagem,
+                idReservaSuiteOperacao,
                 iso,
               );
 
@@ -996,13 +1000,13 @@ export default function ReservaOperacaoSheet({
 
   const confirmTitulo =
     confirmMode === "checkout"
-      ? "Confirmar o check-out desta hospedagem?"
+      ? `Confirmar o check-out da suíte ${suiteNomeExibicao}?`
       : confirmMode === "chegada"
         ? "Registrar chegada?"
         : "Confirmar entrada do hóspede?";
   const confirmSub =
     confirmMode === "checkout"
-      ? "Após confirmar, a suíte ficará disponível para novas reservas."
+      ? "Após confirmar, somente esta suíte ficará disponível para novas reservas."
       : confirmMode === "chegada"
         ? "Registra a chegada física. A reserva permanece Confirmada até o check-in."
         : "O status passará de Confirmada para Hospedada.";
