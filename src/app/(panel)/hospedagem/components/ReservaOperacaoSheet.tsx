@@ -1372,6 +1372,7 @@ export default function ReservaOperacaoSheet({
                                 ),
                                 possivelPagamentoOtaTrecho:
                                   detalhe?.possivelPagamentoOtaTrecho ?? null,
+                                canalVenda: detalhe?.canalVenda ?? null,
                                 canalVendaLabel:
                                   detalhe?.canalVendaLabel ||
                                   detalhe?.canalVenda ||

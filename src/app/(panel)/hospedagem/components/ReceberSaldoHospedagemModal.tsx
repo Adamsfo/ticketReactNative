@@ -26,6 +26,7 @@ import {
 } from "@/src/lib/hospedagemAdmin";
 import {
   FormaPagamentoRecepcao,
+  isCanalBooking,
   MSG_VALOR_MAIOR_QUE_SALDO,
   obterSaldoPendenteExibicao,
 } from "@/src/lib/hospedagemPagamentoRecepcao";
@@ -57,6 +58,11 @@ const FORMAS_PAGAMENTO_RECEBER_SALDO: Array<{
   { value: "CartaoDebito", label: "Cartão Débito" },
   { value: "Antecipado", label: "Antecipado" },
 ];
+
+const FORMAS_RECEBER_SALDO_BOOKING: Array<{
+  value: FormaPagamentoRecepcao;
+  label: string;
+}> = [{ value: "Antecipado", label: "Antecipado" }];
 
 /** Mesmo mapeamento do PagamentoPDV (crédito=2, débito=1, pix=3). */
 function transactionTypeDaForma(forma: FormaPagamentoRecepcao): number {
@@ -124,6 +130,33 @@ export default function ReceberSaldoHospedagemModal() {
 
   const valorReceber = digitosCentavosParaNumero(digitosValor);
   const saldoApos = roundMoney(Math.max(0, saldoPendente - valorReceber));
+
+  const canalVendaEfetivo =
+    detalhe?.canalVenda ?? target?.canalVenda ?? null;
+  const isBooking = isCanalBooking(canalVendaEfetivo);
+  const formasDisponiveis = isBooking
+    ? FORMAS_RECEBER_SALDO_BOOKING
+    : FORMAS_PAGAMENTO_RECEBER_SALDO;
+
+  useEffect(() => {
+    if (!visible) return;
+    if (isCanalBooking(target?.canalVenda)) {
+      setFormaPagamento("Antecipado");
+    }
+  }, [visible, target?.idReservaHospedagem, target?.canalVenda]);
+
+  useEffect(() => {
+    if (!visible || !isCanalBooking(detalhe?.canalVenda)) return;
+    setFormaPagamento("Antecipado");
+  }, [visible, detalhe?.canalVenda]);
+
+  useEffect(() => {
+    if (!visible || !formaPagamento) return;
+    const permitidas = formasDisponiveis.map((f) => f.value);
+    if (!permitidas.includes(formaPagamento)) {
+      setFormaPagamento(permitidas[0] ?? null);
+    }
+  }, [visible, formaPagamento, formasDisponiveis]);
 
   useEffect(() => {
     if (!visible || !target?.idReservaHospedagem) {
@@ -498,8 +531,16 @@ export default function ReceberSaldoHospedagemModal() {
                 <Text style={[styles.label, { marginTop: 12 }]}>
                   Forma de pagamento
                 </Text>
-                {(target.possivelPagamentoOta ||
-                  detalhe?.possivelPagamentoOta) && (
+                {isBooking ? (
+                  <View style={{ marginBottom: 8 }}>
+                    <Text style={styles.hintOta}>
+                      Reserva Booking.com: utilize{" "}
+                      <Text style={styles.hintOtaBold}>Antecipado</Text> para
+                      quitar o saldo da hospedagem.
+                    </Text>
+                  </View>
+                ) : (target.possivelPagamentoOta ||
+                  detalhe?.possivelPagamentoOta) ? (
                   <View style={{ marginBottom: 8 }}>
                     <AlertaPossivelPagamentoOta
                       compact
@@ -519,9 +560,9 @@ export default function ReceberSaldoHospedagemModal() {
                       — o valor não entra no caixa.
                     </Text>
                   </View>
-                )}
+                ) : null}
                 <View style={styles.formasWrap}>
-                  {FORMAS_PAGAMENTO_RECEBER_SALDO.map((f) => {
+                  {formasDisponiveis.map((f) => {
                     const ativo = formaPagamento === f.value;
                     return (
                       <TouchableOpacity

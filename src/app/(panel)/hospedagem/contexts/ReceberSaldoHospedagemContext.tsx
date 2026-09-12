@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { Alert } from "react-native";
+import { isCanalBooking } from "@/src/lib/hospedagemPagamentoRecepcao";
 import { useHospedagemEditLock } from "./HospedagemAdminRefreshContext";
 
 export type ReceberSaldoTarget = {
@@ -20,6 +21,8 @@ export type ReceberSaldoTarget = {
   /** Indicador operacional de possível pagamento via OTA. */
   possivelPagamentoOta?: boolean;
   possivelPagamentoOtaTrecho?: string | null;
+  /** Código do canal (ex.: BOOKING) — não confundir com origemReserva. */
+  canalVenda?: string | null;
   canalVendaLabel?: string | null;
 };
 
@@ -50,6 +53,19 @@ export function ReceberSaldoHospedagemProvider({
       setTarget(t);
       setVisible(true);
     };
+
+    if (isCanalBooking(t.canalVenda)) {
+      const canal = t.canalVendaLabel ? `\n\nCanal: ${t.canalVendaLabel}` : "";
+      Alert.alert(
+        "Reserva Booking.com",
+        `Para quitar o saldo desta reserva Booking.com, utilize a forma de pagamento "Antecipado".${canal}`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Continuar", onPress: abrir },
+        ],
+      );
+      return;
+    }
 
     if (!t.possivelPagamentoOta) {
       abrir();

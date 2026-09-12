@@ -614,6 +614,7 @@ function HospedagemReservaDetalheContent() {
                         ),
                         possivelPagamentoOtaTrecho:
                           reserva.possivelPagamentoOtaTrecho ?? null,
+                        canalVenda: reserva.canalVenda ?? null,
                         canalVendaLabel:
                           reserva.canalVendaLabel ||
                           reserva.canalVenda ||

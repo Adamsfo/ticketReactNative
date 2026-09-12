@@ -36,6 +36,11 @@ export const FORMAS_PAGAMENTO_FORA_DO_CAIXA: FormaPagamentoRecepcao[] = [
   "RECEBIDO_OTA",
 ];
 
+/** Canal normalizado da reserva (ex.: importação Hospedin com sale_channel Booking). */
+export function isCanalBooking(canalVenda?: string | null): boolean {
+  return String(canalVenda || "").trim().toUpperCase() === "BOOKING";
+}
+
 export function isFormaPagamentoForaDoCaixa(
   forma: string | null | undefined,
 ): boolean {
