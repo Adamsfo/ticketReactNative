@@ -30,8 +30,8 @@ import { useHospedagemDesktopLayout } from "../hospedagem/useHospedagemDesktopLa
 const AUTO_REFRESH_MS = 15_000;
 
 const FILTROS: Array<{ key: FiltroLimpezaSuites; label: string }> = [
-  { key: "todas", label: "Todas" },
   { key: "pendente", label: "Pendentes" },
+  { key: "em_andamento", label: "Em andamento" },
   { key: "concluida", label: "Concluídas" },
 ];
 
