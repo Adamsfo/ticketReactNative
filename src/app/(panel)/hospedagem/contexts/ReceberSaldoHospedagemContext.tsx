@@ -55,15 +55,7 @@ export function ReceberSaldoHospedagemProvider({
     };
 
     if (isCanalBooking(t.canalVenda)) {
-      const canal = t.canalVendaLabel ? `\n\nCanal: ${t.canalVendaLabel}` : "";
-      Alert.alert(
-        "Reserva Booking.com",
-        `Para quitar o saldo desta reserva Booking.com, utilize a forma de pagamento "Antecipado".${canal}`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Continuar", onPress: abrir },
-        ],
-      );
+      abrir();
       return;
     }
 
