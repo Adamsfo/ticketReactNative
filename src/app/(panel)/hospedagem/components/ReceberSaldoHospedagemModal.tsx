@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -40,6 +40,11 @@ import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshCon
 import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemContext";
 import ComprovanteUploader from "./ComprovanteUploader";
 import AlertaPossivelPagamentoOta from "./AlertaPossivelPagamentoOta";
+import {
+  extrairReservaDaRespostaPagamento,
+  montarConfirmacaoSucesso,
+  type SucessoConfirmacaoPagamento,
+} from "@/src/lib/receberSaldoHospedagemSucesso";
 
 const FORMAS_TEF: FormaPagamentoRecepcao[] = [
   "CartaoCredito",
@@ -94,6 +99,10 @@ export default function ReceberSaldoHospedagemModal() {
   const [consultaPagamento, setConsultaPagamento] = useState(false);
   const [dadosDePagamento, setDadosDePagamento] = useState<any>({});
   const [statusTefMsg, setStatusTefMsg] = useState<string | null>(null);
+  const [sucessoConfirmacao, setSucessoConfirmacao] =
+    useState<SucessoConfirmacaoPagamento | null>(null);
+  const [atualizandoSaldo, setAtualizandoSaldo] = useState(false);
+  const processingRef = useRef(false);
 
   /** Mesma base financeira da agenda + detalhe da mesma reserva. */
   const dadosFinanceiros = useMemo(() => {
@@ -171,6 +180,9 @@ export default function ReceberSaldoHospedagemModal() {
       setDadosDePagamento({});
       setStatusTefMsg(null);
       setEnviando(false);
+      setSucessoConfirmacao(null);
+      setAtualizandoSaldo(false);
+      processingRef.current = false;
       return;
     }
 
@@ -184,6 +196,9 @@ export default function ReceberSaldoHospedagemModal() {
     setConsultaPagamento(false);
     setDadosDePagamento({});
     setStatusTefMsg(null);
+    setSucessoConfirmacao(null);
+    setAtualizandoSaldo(false);
+    processingRef.current = false;
 
     let cancelado = false;
     setLoading(true);
@@ -243,12 +258,80 @@ export default function ReceberSaldoHospedagemModal() {
     return true;
   };
 
-  const concluirSucesso = () => {
+  const fecharAposSucesso = () => {
+    setSucessoConfirmacao(null);
     setConsultaPagamento(false);
     setPaymentUniqueId("");
+    processingRef.current = false;
+    setEnviando(false);
     target?.onSuccess?.();
-    notifyOperacaoConcluida();
     closeReceberSaldo();
+  };
+
+  const continuarRecebendo = () => {
+    setSucessoConfirmacao(null);
+    setDigitosValor("0");
+    setComprovante(null);
+    setObservacao("");
+    setErro(null);
+    setEnviando(false);
+    setAtualizandoSaldo(false);
+    processingRef.current = false;
+  };
+
+  /**
+   * Após pagamento confirmado no backend: atualiza detalhe via API
+   * e exibe tela de sucesso antes de fechar o modal.
+   */
+  const finalizarPagamentoComSucesso = async (
+    valorRecebido: number,
+    respostaApi?: unknown,
+  ) => {
+    if (!target?.idReservaHospedagem) return;
+
+    setConsultaPagamento(false);
+    setPaymentUniqueId("");
+    setAtualizandoSaldo(true);
+    setErro(null);
+
+    let detalheAtualizado =
+      extrairReservaDaRespostaPagamento(respostaApi) ??
+      extrairReservaDaRespostaPagamento(
+        (respostaApi as { data?: unknown })?.data,
+      );
+
+    if (!detalheAtualizado) {
+      try {
+        const resp = await getReservaAdminDetalhe(target.idReservaHospedagem);
+        if (
+          resp.success &&
+          resp.data &&
+          Number(resp.data.idReservaHospedagem) ===
+            Number(target.idReservaHospedagem)
+        ) {
+          detalheAtualizado = resp.data;
+        }
+      } catch {
+        detalheAtualizado = null;
+      }
+    }
+
+    setAtualizandoSaldo(false);
+    setEnviando(false);
+    processingRef.current = false;
+
+    if (!detalheAtualizado) {
+      setErro(
+        "O pagamento pode ter sido registrado, mas não foi possível confirmar o saldo atualizado. Feche e abra novamente para verificar.",
+      );
+      return;
+    }
+
+    setDetalhe(detalheAtualizado);
+    setSucessoConfirmacao(
+      montarConfirmacaoSucesso(valorRecebido, detalheAtualizado),
+    );
+    notifyOperacaoConcluida();
   };
 
   /** Espelho de verificarStatusPagamentoPos do PDV. */
@@ -269,19 +352,18 @@ export default function ReceberSaldoHospedagemModal() {
       const msg = String(dados.payment_message || "");
       setStatusTefMsg(msg || "Aguardando aprovação no pinpad...");
 
-      if (msg === "Pago") {
+      if (msg === "Pago" || msg === "Parcial") {
         setConsultaPagamento(false);
-        concluirSucesso();
+        await finalizarPagamentoComSucesso(
+          digitosCentavosParaNumero(digitosValor),
+          response,
+        );
         return;
       }
-      if (msg === "Cancelado/erro" || msg === "Parcial") {
+      if (msg === "Cancelado/erro") {
         setConsultaPagamento(false);
         setEnviando(false);
-        if (msg === "Parcial") {
-          // PDV também encerra o poll em Parcial; aqui atualiza a reserva e fecha.
-          concluirSucesso();
-          return;
-        }
+        processingRef.current = false;
         setErro("Pagamento cancelado ou recusado no pinpad.");
       }
     } catch (error) {
@@ -306,6 +388,7 @@ export default function ReceberSaldoHospedagemModal() {
     if (!target?.idReservaHospedagem || !formaPagamento) return;
     if (!user?.id) {
       setEnviando(false);
+      processingRef.current = false;
       setErro(
         "Usuário PDV não identificado. Faça login com o mesmo usuário do PagamentoPDV.",
       );
@@ -327,6 +410,7 @@ export default function ReceberSaldoHospedagemModal() {
       if (!id) {
         setConsultaPagamento(false);
         setEnviando(false);
+        processingRef.current = false;
         setErro(
           response?.error ||
             response?.message ||
@@ -344,6 +428,7 @@ export default function ReceberSaldoHospedagemModal() {
       console.error("Erro ao gerar pagamento POS hospedagem:", error);
       setConsultaPagamento(false);
       setEnviando(false);
+      processingRef.current = false;
       setErro("Erro ao iniciar pagamento no pinpad.");
     }
   };
@@ -360,6 +445,7 @@ export default function ReceberSaldoHospedagemModal() {
       setPaymentUniqueId("");
       setStatusTefMsg(null);
       setEnviando(false);
+      processingRef.current = false;
       return;
     }
 
@@ -377,35 +463,40 @@ export default function ReceberSaldoHospedagemModal() {
     setPaymentUniqueId("");
     setStatusTefMsg(null);
     setEnviando(false);
+    processingRef.current = false;
     setErro(null);
   };
 
   const confirmarManualOuDinheiro = async () => {
     if (!target?.idReservaHospedagem || !formaPagamento) return;
 
+    const valorRecebido = digitosCentavosParaNumero(digitosValor);
+
     if (formaPagamento === "Dinheiro") {
       const resp = await postReceberSaldoDinheiroHospedagem(
         target.idReservaHospedagem,
         {
-          valorTotal: digitosCentavosParaNumero(digitosValor),
+          valorTotal: valorRecebido,
           observacao: observacao.trim() || null,
         },
       );
       if (!resp.success) {
         setErro(resp.message || "Não foi possível registrar o recebimento.");
+        setEnviando(false);
+        processingRef.current = false;
         return;
       }
       setDadosDePagamento(
         (resp.data as { data?: unknown })?.data ?? resp.data,
       );
-      concluirSucesso();
+      await finalizarPagamentoComSucesso(valorRecebido, resp);
       return;
     }
 
     const resp = await postReceberSaldoManualHospedagem(
       target.idReservaHospedagem,
       {
-        valor: digitosCentavosParaNumero(digitosValor),
+        valor: valorRecebido,
         formaPagamento,
         comprovante,
         observacao: observacao.trim() || null,
@@ -413,15 +504,19 @@ export default function ReceberSaldoHospedagemModal() {
     );
     if (!resp.success) {
       setErro(resp.message || "Não foi possível registrar o recebimento.");
+      setEnviando(false);
+      processingRef.current = false;
       return;
     }
-    concluirSucesso();
+    await finalizarPagamentoComSucesso(valorRecebido, resp);
   };
 
   const confirmar = async () => {
+    if (processingRef.current || sucessoConfirmacao || atualizandoSaldo) return;
     if (!target?.idReservaHospedagem || !validar() || !formaPagamento) return;
     if (consultaPagamento) return;
 
+    processingRef.current = true;
     setEnviando(true);
     setErro(null);
     try {
@@ -433,12 +528,17 @@ export default function ReceberSaldoHospedagemModal() {
     } catch {
       setErro("Erro ao registrar o recebimento. Tente novamente.");
       setEnviando(false);
-    } finally {
-      if (!FORMAS_TEF.includes(formaPagamento)) {
-        setEnviando(false);
-      }
+      processingRef.current = false;
     }
   };
+
+  const bloqueado =
+    enviando ||
+    consultaPagamento ||
+    atualizandoSaldo ||
+    Boolean(sucessoConfirmacao);
+  const emProcessamentoManual =
+    (enviando || atualizandoSaldo) && !consultaPagamento && !sucessoConfirmacao;
 
   if (!target) return null;
 
@@ -457,9 +557,26 @@ export default function ReceberSaldoHospedagemModal() {
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={closeReceberSaldo}
+      onRequestClose={() => {
+        if (bloqueado) return;
+        if (sucessoConfirmacao) {
+          fecharAposSucesso();
+          return;
+        }
+        closeReceberSaldo();
+      }}
     >
-      <Pressable style={styles.backdrop} onPress={closeReceberSaldo}>
+      <Pressable
+        style={styles.backdrop}
+        onPress={() => {
+          if (bloqueado) return;
+          if (sucessoConfirmacao) {
+            fecharAposSucesso();
+            return;
+          }
+          closeReceberSaldo();
+        }}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.kav}
@@ -471,8 +588,21 @@ export default function ReceberSaldoHospedagemModal() {
             <View style={styles.handle} />
 
             <View style={styles.headerRow}>
-              <Text style={styles.titulo}>Receber Saldo</Text>
-              <TouchableOpacity onPress={closeReceberSaldo} hitSlop={12}>
+              <Text style={styles.titulo}>
+                {sucessoConfirmacao ? "Pagamento confirmado" : "Receber Saldo"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (bloqueado && !sucessoConfirmacao) return;
+                  if (sucessoConfirmacao) {
+                    fecharAposSucesso();
+                    return;
+                  }
+                  closeReceberSaldo();
+                }}
+                hitSlop={12}
+                disabled={bloqueado && !sucessoConfirmacao}
+              >
                 <Feather name="x" size={22} color={colors.cinza} />
               </TouchableOpacity>
             </View>
@@ -490,6 +620,73 @@ export default function ReceberSaldoHospedagemModal() {
               />
             ) : null}
 
+            {sucessoConfirmacao ? (
+              <View style={styles.sucessoBox}>
+                <Feather name="check-circle" size={52} color="#027a3a" />
+                <Text style={styles.sucessoTitulo}>
+                  {sucessoConfirmacao.quitada
+                    ? "✅ Reserva quitada"
+                    : "✅ Pagamento recebido com sucesso"}
+                </Text>
+                <Text style={styles.sucessoSubtitulo}>
+                  {sucessoConfirmacao.quitada
+                    ? "O saldo desta reserva foi totalmente recebido."
+                    : "O pagamento foi registrado e o saldo foi atualizado."}
+                </Text>
+
+                <View style={styles.sucessoResumo}>
+                  <View style={styles.row}>
+                    <Text style={styles.labelMuted}>Valor recebido</Text>
+                    <Text style={styles.sucessoValorDestaque}>
+                      {formatCurrency(sucessoConfirmacao.valorRecebido)}
+                    </Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.labelMuted}>Total recebido</Text>
+                    <Text style={styles.valor}>
+                      {formatCurrency(sucessoConfirmacao.valorPagoTotal)}
+                    </Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.labelSaldo}>Saldo restante</Text>
+                    <Text
+                      style={[
+                        styles.valorSaldo,
+                        sucessoConfirmacao.quitada && styles.valorQuitado,
+                      ]}
+                    >
+                      {formatCurrency(sucessoConfirmacao.saldoRestante)}
+                    </Text>
+                  </View>
+                </View>
+
+                {sucessoConfirmacao.quitada ? (
+                  <Text style={styles.quitadaTextoSucesso}>
+                    Não é possível receber mais valores nesta reserva.
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={styles.btnConfirmar}
+                  onPress={fecharAposSucesso}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnConfirmarTexto}>Fechar</Text>
+                </TouchableOpacity>
+
+                {!sucessoConfirmacao.quitada ? (
+                  <TouchableOpacity
+                    style={styles.btnSecundario}
+                    onPress={continuarRecebendo}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnSecundarioTexto}>
+                      Receber outro pagamento
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : (
               <ScrollView
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
@@ -525,7 +722,7 @@ export default function ReceberSaldoHospedagemModal() {
                   value={digitosParaExibicaoMoeda(digitosValor)}
                   onChangeText={onChangeValor}
                   keyboardType="number-pad"
-                  editable={!enviando}
+                  editable={!bloqueado}
                 />
 
                 <Text style={[styles.label, { marginTop: 12 }]}>
@@ -575,7 +772,7 @@ export default function ReceberSaldoHospedagemModal() {
                           setFormaPagamento(f.value);
                           setErro(null);
                         }}
-                        disabled={enviando || consultaPagamento}
+                        disabled={bloqueado}
                       >
                         <Text
                           style={[
@@ -608,8 +805,19 @@ export default function ReceberSaldoHospedagemModal() {
                   placeholder="Opcional"
                   multiline
                   numberOfLines={2}
-                  editable={!enviando}
+                  editable={!bloqueado}
                 />
+
+                {emProcessamentoManual ? (
+                  <View style={styles.processandoBox}>
+                    <ActivityIndicator color={colors.azul} />
+                    <Text style={styles.processandoTexto}>
+                      {atualizandoSaldo
+                        ? "Atualizando saldo da reserva..."
+                        : "Processando pagamento..."}
+                    </Text>
+                  </View>
+                ) : null}
 
                 <View style={styles.aposBox}>
                   <View style={styles.row}>
@@ -684,13 +892,13 @@ export default function ReceberSaldoHospedagemModal() {
                   <TouchableOpacity
                     style={[
                       styles.btnConfirmar,
-                      enviando && styles.btnDisabled,
+                      bloqueado && styles.btnDisabled,
                     ]}
                     onPress={confirmar}
-                    disabled={enviando || saldoPendente <= 0.009}
+                    disabled={bloqueado || saldoPendente <= 0.009}
                     activeOpacity={0.85}
                   >
-                    {enviando ? (
+                    {emProcessamentoManual ? (
                       <ActivityIndicator color={colors.branco} />
                     ) : (
                       <Text style={styles.btnConfirmarTexto}>
@@ -711,11 +919,12 @@ export default function ReceberSaldoHospedagemModal() {
                     }
                     closeReceberSaldo();
                   }}
-                  disabled={enviando && !consultaPagamento}
+                  disabled={bloqueado && !consultaPagamento}
                 >
                   <Text style={styles.btnCancelarTexto}>Fechar</Text>
                 </TouchableOpacity>
               </ScrollView>
+            )}
           </Pressable>
         </KeyboardAvoidingView>
       </Pressable>
@@ -948,5 +1157,76 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "600",
     fontSize: 14,
+  },
+  processandoBox: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#EEF5FF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  processandoTexto: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.cinza,
+    flex: 1,
+  },
+  sucessoBox: {
+    marginTop: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  sucessoTitulo: {
+    marginTop: 12,
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#027a3a",
+    textAlign: "center",
+  },
+  sucessoSubtitulo: {
+    marginTop: 6,
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  sucessoResumo: {
+    marginTop: 18,
+    width: "100%",
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#E8F8EF",
+    borderWidth: 1,
+    borderColor: "#B7E4C7",
+    gap: 10,
+  },
+  sucessoValorDestaque: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#027a3a",
+  },
+  quitadaTextoSucesso: {
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#027a3a",
+    textAlign: "center",
+  },
+  btnSecundario: {
+    marginTop: 10,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.azul,
+    width: "100%",
+  },
+  btnSecundarioTexto: {
+    color: colors.azul,
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
