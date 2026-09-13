@@ -807,6 +807,12 @@ export default function ReservaOperacaoSheet({
   const suiteNomeExibicao =
     suiteLinhaFoco?.nome ?? reserva?.suiteNome ?? "Suíte";
 
+  const codigoReservaJango =
+    detalhe?.numeroReserva ??
+    detalhe?.id ??
+    detalhe?.idReservaHospedagem ??
+    reserva?.idReservaHospedagem;
+
   const isOrigemHospedin =
     String(
       detalhe?.origemReserva || reserva?.origemReserva || "",
@@ -1044,7 +1050,15 @@ export default function ReservaOperacaoSheet({
             <View style={styles.handle} />
 
             <View style={styles.headerRow}>
-              <Text style={styles.titulo}>{suiteNomeExibicao}</Text>
+              <Text style={styles.titulo} numberOfLines={2}>
+                {suiteNomeExibicao}
+                {codigoReservaJango ? (
+                  <Text style={styles.codigoReserva}>
+                    {" "}
+                    #{codigoReservaJango}
+                  </Text>
+                ) : null}
+              </Text>
               <TouchableOpacity onPress={onClose} hitSlop={12}>
                 <Feather name="x" size={22} color={colors.cinza} />
               </TouchableOpacity>
@@ -2308,6 +2322,11 @@ const styles = StyleSheet.create({
     color: colors.cinza,
     flex: 1,
     paddingRight: 12,
+  },
+  codigoReserva: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.cinza,
   },
   statusBadge: {
     alignSelf: "flex-start",
