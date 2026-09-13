@@ -43,6 +43,11 @@ import {
   getDisponibilidade,
 } from "@/src/lib/reservaSuite";
 import {
+  resolverUrlImagemSuite,
+  resolverUrlsFotosEventoSuite,
+} from "@/src/lib/eventoSuiteFotos";
+import PhotoViewer from "@/src/components/gallery/PhotoViewer";
+import {
   calcularNoitesHotelaria,
   calcularSubtotalSuitePousada,
   VALOR_ADICIONAL_ADULTO_EXTRA,
@@ -209,6 +214,11 @@ export default function Index() {
   const [adicionandoItem, setAdicionandoItem] = useState(false);
   const [msgApi, setMsgApi] = useState("");
   const [visibleMsg, setVisibleMsg] = useState(false);
+  const [fotoViewer, setFotoViewer] = useState({
+    visible: false,
+    uris: [] as string[],
+    initialIndex: 0,
+  });
   const [filtroErrors, setFiltroErrors] = useState<{ [key: string]: string }>(
     {},
   );
@@ -1186,6 +1196,13 @@ export default function Index() {
                     (i) => i.idEventoSuite === suite.id,
                   );
                   const emEdicao = suiteEmEdicao?.id === suite.id;
+                  const urlsFotosSuite = resolverUrlsFotosEventoSuite(
+                    suite.Fotos,
+                  );
+                  const uriImagemSuite = resolverUrlImagemSuite(
+                    suite.Fotos,
+                    formData.imagem,
+                  );
                   return (
                   <View
                     key={suite.id}
@@ -1213,16 +1230,33 @@ export default function Index() {
                             : styles.imagemSuiteContainerDesktop
                         }
                       >
-                        <Image
-                          source={{
-                            uri:
-                              api.getBaseApi() + "/uploads/" + formData.imagem,
+                        <TouchableOpacity
+                          activeOpacity={0.9}
+                          onPress={() => {
+                            const uris =
+                              urlsFotosSuite.length > 0
+                                ? urlsFotosSuite
+                                : uriImagemSuite
+                                  ? [uriImagemSuite]
+                                  : [];
+                            if (uris.length === 0) return;
+                            setFotoViewer({
+                              visible: true,
+                              uris,
+                              initialIndex: 0,
+                            });
                           }}
-                          style={[
-                            styles.imagemSuite,
-                            isMobileSuiteLayout && styles.imagemSuiteMobile,
-                          ]}
-                        />
+                        >
+                          {uriImagemSuite ? (
+                            <Image
+                              source={{ uri: uriImagemSuite }}
+                              style={[
+                                styles.imagemSuite,
+                                isMobileSuiteLayout && styles.imagemSuiteMobile,
+                              ]}
+                            />
+                          ) : null}
+                        </TouchableOpacity>
                       </View>
                       <View
                         style={[
@@ -1450,7 +1484,7 @@ export default function Index() {
                         style={[styles.newButton, { alignSelf: "center" }]}
                         onPress={() => handleAbrirAdicionarSuite(suite)}
                       >
-                        <Text style={styles.newButtonText}>Escolher hóspedes</Text>
+                        <Text style={styles.newButtonText}>Selecionar suíte</Text>
                       </TouchableOpacity>
                     )}
 
@@ -1486,6 +1520,14 @@ export default function Index() {
           <ModalMsg onClose={() => setVisibleMsg(false)} msg={msgApi} />
         </TouchableOpacity>
       </Modal>
+      <PhotoViewer
+        visible={fotoViewer.visible}
+        uris={fotoViewer.uris}
+        initialIndex={fotoViewer.initialIndex}
+        onClose={() =>
+          setFotoViewer((prev) => ({ ...prev, visible: false }))
+        }
+      />
     </LinearGradient>
   );
 }
