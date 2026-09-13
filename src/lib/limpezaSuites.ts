@@ -13,12 +13,15 @@ export type StatusLimpezaSuite =
   | "Concluida"
   | string;
 
+export type OrigemLimpezaSuite = "CHECKOUT" | "MANUAL" | string;
+
 export type LimpezaSuiteCard = {
   id: number;
   idEventoSuite: number;
   nomeSuite: string | null;
-  idReservaHospedagem: number;
-  numeroReserva: number;
+  origem?: OrigemLimpezaSuite | null;
+  idReservaHospedagem: number | null;
+  numeroReserva: number | null;
   hospede: string | null;
   status: StatusLimpezaSuite;
   checkin: string | null;
@@ -104,4 +107,23 @@ export async function postConcluirLimpezaSuite(
     "POST",
     null,
   );
+}
+
+export function labelOrigemLimpeza(origem?: OrigemLimpezaSuite | null): string {
+  switch (origem) {
+    case "MANUAL":
+      return "Manual";
+    case "CHECKOUT":
+      return "Checkout";
+    default:
+      return origem ? String(origem) : "Checkout";
+  }
+}
+
+export async function postCriarLimpezaManualSuite(
+  idEventoSuite: number,
+): Promise<ApiResponse<LimpezaSuiteCard>> {
+  return api.request<LimpezaSuiteCard>("/limpeza/suites/manual", "POST", {
+    idEventoSuite,
+  });
 }

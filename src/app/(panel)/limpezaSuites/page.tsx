@@ -20,12 +20,14 @@ import { formatDateTimeHospedagem } from "@/src/lib/hospedagemOperacao";
 import {
   FiltroLimpezaSuites,
   getLimpezasSuites,
+  labelOrigemLimpeza,
   labelStatusLimpeza,
   LimpezaSuiteCard,
   postConcluirLimpezaSuite,
   postIniciarLimpezaSuite,
 } from "@/src/lib/limpezaSuites";
 import { useHospedagemDesktopLayout } from "../hospedagem/useHospedagemDesktopLayout";
+import ModalAdicionarLimpezaSuite from "./ModalAdicionarLimpezaSuite";
 
 const AUTO_REFRESH_MS = 15_000;
 
@@ -105,6 +107,10 @@ function CardLimpeza({
         </View>
       </View>
 
+      <LinhaInfo
+        rotulo="Origem"
+        valor={labelOrigemLimpeza(item.origem)}
+      />
       <LinhaInfo rotulo="Hóspede" valor={item.hospede} />
       <LinhaInfo
         rotulo="Reserva"
@@ -179,6 +185,7 @@ export default function LimpezaSuitesPage() {
   const [total, setTotal] = useState(0);
   const [acaoId, setAcaoId] = useState<number | null>(null);
   const [mensagemAcao, setMensagemAcao] = useState<string | null>(null);
+  const [modalAdicionarOpen, setModalAdicionarOpen] = useState(false);
   const requisicaoEmAndamentoRef = useRef(false);
   const acaoEmAndamentoRef = useRef(false);
 
@@ -284,6 +291,16 @@ export default function LimpezaSuitesPage() {
             Operação de limpeza — módulo independente da hospedagem.
           </Text>
 
+          <TouchableOpacity
+            style={styles.botaoAdicionar}
+            onPress={() => setModalAdicionarOpen(true)}
+          >
+            <Feather name="plus-circle" size={18} color={colors.white} />
+            <Text style={styles.botaoAdicionarTexto}>
+              Adicionar suíte para limpeza
+            </Text>
+          </TouchableOpacity>
+
           <View style={styles.filtrosRow}>
             <FlatList
               horizontal
@@ -380,6 +397,16 @@ export default function LimpezaSuitesPage() {
           )}
         </View>
       </ScreenContainer>
+
+      <ModalAdicionarLimpezaSuite
+        visible={modalAdicionarOpen}
+        onClose={() => setModalAdicionarOpen(false)}
+        onSucesso={() => {
+          setMensagemAcao("Limpeza manual criada com sucesso.");
+          setFiltro("pendente");
+          void carregar(true, "pendente");
+        }}
+      />
     </LinearGradient>
   );
 }
@@ -405,6 +432,22 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     textAlign: "center",
     marginBottom: 10,
+  },
+  botaoAdicionar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.azul,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  botaoAdicionarTexto: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 14,
   },
   filtrosRow: {
     flexDirection: "row",
