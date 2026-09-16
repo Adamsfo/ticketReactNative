@@ -1237,7 +1237,7 @@ export default function Index() {
                       <Text
                         style={[styles.tituloEvento, { textAlign: "center" }]}
                       >
-                        Suíte {suite.nome}
+                        {suite.nome}
                         {noCarrinho ? " ✓" : ""}
                       </Text>
                       <View
@@ -1565,6 +1565,7 @@ export default function Index() {
         <ModalResumoPousada
           itens={carrinho}
           onProximo={handleIrConferencia}
+          onRemoverDoCarrinho={handleRemoverDoCarrinho}
           UsuarioVenda={formDataUsuario}
         />
       )}

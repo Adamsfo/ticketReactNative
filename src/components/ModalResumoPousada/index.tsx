@@ -45,12 +45,14 @@ export type ItemCarrinhoHospedagem = {
 interface ModalResumoPousadaProps {
   itens: ItemCarrinhoHospedagem[];
   onProximo: () => void;
+  onRemoverDoCarrinho: (idEventoSuite: number) => void;
   UsuarioVenda?: Usuario;
 }
 
 export default function ModalResumoPousada({
   itens,
   onProximo,
+  onRemoverDoCarrinho,
   UsuarioVenda,
 }: ModalResumoPousadaProps) {
   const route = useRoute();
@@ -127,14 +129,21 @@ export default function ModalResumoPousada({
               >
                 <Text style={styles.detailLine}>{noites} noite(s)</Text>
                 {itens.map((item) => (
-                  <View key={item.idEventoSuite} style={{ marginBottom: 8 }}>
-                    <Text style={[styles.detailLine, { fontWeight: "bold" }]}>
-                      {item.nomeSuite}
-                    </Text>
-                    <Text style={styles.detailLine}>
-                      {formatHospedesResumo(item.adultos, item.criancas)} —{" "}
-                      {formatCurrency(item.cotacao.totais.valorTotal)}
-                    </Text>
+                  <View key={item.idEventoSuite} style={styles.itemResumo}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.detailLine, { fontWeight: "bold" }]}>
+                        {item.nomeSuite}
+                      </Text>
+                      <Text style={styles.detailLine}>
+                        {formatHospedesResumo(item.adultos, item.criancas)} —{" "}
+                        {formatCurrency(item.cotacao.totais.valorTotal)}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => onRemoverDoCarrinho(item.idEventoSuite)}
+                    >
+                      <Feather name="trash-2" size={22} color={colors.red} />
+                    </TouchableOpacity>
                   </View>
                 ))}
               </ScrollView>
@@ -204,6 +213,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.cinza,
     marginBottom: 4,
+  },
+  itemResumo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   modal: {
     position: "absolute",
