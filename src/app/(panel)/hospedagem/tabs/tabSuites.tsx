@@ -52,8 +52,12 @@ import { ReservaOperacaoRef } from "@/src/lib/hospedagemOperacao";
 import { obterSaldoPendenteExibicao } from "@/src/lib/hospedagemPagamentoRecepcao";
 import { useReceberSaldoHospedagem } from "../contexts/ReceberSaldoHospedagemContext";
 import { useHospedagemDesktopLayout } from "../useHospedagemDesktopLayout";
+import { labelDiaSemanaPtCurto } from "@/src/lib/hospedagemAgenda";
 
 const TZ = "America/Cuiaba";
+
+/** Largura do chip (48) + marginRight (4) — usado no auto-scroll horizontal. */
+const CALENDARIO_CHIP_PASSO_SCROLL = 52;
 
 function textoAtualizadoHa(lastRefreshAt: number, agora: number): string {
   const seg = Math.max(0, Math.floor((agora - lastRefreshAt) / 1000));
@@ -155,6 +159,7 @@ const CALENDARIO_SELECAO_BORDA = "#1976D2";
 
 function DiaCalendarioChip({
   label,
+  diaSemana,
   selecionado,
   indicadores,
   onPress,
@@ -162,6 +167,7 @@ function DiaCalendarioChip({
   layoutMobile = false,
 }: {
   label: string;
+  diaSemana?: string;
   selecionado: boolean;
   indicadores?: IndicadoresDiaCalendario | null;
   onPress: () => void;
@@ -199,6 +205,8 @@ function DiaCalendarioChip({
         style={[
           styles.diaChipInner,
           layoutMobile && styles.diaChipInnerMobile,
+          diaSemana && styles.diaChipInnerComSemana,
+          layoutMobile && diaSemana && styles.diaChipInnerComSemanaMobile,
           {
             borderWidth,
             borderColor: CALENDARIO_SELECAO_BORDA,
@@ -206,6 +214,18 @@ function DiaCalendarioChip({
           },
         ]}
       >
+        {diaSemana ? (
+          <Text
+            style={[
+              styles.diaSemanaLabel,
+              layoutMobile && styles.diaSemanaLabelMobile,
+              selecionado && styles.diaSemanaLabelSelecionado,
+            ]}
+            numberOfLines={1}
+          >
+            {diaSemana}
+          </Text>
+        ) : null}
         <Text
           style={[
             labelNumerico ? styles.diaNum : styles.diaHojeLabel,
@@ -259,7 +279,7 @@ function CalendarioHorizontal({
     // +1 pelo atalho "Hoje" no início da faixa
     const idx = dias.indexOf(dataSelecionada);
     if (idx < 0 || !scrollRef.current) return;
-    const x = Math.max(0, (idx + 1) * 52 - 40);
+    const x = Math.max(0, (idx + 1) * CALENDARIO_CHIP_PASSO_SCROLL - 40);
     scrollRef.current.scrollTo({ x, animated: true });
   }, [dias, dataSelecionada]);
 
@@ -315,6 +335,7 @@ function CalendarioHorizontal({
             <DiaCalendarioChip
               key={data}
               label={diaNum}
+              diaSemana={labelDiaSemanaPtCurto(data)}
               selecionado={selecionado}
               indicadores={indicadores}
               onPress={() => onSelecionarData(data)}
@@ -1679,10 +1700,36 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     borderRadius: 11,
   },
+  diaChipInnerComSemana: {
+    minHeight: 62,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
   diaChipInnerMobile: {
     minHeight: 48,
     paddingTop: 4,
     paddingBottom: 4,
+  },
+  diaChipInnerComSemanaMobile: {
+    minHeight: 54,
+    paddingTop: 3,
+    paddingBottom: 3,
+  },
+  diaSemanaLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#888",
+    lineHeight: 12,
+    marginBottom: 1,
+    textAlign: "center",
+  },
+  diaSemanaLabelMobile: {
+    fontSize: 9,
+    lineHeight: 11,
+    marginBottom: 0,
+  },
+  diaSemanaLabelSelecionado: {
+    color: colors.cinza,
   },
   diaChipHojeAtalho: {
     marginRight: 8,

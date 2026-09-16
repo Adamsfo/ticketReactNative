@@ -254,6 +254,28 @@ export function labelDiaSemana(data: string): string {
   }
 }
 
+const DIAS_SEMANA_PT_CURTO: Record<number, string> = {
+  1: "SEG",
+  2: "TER",
+  3: "QUA",
+  4: "QUI",
+  5: "SEX",
+  6: "SÁB",
+  7: "DOM",
+};
+
+/** Abreviação PT de 3 letras para o calendário horizontal (Suítes). TZ: America/Cuiaba. */
+export function labelDiaSemanaPtCurto(data: string): string {
+  try {
+    const isoDow = Number(
+      formatInTimeZone(parseISO(`${data}T12:00:00`), TZ, "i"),
+    );
+    return DIAS_SEMANA_PT_CURTO[isoDow] ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function dataCuiabaFromIso(iso: string): string {
   return formatInTimeZone(new Date(iso), TZ, "yyyy-MM-dd");
 }
