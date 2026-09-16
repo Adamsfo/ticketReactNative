@@ -13,6 +13,10 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import CadastroClienteRapido from "../components/CadastroClienteRapido";
+import {
+  ativarClienteRecemCadastradoHospedagem,
+  CadastroClienteHospedagemMeta,
+} from "@/src/lib/hospedagemAtivarCliente";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "expo-router";
@@ -161,7 +165,12 @@ function HospedagemReservaDetalheContent() {
     }, [carregar]),
   );
 
-  const handleOnCadastrado = async (usuario: Usuario) => {
+  const handleOnCadastrado = async (
+    usuario: Usuario,
+    meta: CadastroClienteHospedagemMeta,
+  ) => {
+    await ativarClienteRecemCadastradoHospedagem(usuario, meta);
+
     const idCliente = Number(usuario.id_cliente);
     if (!reserva?.id || !Number.isFinite(idCliente) || idCliente <= 0) {
       setErroCadastroCliente(

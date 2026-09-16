@@ -60,6 +60,7 @@ import {
 } from "@/src/lib/reservaSuitePricing";
 import { EventoSuite, Usuario } from "@/src/types/geral";
 import CadastroClienteRapido from "./CadastroClienteRapido";
+import { ativarClienteRecemCadastradoHospedagem } from "@/src/lib/hospedagemAtivarCliente";
 import ComprovanteUploader from "./ComprovanteUploader";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
@@ -1213,7 +1214,8 @@ export default function NovaReservaRecepcaoModal() {
                 <CadastroClienteRapido
                   cpfInicial={/^\d/.test(searchQuery) ? searchQuery : ""}
                   onCancelar={() => setShowCadastro(false)}
-                  onCadastrado={(usuario) => {
+                  onCadastrado={async (usuario, meta) => {
+                    await ativarClienteRecemCadastradoHospedagem(usuario, meta);
                     setCliente(usuario);
                     setShowCadastro(false);
                     setSearchQuery("");

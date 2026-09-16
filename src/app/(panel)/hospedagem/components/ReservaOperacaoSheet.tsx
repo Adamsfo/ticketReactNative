@@ -82,6 +82,10 @@ import ReservaOrigemIntegracaoPanel from "./ReservaOrigemIntegracaoPanel";
 import TrocaSuiteModal from "./TrocaSuiteModal";
 import AlterarPeriodoModal from "./AlterarPeriodoModal";
 import CadastroClienteRapido from "./CadastroClienteRapido";
+import {
+  ativarClienteRecemCadastradoHospedagem,
+  CadastroClienteHospedagemMeta,
+} from "@/src/lib/hospedagemAtivarCliente";
 import TaxasAdicionaisReservaPanel from "./TaxasAdicionaisReservaPanel";
 
 function resolverValorBaseSuiteReserva(
@@ -571,7 +575,12 @@ export default function ReservaOperacaoSheet({
   const mostrarCadastrarCliente =
     !loading && Boolean(responsavel) && isHospedeSemCpf(responsavel);
 
-  const handleClienteCadastrado = async (usuario: Usuario) => {
+  const handleClienteCadastrado = async (
+    usuario: Usuario,
+    meta: CadastroClienteHospedagemMeta,
+  ) => {
+    await ativarClienteRecemCadastradoHospedagem(usuario, meta);
+
     const idCliente = Number(usuario.id_cliente);
     const idReserva = detalhe?.id ?? reserva?.idReservaHospedagem;
     if (!idReserva || !Number.isFinite(idCliente) || idCliente <= 0) {

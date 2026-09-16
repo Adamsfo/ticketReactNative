@@ -13,9 +13,12 @@ import colors from "@/src/constants/colors";
 import { apiGeral } from "@/src/lib/geral";
 import { apiAuth } from "@/src/lib/auth";
 import { Usuario } from "@/src/types/geral";
+import { CadastroClienteHospedagemMeta } from "@/src/lib/hospedagemAtivarCliente";
+
+export type { CadastroClienteHospedagemMeta };
 
 type Props = {
-  onCadastrado: (usuario: Usuario) => void;
+  onCadastrado: (usuario: Usuario, meta: CadastroClienteHospedagemMeta) => void;
   onCancelar: () => void;
   cpfInicial?: string;
   /** Texto livre da reserva — somente exibição, sem parsing ou preenchimento automático. */
@@ -202,9 +205,11 @@ export default function CadastroClienteRapido({
         setErro("Cliente não encontrado. Consulte o CPF novamente.");
         return;
       }
-      onCadastrado(usuario);
+      onCadastrado(usuario, { criadoAgora: false });
       return;
     }
+
+    const existiaAntes = await buscarUsuarioPorCpf();
 
     const resp = await apiAuth.addlogin({
       ...formData,
@@ -223,7 +228,7 @@ export default function CadastroClienteRapido({
       setErro("Cliente cadastrado, mas não foi possível selecioná-lo.");
       return;
     }
-    onCadastrado(usuario);
+    onCadastrado(usuario, { criadoAgora: !existiaAntes?.id });
   };
 
   const handleCadastrar = async () => {
@@ -261,6 +266,8 @@ export default function CadastroClienteRapido({
         });
       }
 
+      const existiaAntes = await buscarUsuarioPorCpf();
+
       const resp = await apiAuth.addlogin({
         ...formData,
         login: formData.email,
@@ -278,7 +285,7 @@ export default function CadastroClienteRapido({
         setErro("Cliente cadastrado, mas não foi possível selecioná-lo.");
         return;
       }
-      onCadastrado(usuario);
+      onCadastrado(usuario, { criadoAgora: !existiaAntes?.id });
     } catch {
       setErro("Erro ao cadastrar cliente.");
     } finally {
