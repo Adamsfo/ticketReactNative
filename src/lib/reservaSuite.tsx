@@ -1,5 +1,9 @@
 import { api } from "./api";
 import { ApiResponse } from "../types/geral";
+import {
+  buildPeriodoPadraoDisponibilidadePousada,
+  getMenorValorCotacaoSuitesDisponibilidade,
+} from "./reservaSuiteHomePricing";
 
 export interface CotacaoReservaSuite {  idEvento: number;
   idEventoSuite: number;
@@ -88,6 +92,37 @@ export async function getDisponibilidade(params: {
       checkout: params.checkout,
     }
   );
+}
+
+export {
+  buildPeriodoPadraoDisponibilidadePousada,
+  getMenorValorCotacaoSuitesDisponibilidade,
+} from "./reservaSuiteHomePricing";
+
+/**
+ * Menor preço inicial para card da Home (evento Pousada).
+ * Reutiliza o mesmo endpoint e cotação embutida da tela Pousada.
+ */
+export async function getMenorValorPousadaHome(
+  idEvento: number
+): Promise<number | undefined> {
+  const { checkin, checkout } = buildPeriodoPadraoDisponibilidadePousada();
+
+  try {
+    const response = await getDisponibilidade({
+      idEvento,
+      checkin,
+      checkout,
+    });
+
+    if (!response.success || !response.data?.suites?.length) {
+      return undefined;
+    }
+
+    return getMenorValorCotacaoSuitesDisponibilidade(response.data.suites);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function getCotacao(params: {

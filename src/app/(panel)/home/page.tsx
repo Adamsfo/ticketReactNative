@@ -17,7 +17,12 @@ import colors from "@/src/constants/colors";
 import BarMenu from "@/src/components/BarMenu";
 import { useNavigation } from "@react-navigation/native";
 import { apiGeral } from "@/src/lib/geral";
-import { Evento, EventoIngresso, QueryParams } from "@/src/types/geral";
+import {
+  Evento,
+  EventoIngresso,
+  QueryParams,
+  TipoEvento,
+} from "@/src/types/geral";
 import { useFocusEffect } from "expo-router";
 import ImageCarousel from "@/src/components/ImagemCarousel";
 import { api } from "@/src/lib/api";
@@ -25,6 +30,7 @@ import KeenSliderNavigation from "@/src/components/CarouselWeb";
 import Footer from "@/src/components/Footer";
 import CardParceiro from "@/src/components/CardParceiro";
 import { getMenorValorFinalIngressos } from "@/src/lib/ingressoPricing";
+import { getMenorValorPousadaHome } from "@/src/lib/reservaSuite";
 
 const { width } = Dimensions.get("window");
 
@@ -45,10 +51,22 @@ export default function Index() {
     const registrosData = response.data ?? [];
 
     for (let i = 0; i < registrosData.length; i++) {
-      const precoMin = await getMenorValor({
-        filters: { idEvento: registrosData[i].id, status: "Ativo" },
-      });
-      registrosData[i].MenorValor = precoMin;
+      const evento = registrosData[i];
+
+      try {
+        if (evento.tipo === TipoEvento.Pousada) {
+          evento.MenorValor = await getMenorValorPousadaHome(evento.id);
+        } else {
+          evento.MenorValor = await getMenorValor({
+            filters: { idEvento: evento.id, status: "Ativo" },
+          });
+        }
+      } catch (error) {
+        console.error(
+          `Erro ao obter menor valor do evento ${evento.id}:`,
+          error
+        );
+      }
     }
 
     // setImagensEvento(

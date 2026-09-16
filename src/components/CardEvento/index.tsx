@@ -7,7 +7,7 @@ import {
   Image,
   Platform,
 } from "react-native";
-import { Evento } from "@/src/types/geral";
+import { Evento, TipoEvento } from "@/src/types/geral";
 import { format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import formatCurrency from "../FormatCurrency";
@@ -58,23 +58,25 @@ export default function CardEvento({
           <Text style={styles.text}>{data.endereco}</Text>
         </View>
 
-        <View style={styles.row}>
-          {/* <Text style={styles.label}>Data:</Text> */}
-          <CalendarIcon size={16} color="#6b7280" />
-          <Text style={styles.text}>
-            {formatInTimeZone(
-              parseISO(data.data_hora_inicio.toString()),
-              "America/Cuiaba",
-              "dd/MM/yyyy HH:mm"
-            )}{" "}
-            a{" "}
-            {formatInTimeZone(
-              parseISO(data.data_hora_fim.toString()),
-              "America/Cuiaba",
-              "dd/MM/yyyy HH:mm"
-            )}
-          </Text>
-        </View>
+        {data.tipo !== TipoEvento.Pousada && (
+          <View style={styles.row}>
+            {/* <Text style={styles.label}>Data:</Text> */}
+            <CalendarIcon size={16} color="#6b7280" />
+            <Text style={styles.text}>
+              {formatInTimeZone(
+                parseISO(data.data_hora_inicio.toString()),
+                "America/Cuiaba",
+                "dd/MM/yyyy HH:mm"
+              )}{" "}
+              a{" "}
+              {formatInTimeZone(
+                parseISO(data.data_hora_fim.toString()),
+                "America/Cuiaba",
+                "dd/MM/yyyy HH:mm"
+              )}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.row}>
           <Text style={styles.text}>
