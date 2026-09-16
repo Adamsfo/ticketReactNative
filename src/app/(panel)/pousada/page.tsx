@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Text,
   StyleSheet,
@@ -38,10 +44,7 @@ import formatCurrency from "@/src/components/FormatCurrency";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import ModalMsg from "@/src/components/ModalMsg";
-import {
-  getCotacao,
-  getDisponibilidade,
-} from "@/src/lib/reservaSuite";
+import { getCotacao, getDisponibilidade } from "@/src/lib/reservaSuite";
 import {
   resolverUrlImagemSuite,
   resolverUrlsFotosEventoSuite,
@@ -121,20 +124,14 @@ function proximoSlotAposAgora(
 function calcularMinCheckinEfetivo(dataCheckin: Date, agora: Date): Date {
   const oficial = minutosDesdeMeiaNoite(CHECKIN_TIME_MIN);
   if (!isMesmaDataLocal(dataCheckin, agora)) {
-    return aplicarHorarioBase(
-      Math.floor(oficial / 60),
-      oficial % 60,
-    );
+    return aplicarHorarioBase(Math.floor(oficial / 60), oficial % 60);
   }
   const aposAgora = proximoSlotAposAgora(agora);
   const efetivo = Math.max(oficial, aposAgora);
   return aplicarHorarioBase(Math.floor(efetivo / 60), efetivo % 60);
 }
 
-function haHorariosCheckinDisponiveis(
-  dataCheckin: Date,
-  agora: Date,
-): boolean {
+function haHorariosCheckinDisponiveis(dataCheckin: Date, agora: Date): boolean {
   const min = calcularMinCheckinEfetivo(dataCheckin, agora);
   return minutosDesdeMeiaNoite(min) <= minutosDesdeMeiaNoite(CHECKIN_TIME_MAX);
 }
@@ -296,7 +293,8 @@ export default function Index() {
     return d;
   };
 
-  const getCheckinIso = () => combineDateTime(checkinDate, checkinTime).toISOString();
+  const getCheckinIso = () =>
+    combineDateTime(checkinDate, checkinTime).toISOString();
   const getCheckoutIso = () =>
     combineDateTime(checkoutDate, checkoutTime).toISOString();
 
@@ -335,7 +333,13 @@ export default function Index() {
       newErrors.checkinHorario =
         "O horário de check-in deve ser posterior ao horário atual.";
     }
-    if (!horarioDentroDoIntervalo(checkoutTime, CHECKOUT_TIME_MIN, CHECKOUT_TIME_MAX)) {
+    if (
+      !horarioDentroDoIntervalo(
+        checkoutTime,
+        CHECKOUT_TIME_MIN,
+        CHECKOUT_TIME_MAX,
+      )
+    ) {
       newErrors.checkoutHorario =
         "O horário de check-out deve estar entre 08:00 e 13:00.";
     }
@@ -427,7 +431,10 @@ export default function Index() {
     target.measureInWindow((_tx, targetY) => {
       scrollView.measureInWindow((_sx, scrollViewY) => {
         const y =
-          targetY - scrollViewY + scrollOffsetYRef.current - SCROLL_OFFSET_SUITES;
+          targetY -
+          scrollViewY +
+          scrollOffsetYRef.current -
+          SCROLL_OFFSET_SUITES;
         scrollView.scrollTo({
           y: Math.max(0, y),
           animated: true,
@@ -442,9 +449,12 @@ export default function Index() {
 
     pendenteScrollSuitesRef.current = false;
 
-    const timer = setTimeout(() => {
-      scrollParaListaSuites();
-    }, Platform.OS === "web" ? 80 : 120);
+    const timer = setTimeout(
+      () => {
+        scrollParaListaSuites();
+      },
+      Platform.OS === "web" ? 80 : 120,
+    );
 
     return () => clearTimeout(timer);
   }, [disponibilidadeBuscada, registrosEventoSuites, scrollParaListaSuites]);
@@ -510,7 +520,9 @@ export default function Index() {
   };
 
   const handleRemoverDoCarrinho = (idEventoSuite: number) => {
-    setCarrinho((prev) => prev.filter((i) => i.idEventoSuite !== idEventoSuite));
+    setCarrinho((prev) =>
+      prev.filter((i) => i.idEventoSuite !== idEventoSuite),
+    );
   };
 
   const handleIrConferencia = () => {
@@ -1051,6 +1063,29 @@ export default function Index() {
             </View>
           )}
 
+          <View style={styles.areaInfoHospedes}>
+            <Text style={styles.infoHospedesTitulo}>
+              ⚠️ Informações importantes
+            </Text>
+            <Text style={styles.infoHospedesItem}>
+              • Informe a quantidade REAL de adultos e crianças que irão se
+              hospedar.
+            </Text>
+            <Text style={styles.infoHospedesItem}>
+              • Cada hóspede receberá uma pulseira individual de acesso.
+            </Text>
+            <Text style={styles.infoHospedesItem}>
+              • Serão emitidas pulseiras apenas para as pessoas informadas na
+              reserva.
+            </Text>
+            <Text style={[styles.infoHospedesItem, { marginBottom: 0 }]}>
+              • Caso a quantidade de hóspedes seja diferente no check-in, será
+              necessário o pagamento da diferença da quantidade de pessoas
+              regularizando a reserva conforme a tabela vigente, sujeita a
+              disponibilidade.
+            </Text>
+          </View>
+
           <View style={styles.areaFiltros}>
             <Text style={[styles.tituloEvento, { marginBottom: 8 }]}>
               Período da estadia
@@ -1078,10 +1113,14 @@ export default function Index() {
               <Text style={styles.labelError}>{MSG_SEM_HORARIOS_HOJE}</Text>
             ) : null}
             {filtroErrors.checkinHorario && !checkinHojeSemHorarios ? (
-              <Text style={styles.labelError}>{filtroErrors.checkinHorario}</Text>
+              <Text style={styles.labelError}>
+                {filtroErrors.checkinHorario}
+              </Text>
             ) : null}
             {filtroErrors.checkoutHorario ? (
-              <Text style={styles.labelError}>{filtroErrors.checkoutHorario}</Text>
+              <Text style={styles.labelError}>
+                {filtroErrors.checkoutHorario}
+              </Text>
             ) : null}
             <View style={styles.filtroRow}>
               <Text style={styles.labelData}>Check-out</Text>
@@ -1124,28 +1163,6 @@ export default function Index() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.areaInfoHospedes}>
-            <Text style={styles.infoHospedesTitulo}>
-              ⚠️ Informações importantes
-            </Text>
-            <Text style={styles.infoHospedesItem}>
-              • Informe a quantidade REAL de adultos e crianças que irão se
-              hospedar.
-            </Text>
-            <Text style={styles.infoHospedesItem}>
-              • Cada hóspede receberá uma pulseira individual de acesso.
-            </Text>
-            <Text style={styles.infoHospedesItem}>
-              • Serão emitidas pulseiras apenas para as pessoas informadas na
-              reserva.
-            </Text>
-            <Text style={[styles.infoHospedesItem, { marginBottom: 0 }]}>
-              • Caso a quantidade de hóspedes seja diferente no check-in, será
-              necessária a regularização da reserva conforme a tabela vigente,
-              sujeita à disponibilidade.
-            </Text>
-          </View>
-
           <View style={styles.area}>
             {disponibilidadeBuscada && registrosEventoSuites.length === 0 && (
               <Text style={[styles.descricaoSuite, { textAlign: "center" }]}>
@@ -1161,7 +1178,9 @@ export default function Index() {
                 {carrinho.map((item) => (
                   <View key={item.idEventoSuite} style={styles.itemCarrinho}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.descricaoSuite}>{item.nomeSuite}</Text>
+                      <Text style={styles.descricaoSuite}>
+                        {item.nomeSuite}
+                      </Text>
                       <Text style={styles.descricaoSuite}>
                         {item.adultos} adulto(s)
                         {item.criancas > 0
@@ -1171,7 +1190,9 @@ export default function Index() {
                       </Text>
                     </View>
                     <TouchableOpacity
-                      onPress={() => handleRemoverDoCarrinho(item.idEventoSuite)}
+                      onPress={() =>
+                        handleRemoverDoCarrinho(item.idEventoSuite)
+                      }
                     >
                       <Feather name="trash-2" size={22} color={colors.red} />
                     </TouchableOpacity>
@@ -1204,294 +1225,335 @@ export default function Index() {
                     formData.imagem,
                   );
                   return (
-                  <View
-                    key={suite.id}
-                    style={[
-                      styles.areaIngressos,
-                      (emEdicao || noCarrinho) && styles.suiteSelecionada,
-                      index < registrosEventoSuites.length - 1 &&
-                        styles.areaIngressosSpacing,
-                    ]}
-                  >
-                    <Text style={[styles.tituloEvento, { textAlign: "center" }]}>
-                      Suíte {suite.nome}
-                      {noCarrinho ? " ✓" : ""}
-                    </Text>
                     <View
+                      key={suite.id}
                       style={[
-                        styles.areaSuiteInfo,
-                        isMobileSuiteLayout && styles.areaSuiteInfoMobile,
+                        styles.areaIngressos,
+                        (emEdicao || noCarrinho) && styles.suiteSelecionada,
+                        index < registrosEventoSuites.length - 1 &&
+                          styles.areaIngressosSpacing,
                       ]}
                     >
-                      <View
-                        style={
-                          isMobileSuiteLayout
-                            ? styles.imagemSuiteContainerMobile
-                            : styles.imagemSuiteContainerDesktop
-                        }
+                      <Text
+                        style={[styles.tituloEvento, { textAlign: "center" }]}
                       >
-                        <TouchableOpacity
-                          activeOpacity={0.9}
-                          onPress={() => {
-                            const uris =
-                              urlsFotosSuite.length > 0
-                                ? urlsFotosSuite
-                                : uriImagemSuite
-                                  ? [uriImagemSuite]
-                                  : [];
-                            if (uris.length === 0) return;
-                            setFotoViewer({
-                              visible: true,
-                              uris,
-                              initialIndex: 0,
-                            });
-                          }}
-                        >
-                          {uriImagemSuite ? (
-                            <Image
-                              source={{ uri: uriImagemSuite }}
-                              style={[
-                                styles.imagemSuite,
-                                isMobileSuiteLayout && styles.imagemSuiteMobile,
-                              ]}
-                            />
-                          ) : null}
-                        </TouchableOpacity>
-                      </View>
+                        Suíte {suite.nome}
+                        {noCarrinho ? " ✓" : ""}
+                      </Text>
                       <View
                         style={[
-                          styles.areaDescricaoSuite,
-                          isMobileSuiteLayout && styles.areaDescricaoSuiteMobile,
+                          styles.areaSuiteInfo,
+                          isMobileSuiteLayout && styles.areaSuiteInfoMobile,
                         ]}
                       >
-                        <Text style={styles.descricaoSuite}>
-                          {suite.descricao || "Descrição não informada"}
-                        </Text>
-                        {(() => {
+                        <View
+                          style={
+                            isMobileSuiteLayout
+                              ? styles.imagemSuiteContainerMobile
+                              : styles.imagemSuiteContainerDesktop
+                          }
+                        >
+                          <TouchableOpacity
+                            activeOpacity={0.9}
+                            onPress={() => {
+                              const uris =
+                                urlsFotosSuite.length > 0
+                                  ? urlsFotosSuite
+                                  : uriImagemSuite
+                                    ? [uriImagemSuite]
+                                    : [];
+                              if (uris.length === 0) return;
+                              setFotoViewer({
+                                visible: true,
+                                uris,
+                                initialIndex: 0,
+                              });
+                            }}
+                          >
+                            {uriImagemSuite ? (
+                              <Image
+                                source={{ uri: uriImagemSuite }}
+                                style={[
+                                  styles.imagemSuite,
+                                  isMobileSuiteLayout &&
+                                    styles.imagemSuiteMobile,
+                                ]}
+                              />
+                            ) : null}
+                          </TouchableOpacity>
+                        </View>
+                        <View
+                          style={[
+                            styles.areaDescricaoSuite,
+                            isMobileSuiteLayout &&
+                              styles.areaDescricaoSuiteMobile,
+                          ]}
+                        >
+                          <Text style={styles.descricaoSuite}>
+                            {suite.descricao || "Descrição não informada"}
+                          </Text>
+                          {(() => {
+                            const { min, max } = getLimitesSuite(suite);
+                            return (
+                              <View style={styles.regrasPousada}>
+                                <Text style={styles.regrasPousadaTitulo}>
+                                  Regras de ocupação
+                                </Text>
+                                <Text style={styles.descricaoSuite}>
+                                  Capacidade até {max} hóspedes
+                                </Text>
+                                <Text style={styles.descricaoSuite}>
+                                  Valor mínimo inclui {min} hóspedes
+                                </Text>
+                                <Text style={styles.descricaoSuite}>
+                                  Adulto extra:{" "}
+                                  {formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)}
+                                </Text>
+                                <Text style={styles.descricaoSuite}>
+                                  Criança extra:{" "}
+                                  {formatCurrency(
+                                    VALOR_ADICIONAL_CRIANCA_EXTRA,
+                                  )}
+                                </Text>
+                              </View>
+                            );
+                          })()}
+                          {(
+                            suite as EventoSuite & {
+                              cotacao?: { valorTotal?: number };
+                            }
+                          ).cotacao?.valorTotal != null && (
+                            <Text
+                              style={[
+                                styles.descricaoSuite,
+                                { fontWeight: "bold" },
+                              ]}
+                            >
+                              A partir de{" "}
+                              {formatCurrency(
+                                (
+                                  suite as EventoSuite & {
+                                    cotacao: { valorTotal: number };
+                                  }
+                                ).cotacao.valorTotal,
+                              )}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+
+                      {emEdicao &&
+                        !noCarrinho &&
+                        (() => {
                           const { min, max } = getLimitesSuite(suite);
+                          const totalHospedes = adultosItem + criancasItem;
+                          const podeIncrementar = totalHospedes < max;
+                          const podeDecrementarAdulto =
+                            adultosItem > 0 && totalHospedes - 1 >= min;
+                          const podeDecrementarCrianca =
+                            criancasItem > 0 && totalHospedes - 1 >= min;
+                          const corDesabilitado = colors.cinza;
+                          const noites =
+                            (suite as EventoSuite & { noites?: number })
+                              .noites ??
+                            calcularNoitesHotelaria(
+                              combineDateTime(checkinDate, checkinTime),
+                              combineDateTime(checkoutDate, checkoutTime),
+                            );
+                          const subtotal = calcularSubtotalSuitePousada(
+                            suite,
+                            adultosItem,
+                            criancasItem,
+                            noites,
+                          );
+
                           return (
-                            <View style={styles.regrasPousada}>
-                              <Text style={styles.regrasPousadaTitulo}>
-                                Regras de ocupação
+                            <View style={styles.areaCotacao}>
+                              <View style={styles.filtroRow}>
+                                <Text style={styles.label}>Adultos</Text>
+                                <View style={styles.counterRow}>
+                                  <TouchableOpacity
+                                    disabled={!podeDecrementarAdulto}
+                                    onPress={() => {
+                                      if (podeDecrementarAdulto) {
+                                        setAdultosItem(adultosItem - 1);
+                                      }
+                                    }}
+                                  >
+                                    <Feather
+                                      name="minus-circle"
+                                      size={28}
+                                      color={
+                                        podeDecrementarAdulto
+                                          ? colors.azul
+                                          : corDesabilitado
+                                      }
+                                    />
+                                  </TouchableOpacity>
+                                  <Text style={styles.counterValue}>
+                                    {adultosItem}
+                                  </Text>
+                                  <TouchableOpacity
+                                    disabled={!podeIncrementar}
+                                    onPress={() => {
+                                      if (podeIncrementar) {
+                                        setAdultosItem(adultosItem + 1);
+                                      }
+                                    }}
+                                  >
+                                    <Feather
+                                      name="plus-circle"
+                                      size={28}
+                                      color={
+                                        podeIncrementar
+                                          ? colors.azul
+                                          : corDesabilitado
+                                      }
+                                    />
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                              <View style={styles.filtroRow}>
+                                <Text style={styles.label}>Crianças</Text>
+                                <View style={styles.counterRow}>
+                                  <TouchableOpacity
+                                    disabled={!podeDecrementarCrianca}
+                                    onPress={() => {
+                                      if (podeDecrementarCrianca) {
+                                        setCriancasItem(criancasItem - 1);
+                                      }
+                                    }}
+                                  >
+                                    <Feather
+                                      name="minus-circle"
+                                      size={28}
+                                      color={
+                                        podeDecrementarCrianca
+                                          ? colors.azul
+                                          : corDesabilitado
+                                      }
+                                    />
+                                  </TouchableOpacity>
+                                  <Text style={styles.counterValue}>
+                                    {criancasItem}
+                                  </Text>
+                                  <TouchableOpacity
+                                    disabled={!podeIncrementar}
+                                    onPress={() => {
+                                      if (podeIncrementar) {
+                                        setCriancasItem(criancasItem + 1);
+                                      }
+                                    }}
+                                  >
+                                    <Feather
+                                      name="plus-circle"
+                                      size={28}
+                                      color={
+                                        podeIncrementar
+                                          ? colors.azul
+                                          : corDesabilitado
+                                      }
+                                    />
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                              <Text
+                                style={[
+                                  styles.descricaoSuite,
+                                  { textAlign: "center" },
+                                ]}
+                              >
+                                {totalHospedes} de {max} hóspedes
                               </Text>
-                              <Text style={styles.descricaoSuite}>
-                                Capacidade: {min} a {max} hóspedes
-                              </Text>
-                              <Text style={styles.descricaoSuite}>
-                                Inclui até {min} hóspedes
-                              </Text>
-                              <Text style={styles.descricaoSuite}>
-                                Adulto extra:{" "}
-                                {formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)}
-                              </Text>
-                              <Text style={styles.descricaoSuite}>
-                                Criança extra:{" "}
-                                {formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)}
-                              </Text>
+                              {subtotal ? (
+                                <View style={styles.subtotalSuiteCard}>
+                                  <Text style={styles.subtotalSuiteTitulo}>
+                                    Subtotal desta suíte
+                                  </Text>
+                                  {subtotal.temExtras ? (
+                                    <>
+                                      <Text style={styles.subtotalSuiteLinha}>
+                                        {noites > 1
+                                          ? `Valor base (${noites} diárias): `
+                                          : "Valor base: "}
+                                        {formatCurrency(subtotal.suitePreco)}
+                                      </Text>
+                                      {subtotal.adultosExtras > 0 ? (
+                                        <Text style={styles.subtotalSuiteLinha}>
+                                          {noites > 1
+                                            ? `Adultos extras: ${subtotal.adultosExtras} × ${noites} diárias × ${formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)} = ${formatCurrency(subtotal.extraAdultoValor)}`
+                                            : `Adultos extras: ${subtotal.adultosExtras} × ${formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)} = ${formatCurrency(subtotal.extraAdultoValor)}`}
+                                        </Text>
+                                      ) : null}
+                                      {subtotal.criancasExtras > 0 ? (
+                                        <Text style={styles.subtotalSuiteLinha}>
+                                          {noites > 1
+                                            ? `Crianças extras: ${subtotal.criancasExtras} × ${noites} diárias × ${formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)} = ${formatCurrency(subtotal.extraCriancaValor)}`
+                                            : `Crianças extras: ${subtotal.criancasExtras} × ${formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)} = ${formatCurrency(subtotal.extraCriancaValor)}`}
+                                        </Text>
+                                      ) : null}
+                                      <Text
+                                        style={styles.subtotalSuiteValorFinal}
+                                      >
+                                        {formatCurrency(subtotal.valorTotal)}
+                                      </Text>
+                                    </>
+                                  ) : (
+                                    <Text
+                                      style={styles.subtotalSuiteValorFinal}
+                                    >
+                                      Total desta suíte:{" "}
+                                      {formatCurrency(subtotal.valorTotal)}
+                                    </Text>
+                                  )}
+                                </View>
+                              ) : null}
+                              <TouchableOpacity
+                                style={[
+                                  styles.newButton,
+                                  { alignSelf: "center" },
+                                ]}
+                                onPress={handleAdicionarAoCarrinho}
+                                disabled={adicionandoItem}
+                              >
+                                {adicionandoItem ? (
+                                  <ActivityIndicator
+                                    size="small"
+                                    color="#fff"
+                                  />
+                                ) : (
+                                  <Text style={styles.newButtonText}>
+                                    Adicionar ao carrinho
+                                  </Text>
+                                )}
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => setSuiteEmEdicao(null)}
+                                style={{ alignSelf: "center", marginTop: 6 }}
+                              >
+                                <Text style={styles.descricaoSuite}>
+                                  Cancelar
+                                </Text>
+                              </TouchableOpacity>
                             </View>
                           );
                         })()}
-                        {(suite as EventoSuite & {
-                          cotacao?: { valorTotal?: number };
-                        }).cotacao?.valorTotal != null && (
-                          <Text
-                            style={[styles.descricaoSuite, { fontWeight: "bold" }]}
-                          >
-                            A partir de{" "}
-                            {formatCurrency(
-                              (
-                                suite as EventoSuite & {
-                                  cotacao: { valorTotal: number };
-                                }
-                              ).cotacao.valorTotal,
-                            )}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
 
-                    {emEdicao && !noCarrinho && (() => {
-                      const { min, max } = getLimitesSuite(suite);
-                      const totalHospedes = adultosItem + criancasItem;
-                      const podeIncrementar = totalHospedes < max;
-                      const podeDecrementarAdulto =
-                        adultosItem > 0 && totalHospedes - 1 >= min;
-                      const podeDecrementarCrianca =
-                        criancasItem > 0 && totalHospedes - 1 >= min;
-                      const corDesabilitado = colors.cinza;
-                      const noites =
-                        (suite as EventoSuite & { noites?: number }).noites ??
-                        calcularNoitesHotelaria(
-                          combineDateTime(checkinDate, checkinTime),
-                          combineDateTime(checkoutDate, checkoutTime),
-                        );
-                      const subtotal = calcularSubtotalSuitePousada(
-                        suite,
-                        adultosItem,
-                        criancasItem,
-                        noites,
-                      );
-
-                      return (
-                      <View style={styles.areaCotacao}>
-                        <View style={styles.filtroRow}>
-                          <Text style={styles.label}>Adultos</Text>
-                          <View style={styles.counterRow}>
-                            <TouchableOpacity
-                              disabled={!podeDecrementarAdulto}
-                              onPress={() => {
-                                if (podeDecrementarAdulto) {
-                                  setAdultosItem(adultosItem - 1);
-                                }
-                              }}
-                            >
-                              <Feather
-                                name="minus-circle"
-                                size={28}
-                                color={
-                                  podeDecrementarAdulto
-                                    ? colors.azul
-                                    : corDesabilitado
-                                }
-                              />
-                            </TouchableOpacity>
-                            <Text style={styles.counterValue}>{adultosItem}</Text>
-                            <TouchableOpacity
-                              disabled={!podeIncrementar}
-                              onPress={() => {
-                                if (podeIncrementar) {
-                                  setAdultosItem(adultosItem + 1);
-                                }
-                              }}
-                            >
-                              <Feather
-                                name="plus-circle"
-                                size={28}
-                                color={
-                                  podeIncrementar ? colors.azul : corDesabilitado
-                                }
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                        <View style={styles.filtroRow}>
-                          <Text style={styles.label}>Crianças</Text>
-                          <View style={styles.counterRow}>
-                            <TouchableOpacity
-                              disabled={!podeDecrementarCrianca}
-                              onPress={() => {
-                                if (podeDecrementarCrianca) {
-                                  setCriancasItem(criancasItem - 1);
-                                }
-                              }}
-                            >
-                              <Feather
-                                name="minus-circle"
-                                size={28}
-                                color={
-                                  podeDecrementarCrianca
-                                    ? colors.azul
-                                    : corDesabilitado
-                                }
-                              />
-                            </TouchableOpacity>
-                            <Text style={styles.counterValue}>{criancasItem}</Text>
-                            <TouchableOpacity
-                              disabled={!podeIncrementar}
-                              onPress={() => {
-                                if (podeIncrementar) {
-                                  setCriancasItem(criancasItem + 1);
-                                }
-                              }}
-                            >
-                              <Feather
-                                name="plus-circle"
-                                size={28}
-                                color={
-                                  podeIncrementar ? colors.azul : corDesabilitado
-                                }
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                        <Text style={[styles.descricaoSuite, { textAlign: "center" }]}>
-                          {totalHospedes} de {max} hóspedes
-                        </Text>
-                        {subtotal ? (
-                          <View style={styles.subtotalSuiteCard}>
-                            <Text style={styles.subtotalSuiteTitulo}>
-                              Subtotal desta suíte
-                            </Text>
-                            {subtotal.temExtras ? (
-                              <>
-                                <Text style={styles.subtotalSuiteLinha}>
-                                  {noites > 1
-                                    ? `Valor base (${noites} diárias): `
-                                    : "Valor base: "}
-                                  {formatCurrency(subtotal.suitePreco)}
-                                </Text>
-                                {subtotal.adultosExtras > 0 ? (
-                                  <Text style={styles.subtotalSuiteLinha}>
-                                    {noites > 1
-                                      ? `Adultos extras: ${subtotal.adultosExtras} × ${noites} diárias × ${formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)} = ${formatCurrency(subtotal.extraAdultoValor)}`
-                                      : `Adultos extras: ${subtotal.adultosExtras} × ${formatCurrency(VALOR_ADICIONAL_ADULTO_EXTRA)} = ${formatCurrency(subtotal.extraAdultoValor)}`}
-                                  </Text>
-                                ) : null}
-                                {subtotal.criancasExtras > 0 ? (
-                                  <Text style={styles.subtotalSuiteLinha}>
-                                    {noites > 1
-                                      ? `Crianças extras: ${subtotal.criancasExtras} × ${noites} diárias × ${formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)} = ${formatCurrency(subtotal.extraCriancaValor)}`
-                                      : `Crianças extras: ${subtotal.criancasExtras} × ${formatCurrency(VALOR_ADICIONAL_CRIANCA_EXTRA)} = ${formatCurrency(subtotal.extraCriancaValor)}`}
-                                  </Text>
-                                ) : null}
-                                <Text style={styles.subtotalSuiteValorFinal}>
-                                  {formatCurrency(subtotal.valorTotal)}
-                                </Text>
-                              </>
-                            ) : (
-                              <Text style={styles.subtotalSuiteValorFinal}>
-                                Total desta suíte:{" "}
-                                {formatCurrency(subtotal.valorTotal)}
-                              </Text>
-                            )}
-                          </View>
-                        ) : null}
+                      {!noCarrinho && !emEdicao && (
                         <TouchableOpacity
                           style={[styles.newButton, { alignSelf: "center" }]}
-                          onPress={handleAdicionarAoCarrinho}
-                          disabled={adicionandoItem}
+                          onPress={() => handleAbrirAdicionarSuite(suite)}
                         >
-                          {adicionandoItem ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                          ) : (
-                            <Text style={styles.newButtonText}>
-                              Adicionar ao carrinho
-                            </Text>
-                          )}
+                          <Text style={styles.newButtonText}>
+                            Selecionar suíte
+                          </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setSuiteEmEdicao(null)}
-                          style={{ alignSelf: "center", marginTop: 6 }}
-                        >
-                          <Text style={styles.descricaoSuite}>Cancelar</Text>
-                        </TouchableOpacity>
-                      </View>
-                      );
-                    })()}
+                      )}
 
-                    {!noCarrinho && !emEdicao && (
-                      <TouchableOpacity
-                        style={[styles.newButton, { alignSelf: "center" }]}
-                        onPress={() => handleAbrirAdicionarSuite(suite)}
-                      >
-                        <Text style={styles.newButtonText}>Selecionar suíte</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <View style={{ height: 16 }} />
-                  </View>
-                );
-              })}
+                      <View style={{ height: 16 }} />
+                    </View>
+                  );
+                })}
               </View>
             )}
 
@@ -1524,9 +1586,7 @@ export default function Index() {
         visible={fotoViewer.visible}
         uris={fotoViewer.uris}
         initialIndex={fotoViewer.initialIndex}
-        onClose={() =>
-          setFotoViewer((prev) => ({ ...prev, visible: false }))
-        }
+        onClose={() => setFotoViewer((prev) => ({ ...prev, visible: false }))}
       />
     </LinearGradient>
   );

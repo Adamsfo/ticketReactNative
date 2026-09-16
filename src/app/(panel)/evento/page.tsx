@@ -368,7 +368,11 @@ export default function Index() {
         }
       >
         <Text style={styles.floatingButtonText}>
-          {isPDV ? "Vender Ingressos" : "Comprar Ingressos"}
+          {isPDV
+            ? "Vender Ingressos"
+            : formData.tipo === "Pousada"
+              ? "Faça sua reserva"
+              : "Comprar Ingressos"}
         </Text>
       </TouchableOpacity>
 
