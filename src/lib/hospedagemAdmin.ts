@@ -1,5 +1,9 @@
 import { api } from "./api";
 import { ApiResponse } from "../types/geral";
+import type {
+  CotacaoReservaSuite,
+  DisponibilidadeReservaSuite,
+} from "./reservaSuite";
 import {
   corStatusOperacionalHospedagem,
   HOSPEDAGEM_STATUS_COLORS,
@@ -1188,6 +1192,41 @@ export type MetaSuitesOperacionais = {
   calendario?: MetaCalendarioSuites;
   agenda?: MetaAgendaSuites;
 };
+
+/** Disponibilidade administrativa (Ativo + PDV + Oculto). */
+export async function getDisponibilidadeInterna(params: {
+  idEvento: number;
+  checkin: string;
+  checkout: string;
+}): Promise<ApiResponse<DisponibilidadeReservaSuite>> {
+  return api.request<DisponibilidadeReservaSuite>(
+    "/hospedagem/disponibilidade",
+    "GET",
+    null,
+    {
+      idEvento: String(params.idEvento),
+      checkin: params.checkin,
+      checkout: params.checkout,
+    },
+  );
+}
+
+/** Cotação administrativa (permite suítes Oculto na recepção). */
+export async function getCotacaoInterna(params: {
+  idEventoSuite: number;
+  checkin: string;
+  checkout: string;
+  adultos: number;
+  criancas: number;
+}): Promise<ApiResponse<CotacaoReservaSuite>> {
+  return api.request<CotacaoReservaSuite>("/hospedagem/cotacao", "GET", null, {
+    idEventoSuite: String(params.idEventoSuite),
+    checkin: params.checkin,
+    checkout: params.checkout,
+    adultos: String(params.adultos),
+    criancas: String(params.criancas),
+  });
+}
 
 export async function getSuitesOperacionais(params?: {
   filtro?: FiltroSuiteOperacional | string;

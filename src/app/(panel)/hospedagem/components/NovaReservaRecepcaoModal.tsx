@@ -30,6 +30,8 @@ import {
   validarHospedes,
 } from "@/src/lib/hospedagemHospedes";
 import {
+  getCotacaoInterna,
+  getDisponibilidadeInterna,
   postReservaRecepcao,
   postReservaRecepcaoEnviarCliente,
 } from "@/src/lib/hospedagemAdmin";
@@ -53,7 +55,6 @@ import {
   MSG_DESCONTO_INVALIDO,
   parseDescontoInput,
 } from "@/src/lib/hospedagemDescontoRecepcao";
-import { getCotacao, getDisponibilidade } from "@/src/lib/reservaSuite";
 import {
   calcularNoitesHotelaria,
   calcularSubtotalSuitePousada,
@@ -510,7 +511,7 @@ export default function NovaReservaRecepcaoModal() {
     setSuiteEmEdicao(null);
 
     try {
-      const resp = await getDisponibilidade({
+      const resp = await getDisponibilidadeInterna({
         idEvento,
         checkin: getCheckinIso(),
         checkout: getCheckoutIso(),
@@ -812,7 +813,7 @@ export default function NovaReservaRecepcaoModal() {
     setAdicionandoItem(true);
     setSuiteErro(null);
     try {
-      const response = await getCotacao({
+      const response = await getCotacaoInterna({
         idEventoSuite: suiteEmEdicao.id,
         checkin: getCheckinIso(),
         checkout: getCheckoutIso(),
