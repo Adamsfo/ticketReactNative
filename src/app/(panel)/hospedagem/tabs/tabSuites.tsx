@@ -40,6 +40,7 @@ import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador, {
   labelChipOrigemReserva,
 } from "../components/OrigemReservaIndicador";
+import LinhaClienteComWhatsApp from "@/src/components/hospedagem/LinhaClienteComWhatsApp";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
 import {
@@ -606,9 +607,11 @@ function CardSuiteDuplaReserva({
           titulo={atualHospedado ? "Hospedado" : "Checkout hoje"}
           onPress={abrirAtual}
         >
-          <MetaLinha icon="user" strong>
-            {item.responsavel?.trim() || "Hóspede"}
-          </MetaLinha>
+          <LinhaClienteComWhatsApp
+            nome={item.responsavel ?? ""}
+            telefone={item.telefone}
+            strong
+          />
           <MetaLinha icon="log-out">
             Sai às {horaCheckinCurta(item.checkout)}
           </MetaLinha>
@@ -754,9 +757,11 @@ function CardSuiteCheckoutComNovaReserva({
           titulo={clienteHospedado ? "Hospedado" : "Checkout hoje"}
           onPress={abrirAtual}
         >
-          <MetaLinha icon="user" strong>
-            {item.responsavel?.trim() || "Hóspede"}
-          </MetaLinha>
+          <LinhaClienteComWhatsApp
+            nome={item.responsavel ?? ""}
+            telefone={item.telefone}
+            strong
+          />
           <MetaLinha icon="log-out">
             Sai às {horaCheckinCurta(item.checkout)}
           </MetaLinha>
@@ -1000,9 +1005,11 @@ function CardSuite({
           ) : (
             <>
               {item.responsavel ? (
-                <MetaLinha icon="user" strong>
-                  {item.responsavel}
-                </MetaLinha>
+                <LinhaClienteComWhatsApp
+                  nome={item.responsavel}
+                  telefone={item.telefone}
+                  strong
+                />
               ) : null}
               <OrigemReservaIndicador dados={item} variante="card" />
               {aguardandoAcomodacao ? (
