@@ -17,6 +17,14 @@ export function normalizarTelefoneWhatsAppLink(
   return withCountry;
 }
 
+function isWebMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+
+  return /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  );
+}
+
 export function abrirWhatsAppCliente(
   telefone: string | null | undefined,
 ): boolean {
@@ -26,7 +34,11 @@ export function abrirWhatsAppCliente(
   const url = `https://wa.me/${numero}`;
 
   if (Platform.OS === "web") {
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (isWebMobile()) {
+      window.location.assign(url);
+    } else {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   } else {
     Linking.openURL(url).catch((err) =>
       console.error("Erro ao abrir o WhatsApp", err),
