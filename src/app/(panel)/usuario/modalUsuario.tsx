@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import QuillEditorWeb from "@/src/components/QuillEditorWeb";
 import QuillEditorMobile from "@/src/components/QuillEditorMobile";
 import { Badge } from "@/src/components/Badge";
+import ModalUsuarioAcessos from "./modalUsuarioAcessos";
 
 const { width } = Dimensions.get("window");
 
@@ -251,6 +252,10 @@ export default function ModalUsuario({ id, visible, onClose }: ModalMsgProps) {
                 <Text style={styles.labelError}>{errors.telefone}</Text>
               )}
             </View>
+
+            {id > 0 ? (
+              <ModalUsuarioAcessos idUsuario={id} visible={visible} />
+            ) : null}
           </ScrollView>
 
           <View style={styles.footer}>

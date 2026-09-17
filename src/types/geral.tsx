@@ -478,6 +478,8 @@ export interface ProdutorAcesso {
   idProdutor: number;
   tipoAcesso: TipoAcesso;
   idUsuario: number;
+  cliente_chavePOS?: string | null;
+  pos_id?: number | null;
 }
 
 export enum TipoDesconto {
