@@ -29,7 +29,6 @@ import {
   isExecutionDismissable,
   OutboundFailedReservationDetail,
   labelExecutionDisplayStatus,
-  labelExecutionStatus,
   labelProviderUiStatus,
   labelTriggerSource,
   listIntegrationExecutions,
@@ -423,7 +422,10 @@ export default function TabIntegracoes() {
               />
               <Linha
                 label="Resultado"
-                valor={labelExecutionStatus(summary.lastExecution.status)}
+                valor={labelExecutionDisplayStatus(
+                  summary.lastExecution.status,
+                  summary.lastExecution.adminDismissal,
+                )}
               />
               <Linha
                 label="Importadas"
@@ -592,7 +594,10 @@ export default function TabIntegracoes() {
                     />
                     <Linha
                       label="Resultado"
-                      valor={labelExecutionStatus(last.status)}
+                      valor={labelExecutionDisplayStatus(
+                        last.status,
+                        last.adminDismissal,
+                      )}
                     />
                     <Text style={[styles.blocoTitulo, { marginTop: 8 }]}>
                       Resumo
@@ -621,7 +626,7 @@ export default function TabIntegracoes() {
                       label="Falhas"
                       valor={formatPtNumber(last.failed)}
                     />
-                    {last.errorMessage ? (
+                    {last.errorMessage && !last.adminDismissal?.dismissed ? (
                       <Text style={styles.ultimoErro}>{last.errorMessage}</Text>
                     ) : null}
                   </View>
@@ -923,7 +928,13 @@ export default function TabIntegracoes() {
                   </View>
                 ) : null}
                 {detalheExec.errorMessage ? (
-                  <Text style={styles.ultimoErro}>
+                  <Text
+                    style={
+                      detalheExec.adminDismissal?.dismissed
+                        ? styles.erroOriginalTexto
+                        : styles.ultimoErro
+                    }
+                  >
                     {detalheExec.adminDismissal?.dismissed
                       ? `Erro original: ${detalheExec.errorMessage}`
                       : detalheExec.errorMessage}
@@ -990,15 +1001,34 @@ function OutboundFailedReservationsSection({
   exec: IntegrationExecutionRow;
 }) {
   const falhas = extractOutboundFailedReservations(exec);
+  const ignorada = exec.adminDismissal?.dismissed === true;
   if (falhas.length === 0) {
     return null;
   }
 
   return (
-    <View style={styles.failedReservasBox}>
-      <Text style={styles.failedReservasTitulo}>RESERVAS COM ERRO</Text>
+    <View
+      style={[
+        styles.failedReservasBox,
+        ignorada && styles.failedReservasBoxIgnorada,
+      ]}
+    >
+      <Text
+        style={[
+          styles.failedReservasTitulo,
+          ignorada && styles.failedReservasTituloIgnorada,
+        ]}
+      >
+        {ignorada
+          ? "FALHAS DESTA EXECUÇÃO (IGNORADAS)"
+          : "RESERVAS COM ERRO"}
+      </Text>
       {falhas.map((falha) => (
-        <OutboundFailedReservationCard key={`${falha.idOutboundState}-${falha.idReservaHospedagem}`} falha={falha} />
+        <OutboundFailedReservationCard
+          key={`${falha.idOutboundState}-${falha.idReservaHospedagem}`}
+          falha={falha}
+          ignorada={ignorada}
+        />
       ))}
     </View>
   );
@@ -1006,46 +1036,96 @@ function OutboundFailedReservationsSection({
 
 function OutboundFailedReservationCard({
   falha,
+  ignorada = false,
 }: {
   falha: OutboundFailedReservationDetail;
+  ignorada?: boolean;
 }) {
   const periodo = formatOutboundPeriodo(falha.checkin, falha.checkout);
   const hospedinId =
     falha.hospedinReservationId || falha.hospedinIdExterno || null;
 
   return (
-    <View style={styles.failedReservaCard}>
-      <Text style={styles.failedReservaTitulo}>
+    <View
+      style={[
+        styles.failedReservaCard,
+        ignorada && styles.failedReservaCardIgnorada,
+      ]}
+    >
+      <Text
+        style={[
+          styles.failedReservaTitulo,
+          ignorada && styles.failedReservaTituloIgnorada,
+        ]}
+      >
         Reserva #{falha.idReservaHospedagem}
       </Text>
       {falha.nomeHospede ? (
-        <Text style={styles.failedReservaTexto}>
+        <Text
+          style={[
+            styles.failedReservaTexto,
+            ignorada && styles.failedReservaTextoIgnorada,
+          ]}
+        >
           Hóspede: {falha.nomeHospede}
         </Text>
       ) : null}
       {periodo ? (
-        <Text style={styles.failedReservaTexto}>{periodo}</Text>
+        <Text
+          style={[
+            styles.failedReservaTexto,
+            ignorada && styles.failedReservaTextoIgnorada,
+          ]}
+        >
+          {periodo}
+        </Text>
       ) : null}
-      <Text style={styles.failedReservaTexto}>
+      <Text
+        style={[
+          styles.failedReservaTexto,
+          ignorada && styles.failedReservaTextoIgnorada,
+        ]}
+      >
         Operação: {falha.operacao || "—"}
       </Text>
       {hospedinId ? (
-        <Text style={styles.failedReservaTexto}>
+        <Text
+          style={[
+            styles.failedReservaTexto,
+            ignorada && styles.failedReservaTextoIgnorada,
+          ]}
+        >
           Hospedin ID: {hospedinId}
         </Text>
       ) : null}
       {falha.httpStatus != null ? (
-        <Text style={styles.failedReservaTexto}>
+        <Text
+          style={[
+            styles.failedReservaTexto,
+            ignorada && styles.failedReservaTextoIgnorada,
+          ]}
+        >
           HTTP: {falha.httpStatus}
         </Text>
       ) : null}
       {falha.errorCode ? (
-        <Text style={styles.failedReservaTexto}>
+        <Text
+          style={[
+            styles.failedReservaTexto,
+            ignorada && styles.failedReservaTextoIgnorada,
+          ]}
+        >
           Código: {falha.errorCode}
         </Text>
       ) : null}
       {falha.mensagemErro ? (
-        <Text style={styles.failedReservaErro}>Erro: {falha.mensagemErro}</Text>
+        <Text
+          style={
+            ignorada ? styles.failedReservaErroIgnorada : styles.failedReservaErro
+          }
+        >
+          Erro: {falha.mensagemErro}
+        </Text>
       ) : null}
       {falha.correlationId ? (
         <Text style={styles.failedReservaMuted}>
@@ -1185,6 +1265,7 @@ const styles = StyleSheet.create({
   btnSecTexto: { color: colors.azul, fontWeight: "700", fontSize: 13 },
   btnOff: { opacity: 0.5 },
   ultimoErro: { fontSize: 12, color: "#b91c1c" },
+  erroOriginalTexto: { fontSize: 12, color: "#6b7280" },
   meta: { fontSize: 12, color: "#6b7280" },
   blocoMetricas: {
     marginTop: 6,
@@ -1279,6 +1360,12 @@ const styles = StyleSheet.create({
     color: "#b91c1c",
     letterSpacing: 0.4,
   },
+  failedReservasBoxIgnorada: {
+    marginTop: 12,
+  },
+  failedReservasTituloIgnorada: {
+    color: "#6b7280",
+  },
   failedReservaCard: {
     borderWidth: 1,
     borderColor: "#fecaca",
@@ -1287,19 +1374,35 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 2,
   },
+  failedReservaCardIgnorada: {
+    borderColor: "#d1d5db",
+    backgroundColor: "#f9fafb",
+  },
   failedReservaTitulo: {
     fontSize: 14,
     fontWeight: "700",
     color: "#991b1b",
     marginBottom: 2,
   },
+  failedReservaTituloIgnorada: {
+    color: "#4b5563",
+  },
   failedReservaTexto: {
     fontSize: 12,
     color: "#7f1d1d",
   },
+  failedReservaTextoIgnorada: {
+    color: "#6b7280",
+  },
   failedReservaErro: {
     fontSize: 12,
     color: "#b91c1c",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  failedReservaErroIgnorada: {
+    fontSize: 12,
+    color: "#6b7280",
     fontWeight: "600",
     marginTop: 4,
   },

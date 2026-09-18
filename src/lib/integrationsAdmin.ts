@@ -62,6 +62,7 @@ export type SyncSummaryCounts = {
     unchanged: number | null;
     ignored: number | null;
     errorMessage: string | null;
+    adminDismissal?: HospedinOutboundExecutionAdminDismissal | null;
   } | null;
   acumulado?: {
     execucoes: number;
