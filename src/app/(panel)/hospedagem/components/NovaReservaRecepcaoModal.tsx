@@ -76,14 +76,11 @@ import {
 
 const STEPS = ["Cliente", "Período", "Suíte", "Hóspedes", "Resumo"] as const;
 
-/** Seleção da tela Nova Reserva (atendente) — demais formas permanecem no sistema/outras telas. */
+/** Nova Reserva (atendente): pagamento antecipado na recepção — demais formas em outras telas. */
 const FORMAS_PAGAMENTO_NOVA_RESERVA: Array<{
   value: FormaPagamentoRecepcao;
   label: string;
-}> = [
-  { value: "PIX", label: "PIX" },
-  { value: "LinkPagamento", label: "Link de Pagamento" },
-];
+}> = [{ value: "Antecipado", label: "Antecipado" }];
 
 /** Recepção: seletor completo (00:00–23:30, slots de 30 min). */
 const DIA_INICIO = (() => {
@@ -629,6 +626,12 @@ export default function NovaReservaRecepcaoModal() {
     setPagamentoErro(null);
   }, [valorPagoInput, valorPagoNumero, totaisResumo.total]);
 
+  useEffect(() => {
+    if (step === 5) {
+      setFormaPagamento("Antecipado");
+    }
+  }, [step]);
+
   const carrinhoTemDescontoInvalido = useMemo(
     () =>
       carrinho.some((item) => {
@@ -1047,11 +1050,6 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
 
-    if (valorPago > 0 && !formaPagamento) {
-      setErroGeral("Selecione a forma de pagamento.");
-      return;
-    }
-
     const errs = validarHospedes(hospedes, { nomeOpcional: true });
     setHospedesErrors(errs);
     if (Object.keys(errs).length > 0) {
@@ -1072,7 +1070,7 @@ export default function NovaReservaRecepcaoModal() {
         observacoes: observacoes.trim() || null,
         pagamento: {
           valor: valorPago,
-          formaPagamento: formaPagamento || "Dinheiro",
+          formaPagamento: "Antecipado",
           comprovante: comprovantePagamento,
           observacao: observacaoPagamento.trim() || null,
         },
