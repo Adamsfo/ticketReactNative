@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -12,9 +13,11 @@ import {
   View,
 } from "react-native";
 import colors from "@/src/constants/colors";
+import { useAuth } from "@/src/contexts_/AuthContext";
 import { formatDateTimeHospedagem } from "@/src/lib/hospedagemStatusOperacional";
 import {
   corProviderUiStatus,
+  dismissHospedinOutboundExecutionError,
   extractOutboundFailedReservations,
   formatDurationMs,
   formatPtNumber,
@@ -23,7 +26,9 @@ import {
   getSyncPendencias,
   IntegrationExecutionRow,
   IntegrationProviderStatus,
+  isExecutionDismissable,
   OutboundFailedReservationDetail,
+  labelExecutionDisplayStatus,
   labelExecutionStatus,
   labelProviderUiStatus,
   labelTriggerSource,
@@ -41,6 +46,18 @@ import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshCon
 type SubAba = "providers" | "pendencias";
 type TriggerFiltro = "" | "SCHEDULER" | "MANUAL" | "API" | "WEBHOOK";
 
+function confirmAsync(title: string, message: string): Promise<boolean> {
+  if (Platform.OS === "web") {
+    return Promise.resolve(window.confirm(`${title}\n\n${message}`));
+  }
+  return new Promise((resolve) => {
+    Alert.alert(title, message, [
+      { text: "Cancelar", style: "cancel", onPress: () => resolve(false) },
+      { text: "Confirmar", style: "destructive", onPress: () => resolve(true) },
+    ]);
+  });
+}
+
 const TRIGGER_FILTROS: Array<{ key: TriggerFiltro; label: string }> = [
   { key: "", label: "Todos" },
   { key: "SCHEDULER", label: "Scheduler" },
@@ -53,6 +70,8 @@ const TRIGGER_FILTROS: Array<{ key: TriggerFiltro; label: string }> = [
  * Dashboard genérico de integrações + Pendências (reprocessamento).
  */
 export default function TabIntegracoes() {
+  const { isAdministrador, isProdutor } = useAuth();
+  const podeIntegracoes = isAdministrador || isProdutor;
   const {
     refreshSyncSummary,
     abrirPendenciasPedido,
@@ -81,6 +100,7 @@ export default function TabIntegracoes() {
   const [historicoTrigger, setHistoricoTrigger] = useState<TriggerFiltro>("");
   const [detalheExec, setDetalheExec] =
     useState<IntegrationExecutionRow | null>(null);
+  const [ignorandoErroExec, setIgnorandoErroExec] = useState(false);
 
   useEffect(() => {
     if (abrirPendenciasPedido) {
@@ -151,6 +171,44 @@ export default function TabIntegracoes() {
   const filtrarHistorico = (trigger: TriggerFiltro) => {
     if (!historicoProvider) return;
     void abrirHistorico(historicoProvider, trigger);
+  };
+
+  const ignorarErroExecucao = async (exec: IntegrationExecutionRow) => {
+    if (
+      historicoProvider !== "HOSPEDIN_OUTBOUND" ||
+      !podeIntegracoes ||
+      !isExecutionDismissable(exec)
+    ) {
+      return;
+    }
+
+    const confirmado = await confirmAsync(
+      "Ignorar erro",
+      "Deseja ignorar este erro no histórico? O estado do outbound não será alterado.",
+    );
+    if (!confirmado) {
+      return;
+    }
+
+    setIgnorandoErroExec(true);
+    setErro(null);
+    try {
+      const resp = await dismissHospedinOutboundExecutionError(exec.id);
+      if (!resp.success || !resp.data) {
+        setErro(resp.message || "Falha ao ignorar erro da execução.");
+        return;
+      }
+
+      setHistoricoRows((rows) =>
+        rows.map((row) => (row.id === exec.id ? resp.data! : row)),
+      );
+      setDetalheExec(resp.data);
+      setMensagem(`Execução #${exec.id} marcada como ignorada.`);
+    } catch {
+      setErro("Falha ao ignorar erro da execução.");
+    } finally {
+      setIgnorandoErroExec(false);
+    }
   };
 
   const executarAgora = async (provider: string) => {
@@ -778,7 +836,10 @@ export default function TabIntegracoes() {
                         {formatDurationMs(row.durationMs)}
                       </Text>
                       <Text style={[styles.td, styles.colResult]} numberOfLines={1}>
-                        {labelExecutionStatus(row.status)}
+                        {labelExecutionDisplayStatus(
+                          row.status,
+                          row.adminDismissal,
+                        )}
                       </Text>
                       <Text style={[styles.td, styles.colNum]}>
                         {row.imported ?? 0}
@@ -850,13 +911,44 @@ export default function TabIntegracoes() {
                   label="Unchanged"
                   valor={formatPtNumber(detalheExec.unchanged)}
                 />
+                {detalheExec.adminDismissal?.dismissed ? (
+                  <View style={styles.dismissalInfoBox}>
+                    <Text style={styles.dismissalInfoTitulo}>Ignorado</Text>
+                    <Text style={styles.dismissalInfoTexto}>
+                      Por {detalheExec.adminDismissal.dismissedByUserName} em{" "}
+                      {formatDateTimeHospedagem(
+                        detalheExec.adminDismissal.dismissedAt,
+                      )}
+                    </Text>
+                  </View>
+                ) : null}
                 {detalheExec.errorMessage ? (
                   <Text style={styles.ultimoErro}>
-                    {detalheExec.errorMessage}
+                    {detalheExec.adminDismissal?.dismissed
+                      ? `Erro original: ${detalheExec.errorMessage}`
+                      : detalheExec.errorMessage}
                   </Text>
                 ) : null}
                 {historicoProvider === "HOSPEDIN_OUTBOUND" ? (
                   <OutboundFailedReservationsSection exec={detalheExec} />
+                ) : null}
+                {historicoProvider === "HOSPEDIN_OUTBOUND" &&
+                podeIntegracoes &&
+                isExecutionDismissable(detalheExec) ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.btn,
+                      styles.btnSec,
+                      styles.btnIgnorarErro,
+                      ignorandoErroExec && styles.btnOff,
+                    ]}
+                    disabled={ignorandoErroExec}
+                    onPress={() => void ignorarErroExecucao(detalheExec)}
+                  >
+                    <Text style={styles.btnSecTexto}>
+                      {ignorandoErroExec ? "Ignorando..." : "Ignorar erro"}
+                    </Text>
+                  </TouchableOpacity>
                 ) : null}
               </View>
             ) : null}
@@ -1215,5 +1307,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#9ca3af",
     marginTop: 2,
+  },
+  dismissalInfoBox: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    gap: 2,
+  },
+  dismissalInfoTitulo: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4b5563",
+  },
+  dismissalInfoTexto: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  btnIgnorarErro: {
+    marginTop: 10,
+    alignSelf: "flex-start",
   },
 });

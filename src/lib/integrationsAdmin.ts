@@ -101,6 +101,13 @@ export type OutboundFailedReservationDetail = {
   correlationId: string;
 };
 
+export type HospedinOutboundExecutionAdminDismissal = {
+  dismissed: true;
+  dismissedAt: string;
+  dismissedByUserId: number;
+  dismissedByUserName: string;
+};
+
 export type IntegrationExecutionRow = {
   id: number;
   provider?: string;
@@ -123,6 +130,7 @@ export type IntegrationExecutionRow = {
   unchanged: number | null;
   errorMessage: string | null;
   summaryJson?: unknown;
+  adminDismissal?: HospedinOutboundExecutionAdminDismissal | null;
 };
 
 export type ProviderExecutionStats = {
@@ -235,6 +243,16 @@ export async function getIntegrationExecution(
   return api.request(`/api/integrations/executions/${id}`, "GET");
 }
 
+export async function dismissHospedinOutboundExecutionError(
+  id: number,
+): Promise<ApiResponse<IntegrationExecutionRow>> {
+  return api.request(
+    `/api/integrations/executions/${id}/dismiss-error`,
+    "POST",
+    {},
+  );
+}
+
 export async function getProviderExecutionStatsApi(
   provider: string,
 ): Promise<ApiResponse<ProviderExecutionStats>> {
@@ -262,6 +280,26 @@ export function labelExecutionStatus(status?: string | null): string {
   if (s === "SKIPPED") return "Ignorada";
   if (s === "RUNNING") return "Executando";
   return status || "—";
+}
+
+export function labelExecutionDisplayStatus(
+  status?: string | null,
+  adminDismissal?: HospedinOutboundExecutionAdminDismissal | null,
+): string {
+  if (adminDismissal?.dismissed) {
+    return "Ignorado";
+  }
+  return labelExecutionStatus(status);
+}
+
+export function isExecutionDismissable(
+  exec: Pick<IntegrationExecutionRow, "status" | "adminDismissal">,
+): boolean {
+  const status = String(exec.status || "").toUpperCase();
+  if (status !== "FAILED" && status !== "PARTIAL") {
+    return false;
+  }
+  return !exec.adminDismissal?.dismissed;
 }
 
 export function formatDurationMs(ms?: number | null): string {
