@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -29,7 +30,11 @@ import {
   calcularIdadeEmAnos,
   formatarIdadeAnos,
 } from "@/src/lib/hospedagemHospedes";
+import ModalMsg from "@/src/components/ModalMsg";
+import ModalMsgSimNao from "@/src/components/ModalMsgSimNao";
 import {
+  cancelarMinhaReserva,
+  formatarMensagemResultadoCancelamentoMinhaReserva,
   getMinhaReservaDetalhe,
   MinhaReservaDetalhe,
 } from "@/src/lib/reservaSuite";
@@ -91,6 +96,11 @@ export default function MinhasReservaDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [dados, setDados] = useState<MinhaReservaDetalhe | null>(null);
+  const [modalConfirmarCancelamento, setModalConfirmarCancelamento] =
+    useState(false);
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msgModal, setMsgModal] = useState("");
+  const [cancelando, setCancelando] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!Number.isFinite(reservaId) || reservaId <= 0) {
@@ -146,6 +156,34 @@ export default function MinhasReservaDetalhePage() {
 
   const voltar = () => {
     navigation.navigate("minhasreservas");
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!dados || cancelando) return;
+
+    setCancelando(true);
+    try {
+      const response = await cancelarMinhaReserva(dados.id);
+      if (!response.success || !response.data) {
+        throw new Error(
+          response.message || "Não foi possível cancelar a reserva.",
+        );
+      }
+
+      setModalConfirmarCancelamento(false);
+      setMsgModal(
+        formatarMensagemResultadoCancelamentoMinhaReserva(response.data),
+      );
+      setModalMsg(true);
+      await carregar();
+    } catch (error: any) {
+      setMsgModal(
+        error?.message || "Não foi possível cancelar a reserva. Tente novamente.",
+      );
+      setModalMsg(true);
+    } finally {
+      setCancelando(false);
+    }
   };
 
   return (
@@ -370,13 +408,43 @@ export default function MinhasReservaDetalhePage() {
                   </TouchableOpacity>
                 ) : null}
 
-                <View style={styles.acoesFuturas} />
+                <View style={styles.acoesFuturas}>
+                  {dados.cancelamento?.podeCancelar ? (
+                    <TouchableOpacity
+                      style={styles.btnCancelar}
+                      onPress={() => setModalConfirmarCancelamento(true)}
+                    >
+                      <Text style={styles.btnCancelarTexto}>
+                        Cancelar reserva
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </>
             )}
           </View>
         </ScrollView>
       </View>
       <Footer />
+
+      <Modal visible={modalConfirmarCancelamento} transparent animationType="fade">
+        <ModalMsgSimNao
+          onClose={() => {
+            if (cancelando) return;
+            setModalConfirmarCancelamento(false);
+          }}
+          onConfirm={confirmarCancelamento}
+          msg={
+            dados
+              ? `Cancelar reserva #${dados.numeroReserva}?\n\nCheck-in:\n${formatarDataHora(dados.checkin)}\n\nValor pago:\n${formatCurrency(dados.financeiro.valorPago)}\n\nDevolução:\n${dados.cancelamento.percentualDevolucao ?? "—"}%\n\nValor a devolver:\n${formatCurrency(Number(dados.cancelamento.valorDevolucao || 0))}`
+              : ""
+          }
+        />
+      </Modal>
+
+      <Modal visible={modalMsg} transparent animationType="fade">
+        <ModalMsg onClose={() => setModalMsg(false)} msg={msgModal} />
+      </Modal>
     </LinearGradient>
   );
 }
@@ -584,5 +652,18 @@ const styles = StyleSheet.create({
   acoesFuturas: {
     minHeight: 8,
     marginBottom: 16,
+  },
+  btnCancelar: {
+    borderWidth: 1,
+    borderColor: "#d92d20",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  btnCancelarTexto: {
+    color: "#d92d20",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

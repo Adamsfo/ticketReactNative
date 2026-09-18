@@ -3,12 +3,15 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Modal,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useNavigation } from "@react-navigation/native";
@@ -19,7 +22,12 @@ import BarMenu from "@/src/components/BarMenu";
 import Footer from "@/src/components/Footer";
 import { Badge } from "@/src/components/Badge";
 import MinhaReservaCard from "@/src/components/minhasReservas/MinhaReservaCard";
+import ModalMsg from "@/src/components/ModalMsg";
+import ModalMsgSimNao from "@/src/components/ModalMsgSimNao";
+import formatCurrency from "@/src/components/FormatCurrency";
 import {
+  cancelarMinhaReserva,
+  formatarMensagemResultadoCancelamentoMinhaReserva,
   FiltroStatusMinhasReservas,
   getMinhasReservas,
   MinhaReservaCard as MinhaReservaCardType,
@@ -55,7 +63,26 @@ export default function MinhasReservasPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [reservaCancelar, setReservaCancelar] =
+    useState<MinhaReservaCardType | null>(null);
+  const [modalConfirmarCancelamento, setModalConfirmarCancelamento] =
+    useState(false);
+  const [modalMsg, setModalMsg] = useState(false);
+  const [msgModal, setMsgModal] = useState("");
+  const [cancelando, setCancelando] = useState(false);
   const requestIdRef = useRef(0);
+
+  const formatarCheckin = (valor: string) => {
+    try {
+      return formatInTimeZone(
+        parseISO(String(valor)),
+        "America/Cuiaba",
+        "dd/MM/yyyy 'às' HH:mm",
+      );
+    } catch {
+      return String(valor);
+    }
+  };
 
   const carregar = useCallback(
     async (pagina: number, append: boolean, filtro: FiltroStatusMinhasReservas) => {
@@ -128,6 +155,40 @@ export default function MinhasReservasPage() {
     carregar(page + 1, true, status);
   };
 
+  const abrirCancelamento = (item: MinhaReservaCardType) => {
+    setReservaCancelar(item);
+    setModalConfirmarCancelamento(true);
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!reservaCancelar || cancelando) return;
+
+    setCancelando(true);
+    try {
+      const response = await cancelarMinhaReserva(reservaCancelar.id);
+      if (!response.success || !response.data) {
+        throw new Error(
+          response.message || "Não foi possível cancelar a reserva.",
+        );
+      }
+
+      setMsgModal(
+        formatarMensagemResultadoCancelamentoMinhaReserva(response.data),
+      );
+      setModalMsg(true);
+      setModalConfirmarCancelamento(false);
+      setReservaCancelar(null);
+      carregar(1, false, status);
+    } catch (error: any) {
+      setMsgModal(
+        error?.message || "Não foi possível cancelar a reserva. Tente novamente.",
+      );
+      setModalMsg(true);
+    } finally {
+      setCancelando(false);
+    }
+  };
+
   const renderConteudo = () => {
     if (loading) {
       return (
@@ -190,6 +251,7 @@ export default function MinhasReservasPage() {
                 idReserva: item.id,
               })
             }
+            onCancelar={() => abrirCancelamento(item)}
           />
         )}
       />
@@ -222,6 +284,26 @@ export default function MinhasReservasPage() {
         <View style={styles.area}>{renderConteudo()}</View>
       </View>
       <Footer />
+
+      <Modal visible={modalConfirmarCancelamento} transparent animationType="fade">
+        <ModalMsgSimNao
+          onClose={() => {
+            if (cancelando) return;
+            setModalConfirmarCancelamento(false);
+            setReservaCancelar(null);
+          }}
+          onConfirm={confirmarCancelamento}
+          msg={
+            reservaCancelar
+              ? `Cancelar reserva #${reservaCancelar.numeroReserva}?\n\nCheck-in:\n${formatarCheckin(reservaCancelar.checkin)}\n\nValor pago:\n${formatCurrency(Number(reservaCancelar.valorPago || 0))}\n\nDevolução:\n${reservaCancelar.percentualDevolucao ?? "—"}%\n\nValor a devolver:\n${formatCurrency(Number(reservaCancelar.valorDevolucao || 0))}`
+              : ""
+          }
+        />
+      </Modal>
+
+      <Modal visible={modalMsg} transparent animationType="fade">
+        <ModalMsg onClose={() => setModalMsg(false)} msg={msgModal} />
+      </Modal>
     </LinearGradient>
   );
 }

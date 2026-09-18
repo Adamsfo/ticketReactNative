@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { ApiResponse } from "../types/geral";
+import formatCurrency from "@/src/components/FormatCurrency";
 import {
   buildPeriodoPadraoDisponibilidadePousada,
   getMenorValorCotacaoSuitesDisponibilidade,
@@ -246,6 +247,10 @@ export type MinhaReservaCard = {
   origemReserva: string | null;
   dataCriacao: string | null;
   dataConfirmacao: string | null;
+  podeCancelar: boolean;
+  motivoBloqueio: string | null;
+  percentualDevolucao: 50 | 100 | null;
+  valorDevolucao: number | null;
 };
 
 export type MetaMinhasReservas = {
@@ -315,7 +320,84 @@ export type MinhaReservaDetalhe = {
   };
   podeContinuarPagamento: boolean;
   tokenPagamento: string | null;
+  cancelamento: {
+    podeCancelar: boolean;
+    motivoBloqueio: string | null;
+    percentualDevolucao: 50 | 100 | null;
+    valorDevolucao: number | null;
+    valorPago: number;
+    valorPagoMercadoPago: number;
+    valorEstornado: number;
+    requerEstornoManual: boolean;
+  };
 };
+
+export type ResultadoCancelamentoMinhaReserva = {
+  id: number;
+  status: string;
+  numeroReserva: number;
+  /** Valor pago antes do cancelamento (base da política de devolução). */
+  valorPago: number;
+  percentualDevolucao: 50 | 100 | null;
+  valorDevolucao: number;
+  valorEstornado: number;
+};
+
+function normalizarResultadoCancelamentoMinhaReserva(
+  payload: unknown,
+): ResultadoCancelamentoMinhaReserva | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const item = payload as Record<string, unknown>;
+  const id = Number(item.id);
+  const numeroReserva = Number(item.numeroReserva ?? item.id);
+  const valorPago = Number(item.valorPago);
+  const percentualRaw = Number(item.percentualDevolucao);
+  const valorDevolucao = Number(item.valorDevolucao);
+  const valorEstornado = Number(item.valorEstornado);
+  const status = String(item.status ?? "");
+
+  if (!Number.isFinite(id) || id <= 0) {
+    return null;
+  }
+
+  const percentualDevolucao: 50 | 100 | null =
+    percentualRaw === 50 || percentualRaw === 100 ? percentualRaw : null;
+
+  return {
+    id,
+    status,
+    numeroReserva: Number.isFinite(numeroReserva) && numeroReserva > 0
+      ? numeroReserva
+      : id,
+    valorPago: Number.isFinite(valorPago) ? valorPago : NaN,
+    percentualDevolucao,
+    valorDevolucao: Number.isFinite(valorDevolucao) ? valorDevolucao : NaN,
+    valorEstornado: Number.isFinite(valorEstornado) ? valorEstornado : NaN,
+  };
+}
+
+export function formatarMensagemResultadoCancelamentoMinhaReserva(
+  resultado: ResultadoCancelamentoMinhaReserva,
+): string {
+  const linhas = ["Reserva cancelada.", "", `Reserva #${resultado.numeroReserva}`];
+
+  if (Number.isFinite(resultado.valorPago)) {
+    linhas.push(`Valor pago: ${formatCurrency(resultado.valorPago)}`);
+  }
+
+  if (resultado.percentualDevolucao === 50 || resultado.percentualDevolucao === 100) {
+    linhas.push(`Devolução: ${resultado.percentualDevolucao}%`);
+  }
+
+  if (Number.isFinite(resultado.valorEstornado)) {
+    linhas.push(`Valor estornado: ${formatCurrency(resultado.valorEstornado)}`);
+  }
+
+  return linhas.join("\n");
+}
 
 export async function getMinhaReservaDetalhe(
   idReserva: number,
@@ -324,4 +406,52 @@ export async function getMinhaReservaDetalhe(
     `/reservasuite/minhas-reservas/${idReserva}`,
     "GET",
   );
+}
+
+export async function cancelarMinhaReserva(
+  idReserva: number,
+): Promise<ApiResponse<ResultadoCancelamentoMinhaReserva>> {
+  const resp = await api.request<ResultadoCancelamentoMinhaReserva>(
+    `/reservasuite/minhas-reservas/${idReserva}/cancelar`,
+    "POST",
+  );
+
+  if (!resp.success) {
+    return resp;
+  }
+
+  // api.request em POST devolve o body inteiro em data ({ success, message, data }).
+  const body = resp.data as
+    | ResultadoCancelamentoMinhaReserva
+    | {
+        success?: boolean;
+        message?: string;
+        data?: ResultadoCancelamentoMinhaReserva;
+      }
+    | undefined;
+
+  const payload =
+    body && typeof body === "object" && "data" in body && body.data
+      ? body.data
+      : body;
+
+  const resultado = normalizarResultadoCancelamentoMinhaReserva(payload);
+  if (!resultado) {
+    return {
+      success: false,
+      message:
+        (body && typeof body === "object" && "message" in body
+          ? String(body.message || "")
+          : "") || "Resposta inválida ao cancelar a reserva.",
+    };
+  }
+
+  return {
+    success: true,
+    data: resultado,
+    message:
+      body && typeof body === "object" && "message" in body
+        ? body.message
+        : undefined,
+  };
 }

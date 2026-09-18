@@ -35,18 +35,16 @@ function formatarSuites(item: MinhaReservaCardType): string {
 type Props = {
   item: MinhaReservaCardType;
   onPress: () => void;
+  onCancelar?: () => void;
 };
 
-export default function MinhaReservaCard({ item, onPress }: Props) {
+export default function MinhaReservaCard({ item, onPress, onCancelar }: Props) {
   const cor = corStatusReserva(item.status);
   const numero = item.numeroReserva || item.id;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { borderLeftColor: cor }]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
+    <View style={[styles.card, { borderLeftColor: cor }]}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
       <View style={styles.headerRow}>
         <Text style={styles.numero}>Reserva #{numero}</Text>
         <View style={[styles.statusBadge, { backgroundColor: cor }]}>
@@ -85,7 +83,18 @@ export default function MinhaReservaCard({ item, onPress }: Props) {
       <Text style={styles.valor}>
         {formatCurrency(Number(item.valorTotal || 0))}
       </Text>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      {item.podeCancelar && onCancelar ? (
+        <TouchableOpacity
+          style={styles.btnCancelar}
+          onPress={onCancelar}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.btnCancelarTexto}>Cancelar reserva</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
   );
 }
 
@@ -154,5 +163,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: colors.cinza,
+  },
+  btnCancelar: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.red,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  btnCancelarTexto: {
+    color: colors.red,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });
