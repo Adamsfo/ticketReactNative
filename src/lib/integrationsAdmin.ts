@@ -85,6 +85,22 @@ export type SyncSummaryCounts = {
   } | null;
 };
 
+export type OutboundFailedReservationDetail = {
+  idReservaHospedagem: number;
+  idOutboundState: number;
+  hospedinReservationId: string | null;
+  hospedinIdExterno: string | null;
+  nomeHospede: string | null;
+  checkin: string | null;
+  checkout: string | null;
+  operacao: string;
+  outcome: string;
+  mensagemErro: string | null;
+  errorCode: string | null;
+  httpStatus: number | null;
+  correlationId: string;
+};
+
 export type IntegrationExecutionRow = {
   id: number;
   provider?: string;
@@ -439,4 +455,57 @@ export function corProviderUiStatus(
     default:
       return "#6b7280";
   }
+}
+
+function isOutboundFailureOutcome(outcome: string | null | undefined): boolean {
+  const normalized = String(outcome || "").trim().toLowerCase();
+  return (
+    normalized === "failed" ||
+    normalized === "retry" ||
+    normalized === "error"
+  );
+}
+
+/** Falhas do outbound gravadas em summaryJson.failedReservations (ou fallback legado em items). */
+export function extractOutboundFailedReservations(
+  exec: IntegrationExecutionRow,
+): OutboundFailedReservationDetail[] {
+  const summary = exec.summaryJson as
+    | {
+        failedReservations?: OutboundFailedReservationDetail[];
+        items?: Array<{
+          id: number;
+          idReservaHospedagem: number;
+          action?: string;
+          outcome?: string;
+        }>;
+      }
+    | null
+    | undefined;
+
+  if (
+    Array.isArray(summary?.failedReservations) &&
+    summary.failedReservations.length > 0
+  ) {
+    return summary.failedReservations;
+  }
+
+  const items = summary?.items ?? [];
+  return items
+    .filter((item) => isOutboundFailureOutcome(item.outcome))
+    .map((item) => ({
+      idReservaHospedagem: item.idReservaHospedagem,
+      idOutboundState: item.id,
+      hospedinReservationId: null,
+      hospedinIdExterno: null,
+      nomeHospede: null,
+      checkin: null,
+      checkout: null,
+      operacao: item.action || "—",
+      outcome: item.outcome || "failed",
+      mensagemErro: null,
+      errorCode: null,
+      httpStatus: null,
+      correlationId: exec.correlationId || "",
+    }));
 }

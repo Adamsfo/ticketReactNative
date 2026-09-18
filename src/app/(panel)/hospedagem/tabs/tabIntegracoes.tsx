@@ -15,6 +15,7 @@ import colors from "@/src/constants/colors";
 import { formatDateTimeHospedagem } from "@/src/lib/hospedagemStatusOperacional";
 import {
   corProviderUiStatus,
+  extractOutboundFailedReservations,
   formatDurationMs,
   formatPtNumber,
   formatSuccessRate,
@@ -22,6 +23,7 @@ import {
   getSyncPendencias,
   IntegrationExecutionRow,
   IntegrationProviderStatus,
+  OutboundFailedReservationDetail,
   labelExecutionStatus,
   labelProviderUiStatus,
   labelTriggerSource,
@@ -853,6 +855,9 @@ export default function TabIntegracoes() {
                     {detalheExec.errorMessage}
                   </Text>
                 ) : null}
+                {historicoProvider === "HOSPEDIN_OUTBOUND" ? (
+                  <OutboundFailedReservationsSection exec={detalheExec} />
+                ) : null}
               </View>
             ) : null}
           </Pressable>
@@ -867,6 +872,94 @@ function Linha({ label, valor }: { label: string; valor: string }) {
     <View style={styles.linha}>
       <Text style={styles.linhaLabel}>{label}</Text>
       <Text style={styles.linhaValor}>{valor}</Text>
+    </View>
+  );
+}
+
+function formatOutboundPeriodo(
+  checkin: string | null,
+  checkout: string | null,
+): string | null {
+  if (!checkin && !checkout) {
+    return null;
+  }
+  const inicio = checkin
+    ? formatDateTimeHospedagem(checkin)
+    : "—";
+  const fim = checkout
+    ? formatDateTimeHospedagem(checkout)
+    : "—";
+  return `${inicio} → ${fim}`;
+}
+
+function OutboundFailedReservationsSection({
+  exec,
+}: {
+  exec: IntegrationExecutionRow;
+}) {
+  const falhas = extractOutboundFailedReservations(exec);
+  if (falhas.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.failedReservasBox}>
+      <Text style={styles.failedReservasTitulo}>RESERVAS COM ERRO</Text>
+      {falhas.map((falha) => (
+        <OutboundFailedReservationCard key={`${falha.idOutboundState}-${falha.idReservaHospedagem}`} falha={falha} />
+      ))}
+    </View>
+  );
+}
+
+function OutboundFailedReservationCard({
+  falha,
+}: {
+  falha: OutboundFailedReservationDetail;
+}) {
+  const periodo = formatOutboundPeriodo(falha.checkin, falha.checkout);
+  const hospedinId =
+    falha.hospedinReservationId || falha.hospedinIdExterno || null;
+
+  return (
+    <View style={styles.failedReservaCard}>
+      <Text style={styles.failedReservaTitulo}>
+        Reserva #{falha.idReservaHospedagem}
+      </Text>
+      {falha.nomeHospede ? (
+        <Text style={styles.failedReservaTexto}>
+          Hóspede: {falha.nomeHospede}
+        </Text>
+      ) : null}
+      {periodo ? (
+        <Text style={styles.failedReservaTexto}>{periodo}</Text>
+      ) : null}
+      <Text style={styles.failedReservaTexto}>
+        Operação: {falha.operacao || "—"}
+      </Text>
+      {hospedinId ? (
+        <Text style={styles.failedReservaTexto}>
+          Hospedin ID: {hospedinId}
+        </Text>
+      ) : null}
+      {falha.httpStatus != null ? (
+        <Text style={styles.failedReservaTexto}>
+          HTTP: {falha.httpStatus}
+        </Text>
+      ) : null}
+      {falha.errorCode ? (
+        <Text style={styles.failedReservaTexto}>
+          Código: {falha.errorCode}
+        </Text>
+      ) : null}
+      {falha.mensagemErro ? (
+        <Text style={styles.failedReservaErro}>Erro: {falha.mensagemErro}</Text>
+      ) : null}
+      {falha.correlationId ? (
+        <Text style={styles.failedReservaMuted}>
+          Correlation: {falha.correlationId}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -1083,5 +1176,44 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
     gap: 4,
+  },
+  failedReservasBox: {
+    marginTop: 12,
+    gap: 8,
+  },
+  failedReservasTitulo: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#b91c1c",
+    letterSpacing: 0.4,
+  },
+  failedReservaCard: {
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    backgroundColor: "#fef2f2",
+    borderRadius: 10,
+    padding: 10,
+    gap: 2,
+  },
+  failedReservaTitulo: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#991b1b",
+    marginBottom: 2,
+  },
+  failedReservaTexto: {
+    fontSize: 12,
+    color: "#7f1d1d",
+  },
+  failedReservaErro: {
+    fontSize: 12,
+    color: "#b91c1c",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  failedReservaMuted: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 2,
   },
 });
