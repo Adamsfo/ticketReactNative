@@ -32,6 +32,8 @@ import PagamentoPDV from "./(panel)/pagamentoPDV/page";
 import ChecoutMP from "./(panel)/checkoutmp/page";
 import MeusIngressos from "./(panel)/meusingressos/page";
 import MinhasCompras from "./(panel)/minhascompras/page";
+import MinhasReservas from "./(panel)/minhasreservas/page";
+import MinhasReservaDetalhe from "./(panel)/minhasreservas/detalhe/page";
 import Ingresso from "./(panel)/ingresso/page";
 import Validador from "./(panel)/validador/page";
 import IngressoTransacao from "./(panel)/ingressosTransacao/page";
@@ -279,6 +281,21 @@ function Routes() {
             }}
           />
           <Drawer.Screen
+            name="minhasreservas"
+            component={MinhasReservas}
+            options={{
+              headerShown: false,
+              title: "Minhas Reservas",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "bed" : "bed-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="meusevento"
             component={MeusEventos}
             options={{ headerShown: false, title: "Meus Eventos" }}
@@ -508,6 +525,21 @@ function Routes() {
               drawerIcon: ({ focused, size, color }) => (
                 <Ionicons
                   name={focused ? "briefcase" : "briefcase-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="minhasreservas"
+            component={MinhasReservas}
+            options={{
+              headerShown: false,
+              title: "Minhas Reservas",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "bed" : "bed-outline"}
                   size={size}
                   color={color}
                 />
@@ -760,6 +792,16 @@ function Routes() {
       <Drawer.Screen
         name="ingressostransacao"
         component={IngressoTransacao}
+        options={{
+          headerShown: false,
+          drawerLabel: () => null,
+          drawerIcon: () => null,
+          drawerItemStyle: { display: "none" },
+        }}
+      />
+      <Drawer.Screen
+        name="minhasReservaDetalhe"
+        component={MinhasReservaDetalhe}
         options={{
           headerShown: false,
           drawerLabel: () => null,

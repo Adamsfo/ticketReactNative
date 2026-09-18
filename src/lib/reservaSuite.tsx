@@ -222,3 +222,106 @@ export async function getReservaConfirmada(idTransacao: number) {
     { idTransacao: String(idTransacao) },
   );
 }
+
+export type FiltroStatusMinhasReservas =
+  | "confirmadas"
+  | "hospedadas"
+  | "canceladas";
+
+export type MinhaReservaCard = {
+  id: number;
+  numeroReserva: number;
+  status: string;
+  evento: { id: number; nome: string } | null;
+  nomeSuite: string;
+  suites: Array<{ nome: string; adultos: number; criancas: number }>;
+  checkin: string;
+  checkout: string;
+  noites: number;
+  adultos: number;
+  criancas: number;
+  valorTotal: number;
+  valorPago: number;
+  saldoPendente: number;
+  origemReserva: string | null;
+  dataCriacao: string | null;
+  dataConfirmacao: string | null;
+};
+
+export type MetaMinhasReservas = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+  status: FiltroStatusMinhasReservas;
+};
+
+export async function getMinhasReservas(params: {
+  status: FiltroStatusMinhasReservas;
+  page?: number;
+  pageSize?: number;
+}): Promise<ApiResponse<MinhaReservaCard[]> & { meta?: MetaMinhasReservas }> {
+  return api.request<MinhaReservaCard[]>(
+    "/reservasuite/minhas-reservas",
+    "GET",
+    null,
+    {
+      status: params.status,
+      page: String(params.page ?? 1),
+      pageSize: String(params.pageSize ?? 20),
+    },
+  ) as Promise<ApiResponse<MinhaReservaCard[]> & { meta?: MetaMinhasReservas }>;
+}
+
+export type SituacaoFinanceiraMinhaReserva =
+  | "Quitada"
+  | "Parcial"
+  | "Pendente";
+
+export type MinhaReservaDetalhe = {
+  id: number;
+  numeroReserva: number;
+  status: string;
+  dataCriacao: string | null;
+  dataConfirmacao: string | null;
+  checkin: string;
+  checkout: string;
+  noites: number;
+  preco: number;
+  taxaServico: number;
+  evento: {
+    id: number;
+    nome: string;
+    imagem: string | null;
+  };
+  suites: Array<{
+    idReservaSuite: number;
+    idEventoSuite: number;
+    nome: string;
+    adultos: number;
+    criancas: number;
+    hospedes: Array<{
+      nome: string;
+      tipo: string;
+      dataNascimento: string | null;
+    }>;
+  }>;
+  financeiro: {
+    valorTotal: number;
+    valorPago: number;
+    saldoPendente: number;
+    situacaoFinanceira: SituacaoFinanceiraMinhaReserva;
+  };
+  podeContinuarPagamento: boolean;
+  tokenPagamento: string | null;
+};
+
+export async function getMinhaReservaDetalhe(
+  idReserva: number,
+): Promise<ApiResponse<MinhaReservaDetalhe>> {
+  return api.request<MinhaReservaDetalhe>(
+    `/reservasuite/minhas-reservas/${idReserva}`,
+    "GET",
+  );
+}
