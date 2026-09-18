@@ -25,12 +25,22 @@ import MinhaReservaCard from "@/src/components/minhasReservas/MinhaReservaCard";
 import ModalMsg from "@/src/components/ModalMsg";
 import ModalMsgSimNao from "@/src/components/ModalMsgSimNao";
 import formatCurrency from "@/src/components/FormatCurrency";
+import RemarcarReservaModal from "@/src/components/minhasReservas/RemarcarReservaModal";
+import AcaoIndisponivelModal from "@/src/components/minhasReservas/AcaoIndisponivelModal";
+import {
+  resolverMensagemBloqueioCancelamento,
+  resolverMensagemBloqueioRemarcacao,
+  TITULO_BLOQUEIO_CANCELAMENTO,
+  TITULO_BLOQUEIO_REMARCACAO,
+} from "@/src/lib/minhasReservasAcoes";
 import {
   cancelarMinhaReserva,
   formatarMensagemResultadoCancelamentoMinhaReserva,
   FiltroStatusMinhasReservas,
+  getMinhaReservaDetalhe,
   getMinhasReservas,
   MinhaReservaCard as MinhaReservaCardType,
+  MinhaReservaDetalhe,
 } from "@/src/lib/reservaSuite";
 
 const { width } = Dimensions.get("window");
@@ -70,6 +80,14 @@ export default function MinhasReservasPage() {
   const [modalMsg, setModalMsg] = useState(false);
   const [msgModal, setMsgModal] = useState("");
   const [cancelando, setCancelando] = useState(false);
+  const [modalRemarcar, setModalRemarcar] = useState(false);
+  const [reservaRemarcar, setReservaRemarcar] =
+    useState<MinhaReservaDetalhe | null>(null);
+  const [abrindoRemarcacao, setAbrindoRemarcacao] = useState(false);
+  const [modalBloqueio, setModalBloqueio] = useState<{
+    titulo: string;
+    mensagem: string;
+  } | null>(null);
   const requestIdRef = useRef(0);
 
   const formatarCheckin = (valor: string) => {
@@ -156,8 +174,50 @@ export default function MinhasReservasPage() {
   };
 
   const abrirCancelamento = (item: MinhaReservaCardType) => {
+    if (!item.podeCancelar) {
+      setModalBloqueio({
+        titulo: TITULO_BLOQUEIO_CANCELAMENTO,
+        mensagem: resolverMensagemBloqueioCancelamento(item.motivoBloqueio),
+      });
+      return;
+    }
+
     setReservaCancelar(item);
     setModalConfirmarCancelamento(true);
+  };
+
+  const abrirRemarcacao = async (item: MinhaReservaCardType) => {
+    if (abrindoRemarcacao) return;
+
+    const remarcacaoPendente = Boolean(item.remarcacao?.remarcacaoPendente);
+    if (!remarcacaoPendente && !item.podeRemarcar) {
+      setModalBloqueio({
+        titulo: TITULO_BLOQUEIO_REMARCACAO,
+        mensagem: resolverMensagemBloqueioRemarcacao(
+          item.motivoBloqueioRemarcacao ?? item.remarcacao?.motivoBloqueio,
+        ),
+      });
+      return;
+    }
+
+    setAbrindoRemarcacao(true);
+    try {
+      const response = await getMinhaReservaDetalhe(item.id);
+      if (!response.success || !response.data) {
+        setMsgModal(
+          response.message || "Não foi possível abrir a remarcação.",
+        );
+        setModalMsg(true);
+        return;
+      }
+      setReservaRemarcar(response.data);
+      setModalRemarcar(true);
+    } catch {
+      setMsgModal("Não foi possível abrir a remarcação.");
+      setModalMsg(true);
+    } finally {
+      setAbrindoRemarcacao(false);
+    }
   };
 
   const confirmarCancelamento = async () => {
@@ -252,6 +312,7 @@ export default function MinhasReservasPage() {
               })
             }
             onCancelar={() => abrirCancelamento(item)}
+            onRemarcar={() => abrirRemarcacao(item)}
           />
         )}
       />
@@ -304,6 +365,31 @@ export default function MinhasReservasPage() {
       <Modal visible={modalMsg} transparent animationType="fade">
         <ModalMsg onClose={() => setModalMsg(false)} msg={msgModal} />
       </Modal>
+
+      <AcaoIndisponivelModal
+        visible={Boolean(modalBloqueio)}
+        titulo={modalBloqueio?.titulo ?? ""}
+        mensagem={modalBloqueio?.mensagem ?? ""}
+        onClose={() => setModalBloqueio(null)}
+      />
+
+      {reservaRemarcar ? (
+        <RemarcarReservaModal
+          visible={modalRemarcar}
+          reserva={reservaRemarcar}
+          onClose={() => {
+            setModalRemarcar(false);
+            setReservaRemarcar(null);
+          }}
+          onSucesso={() => {
+            setModalRemarcar(false);
+            setReservaRemarcar(null);
+            setMsgModal("Remarcação realizada com sucesso.");
+            setModalMsg(true);
+            carregar(1, false, status);
+          }}
+        />
+      ) : null}
     </LinearGradient>
   );
 }

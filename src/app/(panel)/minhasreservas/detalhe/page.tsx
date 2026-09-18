@@ -32,6 +32,19 @@ import {
 } from "@/src/lib/hospedagemHospedes";
 import ModalMsg from "@/src/components/ModalMsg";
 import ModalMsgSimNao from "@/src/components/ModalMsgSimNao";
+import RemarcarReservaModal from "@/src/components/minhasReservas/RemarcarReservaModal";
+import AcaoIndisponivelModal from "@/src/components/minhasReservas/AcaoIndisponivelModal";
+import {
+  acaoCancelarDisponivel,
+  acaoRemarcarDisponivel,
+  deveExibirAcaoCancelarReserva,
+  deveExibirAcaoRemarcarReserva,
+  labelBotaoRemarcar,
+  resolverMensagemBloqueioCancelamento,
+  resolverMensagemBloqueioRemarcacao,
+  TITULO_BLOQUEIO_CANCELAMENTO,
+  TITULO_BLOQUEIO_REMARCACAO,
+} from "@/src/lib/minhasReservasAcoes";
 import {
   cancelarMinhaReserva,
   formatarMensagemResultadoCancelamentoMinhaReserva,
@@ -101,6 +114,11 @@ export default function MinhasReservaDetalhePage() {
   const [modalMsg, setModalMsg] = useState(false);
   const [msgModal, setMsgModal] = useState("");
   const [cancelando, setCancelando] = useState(false);
+  const [modalRemarcar, setModalRemarcar] = useState(false);
+  const [modalBloqueio, setModalBloqueio] = useState<{
+    titulo: string;
+    mensagem: string;
+  } | null>(null);
 
   const carregar = useCallback(async () => {
     if (!Number.isFinite(reservaId) || reservaId <= 0) {
@@ -148,6 +166,16 @@ export default function MinhasReservaDetalhePage() {
 
   const imagemEvento = resolverUrlImagemEvento(dados?.evento?.imagem);
   const corStatus = dados ? corStatusReserva(dados.status) : colors.cinza;
+  const remarcacaoPendente = Boolean(dados?.remarcacao?.remarcacaoPendente);
+  const remarcarDisponivel = dados
+    ? acaoRemarcarDisponivel({
+        podeRemarcar: Boolean(dados.remarcacao?.podeRemarcar),
+        remarcacaoPendente,
+      })
+    : false;
+  const cancelarDisponivel = dados
+    ? acaoCancelarDisponivel(Boolean(dados.cancelamento?.podeCancelar))
+    : false;
 
   const continuarPagamento = () => {
     if (!dados?.tokenPagamento) return;
@@ -156,6 +184,39 @@ export default function MinhasReservaDetalhePage() {
 
   const voltar = () => {
     navigation.navigate("minhasreservas");
+  };
+
+  const abrirCancelamento = () => {
+    if (!dados) return;
+
+    if (!dados.cancelamento?.podeCancelar) {
+      setModalBloqueio({
+        titulo: TITULO_BLOQUEIO_CANCELAMENTO,
+        mensagem: resolverMensagemBloqueioCancelamento(
+          dados.cancelamento?.motivoBloqueio,
+        ),
+      });
+      return;
+    }
+
+    setModalConfirmarCancelamento(true);
+  };
+
+  const abrirRemarcacao = () => {
+    if (!dados) return;
+
+    const remarcacaoPendente = Boolean(dados.remarcacao?.remarcacaoPendente);
+    if (!remarcacaoPendente && !dados.remarcacao?.podeRemarcar) {
+      setModalBloqueio({
+        titulo: TITULO_BLOQUEIO_REMARCACAO,
+        mensagem: resolverMensagemBloqueioRemarcacao(
+          dados.remarcacao?.motivoBloqueio,
+        ),
+      });
+      return;
+    }
+
+    setModalRemarcar(true);
   };
 
   const confirmarCancelamento = async () => {
@@ -408,15 +469,65 @@ export default function MinhasReservaDetalhePage() {
                   </TouchableOpacity>
                 ) : null}
 
+                {dados.remarcacao?.taxaRemarcacao != null &&
+                dados.remarcacao.taxaRemarcacao > 0 ? (
+                  <Text style={styles.metaLinha}>
+                    Taxa de remarcação:{" "}
+                    {formatCurrency(dados.remarcacao.taxaRemarcacao)}
+                  </Text>
+                ) : null}
+
                 <View style={styles.acoesFuturas}>
-                  {dados.cancelamento?.podeCancelar ? (
+                  {deveExibirAcaoRemarcarReserva({
+                    status: dados.status,
+                    remarcacaoPendente,
+                  }) ? (
                     <TouchableOpacity
-                      style={styles.btnCancelar}
-                      onPress={() => setModalConfirmarCancelamento(true)}
+                      style={[
+                        styles.btnRemarcar,
+                        !remarcarDisponivel && styles.btnRemarcarBloqueado,
+                      ]}
+                      onPress={abrirRemarcacao}
                     >
-                      <Text style={styles.btnCancelarTexto}>
-                        Cancelar reserva
-                      </Text>
+                      <View style={styles.btnConteudo}>
+                        {!remarcarDisponivel ? (
+                          <Feather name="lock" size={16} color="#667085" />
+                        ) : null}
+                        <Text
+                          style={[
+                            styles.btnRemarcarTexto,
+                            !remarcarDisponivel &&
+                              styles.btnRemarcarTextoBloqueado,
+                          ]}
+                        >
+                          {labelBotaoRemarcar(remarcacaoPendente)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {deveExibirAcaoCancelarReserva(dados.status) ? (
+                    <TouchableOpacity
+                      style={[
+                        styles.btnCancelar,
+                        !cancelarDisponivel && styles.btnCancelarBloqueado,
+                      ]}
+                      onPress={abrirCancelamento}
+                    >
+                      <View style={styles.btnConteudo}>
+                        {!cancelarDisponivel ? (
+                          <Feather name="lock" size={16} color="#98a2b3" />
+                        ) : null}
+                        <Text
+                          style={[
+                            styles.btnCancelarTexto,
+                            !cancelarDisponivel &&
+                              styles.btnCancelarTextoBloqueado,
+                          ]}
+                        >
+                          Cancelar reserva
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -445,6 +556,27 @@ export default function MinhasReservaDetalhePage() {
       <Modal visible={modalMsg} transparent animationType="fade">
         <ModalMsg onClose={() => setModalMsg(false)} msg={msgModal} />
       </Modal>
+
+      <AcaoIndisponivelModal
+        visible={Boolean(modalBloqueio)}
+        titulo={modalBloqueio?.titulo ?? ""}
+        mensagem={modalBloqueio?.mensagem ?? ""}
+        onClose={() => setModalBloqueio(null)}
+      />
+
+      {dados ? (
+        <RemarcarReservaModal
+          visible={modalRemarcar}
+          reserva={dados}
+          onClose={() => setModalRemarcar(false)}
+          onSucesso={async () => {
+            setModalRemarcar(false);
+            setMsgModal("Remarcação realizada com sucesso.");
+            setModalMsg(true);
+            await carregar();
+          }}
+        />
+      ) : null}
     </LinearGradient>
   );
 }
@@ -653,6 +785,33 @@ const styles = StyleSheet.create({
     minHeight: 8,
     marginBottom: 16,
   },
+  btnConteudo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  btnRemarcar: {
+    borderWidth: 1,
+    borderColor: colors.azul,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  btnRemarcarBloqueado: {
+    borderColor: "#d0d5dd",
+    backgroundColor: "rgba(248, 250, 252, 0.9)",
+    opacity: 0.92,
+  },
+  btnRemarcarTexto: {
+    color: colors.azul,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  btnRemarcarTextoBloqueado: {
+    color: "#667085",
+  },
   btnCancelar: {
     borderWidth: 1,
     borderColor: "#d92d20",
@@ -661,9 +820,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  btnCancelarBloqueado: {
+    borderColor: "#d0d5dd",
+    backgroundColor: "rgba(248, 250, 252, 0.9)",
+    opacity: 0.92,
+  },
   btnCancelarTexto: {
     color: "#d92d20",
     fontWeight: "700",
     fontSize: 16,
+  },
+  btnCancelarTextoBloqueado: {
+    color: "#667085",
   },
 });

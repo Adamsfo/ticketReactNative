@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import colors from "@/src/constants/colors";
@@ -9,6 +10,13 @@ import {
   labelStatusReserva,
 } from "@/src/lib/hospedagemAdmin";
 import type { MinhaReservaCard as MinhaReservaCardType } from "@/src/lib/reservaSuite";
+import {
+  acaoCancelarDisponivel,
+  acaoRemarcarDisponivel,
+  deveExibirAcaoCancelarReserva,
+  deveExibirAcaoRemarcarReserva,
+  labelBotaoRemarcar,
+} from "@/src/lib/minhasReservasAcoes";
 
 function formatarDataHora(iso: string): string {
   try {
@@ -36,11 +44,28 @@ type Props = {
   item: MinhaReservaCardType;
   onPress: () => void;
   onCancelar?: () => void;
+  onRemarcar?: () => void;
 };
 
-export default function MinhaReservaCard({ item, onPress, onCancelar }: Props) {
+export default function MinhaReservaCard({
+  item,
+  onPress,
+  onCancelar,
+  onRemarcar,
+}: Props) {
   const cor = corStatusReserva(item.status);
   const numero = item.numeroReserva || item.id;
+  const remarcacaoPendente = Boolean(item.remarcacao?.remarcacaoPendente);
+  const exibirRemarcar = deveExibirAcaoRemarcarReserva({
+    status: item.status,
+    remarcacaoPendente,
+  });
+  const exibirCancelar = deveExibirAcaoCancelarReserva(item.status);
+  const remarcarDisponivel = acaoRemarcarDisponivel({
+    podeRemarcar: item.podeRemarcar,
+    remarcacaoPendente,
+  });
+  const cancelarDisponivel = acaoCancelarDisponivel(item.podeCancelar);
 
   return (
     <View style={[styles.card, { borderLeftColor: cor }]}>
@@ -85,13 +110,53 @@ export default function MinhaReservaCard({ item, onPress, onCancelar }: Props) {
       </Text>
       </TouchableOpacity>
 
-      {item.podeCancelar && onCancelar ? (
+      {exibirRemarcar && onRemarcar ? (
         <TouchableOpacity
-          style={styles.btnCancelar}
+          style={[
+            styles.btnRemarcar,
+            !remarcarDisponivel && styles.btnRemarcarBloqueado,
+          ]}
+          onPress={onRemarcar}
+          activeOpacity={0.85}
+        >
+          <View style={styles.btnConteudo}>
+            {!remarcarDisponivel ? (
+              <Feather name="lock" size={14} color="#667085" />
+            ) : null}
+            <Text
+              style={[
+                styles.btnRemarcarTexto,
+                !remarcarDisponivel && styles.btnRemarcarTextoBloqueado,
+              ]}
+            >
+              {labelBotaoRemarcar(remarcacaoPendente)}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      ) : null}
+
+      {exibirCancelar && onCancelar ? (
+        <TouchableOpacity
+          style={[
+            styles.btnCancelar,
+            !cancelarDisponivel && styles.btnCancelarBloqueado,
+          ]}
           onPress={onCancelar}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnCancelarTexto}>Cancelar reserva</Text>
+          <View style={styles.btnConteudo}>
+            {!cancelarDisponivel ? (
+              <Feather name="lock" size={14} color="#98a2b3" />
+            ) : null}
+            <Text
+              style={[
+                styles.btnCancelarTexto,
+                !cancelarDisponivel && styles.btnCancelarTextoBloqueado,
+              ]}
+            >
+              Cancelar reserva
+            </Text>
+          </View>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -164,6 +229,33 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.cinza,
   },
+  btnConteudo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  btnRemarcar: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.azul,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  btnRemarcarBloqueado: {
+    borderColor: "#d0d5dd",
+    backgroundColor: "rgba(248, 250, 252, 0.9)",
+    opacity: 0.92,
+  },
+  btnRemarcarTexto: {
+    color: colors.azul,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  btnRemarcarTextoBloqueado: {
+    color: "#667085",
+  },
   btnCancelar: {
     marginTop: 12,
     borderWidth: 1,
@@ -172,9 +264,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
   },
+  btnCancelarBloqueado: {
+    borderColor: "#d0d5dd",
+    backgroundColor: "rgba(248, 250, 252, 0.9)",
+    opacity: 0.92,
+  },
   btnCancelarTexto: {
     color: colors.red,
     fontWeight: "700",
     fontSize: 14,
+  },
+  btnCancelarTextoBloqueado: {
+    color: "#667085",
   },
 });

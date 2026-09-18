@@ -581,12 +581,32 @@ export default function ReservaPublicaPage() {
                     {formatCurrency(Number(data.valores?.preco ?? 0))}
                   </Text>
                 </View>
-                <View style={styles.row}>
-                  <Text style={styles.meta}>Taxa de serviço</Text>
-                  <Text style={styles.valor}>
-                    {formatCurrency(Number(data.valores?.taxaServico ?? 0))}
-                  </Text>
-                </View>
+                {(data.taxasAdicionais ?? []).length > 0 ? (
+                  <View style={styles.taxasAdicionaisBox}>
+                    <Text style={[styles.meta, styles.taxasAdicionaisTitulo]}>
+                      Taxas adicionais
+                    </Text>
+                    {(data.taxasAdicionais ?? []).map(
+                      (taxa: {
+                        id?: number;
+                        descricao?: string;
+                        valor?: number;
+                      }) => (
+                        <View
+                          key={taxa.id ?? taxa.descricao}
+                          style={styles.row}
+                        >
+                          <Text style={styles.metaTaxaAdicional}>
+                            {taxa.descricao || "Taxa adicional"}
+                          </Text>
+                          <Text style={styles.valor}>
+                            {formatCurrency(Number(taxa.valor ?? 0))}
+                          </Text>
+                        </View>
+                      ),
+                    )}
+                  </View>
+                ) : null}
                 <View style={styles.row}>
                   <Text style={styles.label}>Total</Text>
                   <Text style={[styles.valor, { color: colors.azul }]}>
@@ -694,6 +714,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 6,
+  },
+  taxasAdicionaisBox: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.06)",
+  },
+  taxasAdicionaisTitulo: {
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  metaTaxaAdicional: {
+    fontSize: 14,
+    color: colors.cinza,
+    flex: 1,
+    paddingRight: 8,
   },
   erro: { color: colors.red, textAlign: "center" },
   expiradaTitulo: {

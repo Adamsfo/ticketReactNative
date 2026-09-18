@@ -251,6 +251,47 @@ export type MinhaReservaCard = {
   motivoBloqueio: string | null;
   percentualDevolucao: 50 | 100 | null;
   valorDevolucao: number | null;
+  podeRemarcar: boolean;
+  motivoBloqueioRemarcacao: string | null;
+  taxaRemarcacao: number | null;
+  remarcacao?: RemarcacaoClienteInfo;
+};
+
+export type RemarcacaoClienteInfo = {
+  podeRemarcar: boolean;
+  motivoBloqueio: string | null;
+  horasRestantes: number | null;
+  taxaRemarcacao: number | null;
+  taxaPlataforma: number | null;
+  taxaJango: number | null;
+  remarcacaoPendente: {
+    idTaxa: number;
+    valorPagamento: number;
+    saldoPendente: number;
+    dataCheckInNova: string;
+    dataCheckOutNova: string;
+    pixPendente?: {
+      paymentId: string;
+      status?: string;
+      reutilizado: boolean;
+    } | null;
+  } | null;
+};
+
+export type ResultadoRemarcacaoMinhaReserva = {
+  reservaId: number;
+  remarcada: boolean;
+  aguardandoPagamento?: boolean;
+  taxa: number;
+  valorPagamento?: number;
+  valorPago: number;
+  saldoPendente: number;
+  dataCheckInAnterior: string;
+  dataCheckOutAnterior: string;
+  dataCheckInNova: string;
+  dataCheckOutNova: string;
+  idTaxa?: number;
+  idTransacao?: number;
 };
 
 export type MetaMinhasReservas = {
@@ -330,7 +371,43 @@ export type MinhaReservaDetalhe = {
     valorEstornado: number;
     requerEstornoManual: boolean;
   };
+  remarcacao: RemarcacaoClienteInfo;
 };
+
+function unwrapPostData<T>(resp: ApiResponse<T>): ApiResponse<T> {
+  if (!resp.success) {
+    return resp;
+  }
+
+  const body = resp.data as
+    | T
+    | { success?: boolean; message?: string; data?: T }
+    | undefined;
+
+  const payload =
+    body && typeof body === "object" && "data" in body && body.data
+      ? body.data
+      : body;
+
+  if (!payload || typeof payload !== "object") {
+    return {
+      success: false,
+      message:
+        (body && typeof body === "object" && "message" in body
+          ? String(body.message || "")
+          : "") || "Resposta inválida.",
+    };
+  }
+
+  return {
+    success: true,
+    data: payload as T,
+    message:
+      body && typeof body === "object" && "message" in body
+        ? body.message
+        : undefined,
+  };
+}
 
 export type ResultadoCancelamentoMinhaReserva = {
   id: number;
@@ -454,4 +531,99 @@ export async function cancelarMinhaReserva(
         ? body.message
         : undefined,
   };
+}
+
+export async function remarcarMinhaReserva(
+  idReserva: number,
+  params: { dataCheckIn: string; dataCheckOut: string },
+): Promise<ApiResponse<ResultadoRemarcacaoMinhaReserva>> {
+  const resp = await api.request<ResultadoRemarcacaoMinhaReserva>(
+    `/reservasuite/minhas-reservas/${idReserva}/remarcar`,
+    "POST",
+    params,
+  );
+  return unwrapPostData(resp);
+}
+
+export async function obterPixPendenteRemarcacaoMinhaReserva(
+  idReserva: number,
+): Promise<
+  ApiResponse<{
+    paymentId: string;
+    status?: string;
+    point_of_interaction?: unknown;
+    reutilizado: boolean;
+    idTaxa: number;
+    valorPagamento: number;
+  } | null>
+> {
+  return api.request(
+    `/reservasuite/minhas-reservas/${idReserva}/remarcar/pix-pendente`,
+    "GET",
+  );
+}
+
+export async function criarPixRemarcacaoMinhaReserva(
+  idReserva: number,
+  email: string,
+): Promise<
+  ApiResponse<{
+    id: string | number;
+    status?: string;
+    point_of_interaction?: unknown;
+    valorPagamento: number;
+    reutilizado?: boolean;
+    remarcada?: boolean;
+  }>
+> {
+  const resp = await api.request(
+    `/reservasuite/minhas-reservas/${idReserva}/remarcar/pix`,
+    "POST",
+    { email },
+  );
+  return unwrapPostData(resp);
+}
+
+export async function pagarCartaoRemarcacaoMinhaReserva(
+  idReserva: number,
+  body: Record<string, unknown>,
+): Promise<
+  ApiResponse<{
+    status?: string;
+    id?: string | number;
+    remarcada?: boolean;
+  }>
+> {
+  const resp = await api.request(
+    `/reservasuite/minhas-reservas/${idReserva}/remarcar/pagamento`,
+    "POST",
+    body,
+  );
+  return unwrapPostData(resp);
+}
+
+export async function consultarPagamentoRemarcacaoMinhaReserva(
+  idReserva: number,
+  paymentId: string,
+): Promise<
+  ApiResponse<{
+    status?: string;
+    remarcada?: boolean;
+    aguardandoPagamento?: boolean;
+    erroAplicacao?: string;
+    pagamentoRegistrado?: boolean;
+    reserva?: {
+      checkin: string;
+      checkout: string;
+      valorPago?: number;
+      saldoPendente?: number;
+    };
+  }>
+> {
+  return api.request(
+    `/reservasuite/minhas-reservas/${idReserva}/remarcar/consulta`,
+    "GET",
+    null,
+    { paymentId },
+  );
 }
