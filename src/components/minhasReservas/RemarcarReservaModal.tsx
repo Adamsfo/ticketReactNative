@@ -31,11 +31,7 @@ import {
 import DeviceIdWeb from "@/src/components/DeviceIdWeb";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
-import {
-  TAXA_PLATAFORMA_REMARCACAO,
-  TAXA_REMARCACAO_CLIENTE,
-  VALOR_POUSADA_REMARCACAO,
-} from "@/src/lib/remarcacaoClienteConfig";
+import { TAXA_REMARCACAO_CLIENTE } from "@/src/lib/remarcacaoClienteConfig";
 
 const MP_PUBLIC_KEY = process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "";
 
@@ -464,15 +460,6 @@ export default function RemarcarReservaModal({
                       <Text style={styles.taxaTitulo}>Taxa de remarcação</Text>
                       <Text style={styles.texto}>
                         {formatCurrency(taxa)}
-                      </Text>
-                      <Text style={styles.textoMuted}>
-                        JangoIngressos: {formatCurrency(remarcacao.taxaPlataforma ?? TAXA_PLATAFORMA_REMARCACAO)}
-                      </Text>
-                      <Text style={styles.textoMuted}>
-                        Jango: {formatCurrency(remarcacao.taxaJango ?? VALOR_POUSADA_REMARCACAO)}
-                      </Text>
-                      <Text style={styles.texto}>
-                        Total: {formatCurrency(taxa)}
                       </Text>
                     </>
                   )}
