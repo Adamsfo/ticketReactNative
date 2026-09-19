@@ -1099,6 +1099,16 @@ export async function postReenviarLinkPagamentoReserva(
   );
 }
 
+export async function postReativarReservaExpirada(
+  idReserva: number,
+): Promise<ApiResponse<ReservaAdminDetalhe>> {
+  return api.request<ReservaAdminDetalhe>(
+    `/hospedagem/reservas/${idReserva}/reativar`,
+    "POST",
+    {},
+  );
+}
+
 /** Consulta pública da reserva pelo token do link. */
 export async function getReservaPublicaPorToken(
   token: string,

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,6 +27,8 @@ import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
 import SyncStatusIndicator from "../components/SyncStatusIndicator";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
+
+const PAGE_SIZE = 20;
 
 const FILTROS: Array<{
   key: Exclude<FiltroRapidoReserva, null>;
@@ -66,6 +68,29 @@ function formatHoraParte(iso: string): { data: string; hora: string } {
       return { data: "--/--", hora: "--:--" };
     }
   }
+}
+
+function buildPaginationItems(
+  currentPage: number,
+  totalPages: number,
+): Array<number | "ellipsis"> {
+  if (totalPages <= 1) return [];
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items: Array<number | "ellipsis"> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) items.push("ellipsis");
+  for (let page = start; page <= end; page += 1) {
+    items.push(page);
+  }
+  if (end < totalPages - 1) items.push("ellipsis");
+  items.push(totalPages);
+
+  return items;
 }
 
 function CardReserva({
@@ -141,6 +166,112 @@ function CardReserva({
   );
 }
 
+function PaginacaoReservas({
+  page,
+  totalPages,
+  total,
+  loading,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  loading: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  const paginationItems = useMemo(
+    () => buildPaginationItems(page, totalPages),
+    [page, totalPages],
+  );
+
+  if (totalPages <= 1 && total === 0) {
+    return null;
+  }
+
+  const podeAnterior = page > 1 && !loading;
+  const podeProxima = page < totalPages && !loading;
+
+  return (
+    <View style={styles.paginacaoBox}>
+      <Text style={styles.paginacaoResumo}>
+        Página {page} de {Math.max(totalPages, 1)}
+      </Text>
+      <Text style={styles.paginacaoTotal}>
+        {total} {total === 1 ? "reserva" : "reservas"}
+      </Text>
+
+      {totalPages > 1 ? (
+        <View style={styles.paginacaoControles}>
+          <TouchableOpacity
+            style={[
+              styles.paginacaoNavBtn,
+              !podeAnterior && styles.paginacaoNavBtnDisabled,
+            ]}
+            onPress={() => onPageChange(page - 1)}
+            disabled={!podeAnterior}
+          >
+            <Text
+              style={[
+                styles.paginacaoNavTexto,
+                !podeAnterior && styles.paginacaoNavTextoDisabled,
+              ]}
+            >
+              Anterior
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.paginacaoNumeros}>
+            {paginationItems.map((item, index) =>
+              item === "ellipsis" ? (
+                <Text key={`ellipsis-${index}`} style={styles.paginacaoEllipsis}>
+                  ...
+                </Text>
+              ) : (
+                <TouchableOpacity
+                  key={`page-${item}`}
+                  style={[
+                    styles.paginacaoNumeroBtn,
+                    item === page && styles.paginacaoNumeroBtnAtivo,
+                  ]}
+                  onPress={() => onPageChange(item)}
+                  disabled={loading || item === page}
+                >
+                  <Text
+                    style={[
+                      styles.paginacaoNumeroTexto,
+                      item === page && styles.paginacaoNumeroTextoAtivo,
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.paginacaoNavBtn,
+              !podeProxima && styles.paginacaoNavBtnDisabled,
+            ]}
+            onPress={() => onPageChange(page + 1)}
+            disabled={!podeProxima}
+          >
+            <Text
+              style={[
+                styles.paginacaoNavTexto,
+                !podeProxima && styles.paginacaoNavTextoDisabled,
+              ]}
+            >
+              Próxima
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function TabReservas() {
   const navigation = useNavigation() as any;
   const {
@@ -154,9 +285,9 @@ export default function TabReservas() {
   const [ordenacao, setOrdenacao] = useState<OrdenacaoReservas>("recentes");
   const [reservas, setReservas] = useState<ReservaAdminCard[]>([]);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const requestIdRef = useRef(0);
 
@@ -173,13 +304,9 @@ export default function TabReservas() {
   }, [buscaInput]);
 
   const carregar = useCallback(
-    async (pagina: number, append: boolean) => {
+    async (pagina: number) => {
       const requestId = ++requestIdRef.current;
-      if (pagina === 1 && !append) {
-        setLoading(true);
-      } else if (append) {
-        setLoadingMore(true);
-      }
+      setLoading(true);
 
       try {
         const response = await getReservasAdmin({
@@ -187,24 +314,25 @@ export default function TabReservas() {
           filtro: filtro || "todos",
           ordenacao,
           page: pagina,
-          pageSize: 20,
+          pageSize: PAGE_SIZE,
         });
 
         if (requestId !== requestIdRef.current) return;
 
         const lista = response.data ?? [];
         const meta = response.meta;
-        setReservas((prev) => (append ? [...prev, ...lista] : lista));
+        setReservas(lista);
         setPage(pagina);
-        setHasMore(Boolean(meta?.hasMore));
+        setTotalPages(Math.max(1, meta?.totalPages ?? 1));
+        setTotal(meta?.total ?? 0);
       } catch {
         if (requestId !== requestIdRef.current) return;
-        if (!append) setReservas([]);
-        setHasMore(false);
+        setReservas([]);
+        setTotalPages(1);
+        setTotal(0);
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
-          setLoadingMore(false);
           setRefreshing(false);
         }
       }
@@ -213,22 +341,25 @@ export default function TabReservas() {
   );
 
   useEffect(() => {
-    carregar(1, false);
-  }, [carregar]);
+    setPage(1);
+    carregar(1);
+  }, [busca, filtro, ordenacao, carregar]);
 
   useEffect(() => {
     if (refreshVersion === 0) return;
-    carregar(1, false);
-  }, [refreshVersion, carregar]);
+    carregar(page);
+  }, [refreshVersion, carregar, page]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    carregar(1, false);
+    carregar(page);
   };
 
-  const onEndReached = () => {
-    if (loading || loadingMore || refreshing || !hasMore) return;
-    carregar(page + 1, true);
+  const irParaPagina = (novaPagina: number) => {
+    const destino = Math.min(Math.max(1, novaPagina), totalPages);
+    if (destino === page) return;
+    setPage(destino);
+    carregar(destino);
   };
 
   return (
@@ -295,6 +426,16 @@ export default function TabReservas() {
         }}
       />
 
+      {!loading || refreshing ? (
+        <PaginacaoReservas
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          loading={loading && !refreshing}
+          onPageChange={irParaPagina}
+        />
+      ) : null}
+
       {loading && !refreshing ? (
         <View style={styles.estadoBox}>
           <ActivityIndicator size="large" color={colors.azul} />
@@ -311,24 +452,13 @@ export default function TabReservas() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.35}
           ListEmptyComponent={
             <View style={styles.vazioBox}>
               <Feather name="inbox" size={48} color="#999" />
               <Text style={styles.vazio}>Nenhuma reserva encontrada.</Text>
             </View>
           }
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator
-                style={{ marginVertical: 16 }}
-                color={colors.azul}
-              />
-            ) : (
-              <View style={{ height: 40 }} />
-            )
-          }
+          ListFooterComponent={<View style={{ height: 24 }} />}
           renderItem={({ item }) => (
             <CardReserva
               item={item}
@@ -421,6 +551,80 @@ const styles = StyleSheet.create({
   },
   ordenacaoTextoAtivo: {
     color: colors.azul,
+  },
+  paginacaoBox: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    gap: 4,
+  },
+  paginacaoResumo: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  paginacaoTotal: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 4,
+  },
+  paginacaoControles: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  paginacaoNavBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,115,230,0.08)",
+  },
+  paginacaoNavBtnDisabled: {
+    opacity: 0.45,
+  },
+  paginacaoNavTexto: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.azul,
+  },
+  paginacaoNavTextoDisabled: {
+    color: "#888",
+  },
+  paginacaoNumeros: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 4,
+    flex: 1,
+  },
+  paginacaoNumeroBtn: {
+    minWidth: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.04)",
+  },
+  paginacaoNumeroBtnAtivo: {
+    backgroundColor: colors.azul,
+  },
+  paginacaoNumeroTexto: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.cinza,
+  },
+  paginacaoNumeroTextoAtivo: {
+    color: colors.branco,
+  },
+  paginacaoEllipsis: {
+    fontSize: 14,
+    color: "#888",
+    paddingHorizontal: 4,
   },
   listaContent: {
     paddingBottom: 24,

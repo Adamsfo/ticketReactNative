@@ -33,6 +33,7 @@ import {
   getReservaAdminDetalhe,
   labelStatusReserva,
   postCancelarReservaHospedagem,
+  postReativarReservaExpirada,
   postReenviarLinkPagamentoReserva,
   podeExibirCancelamentoReservaAdmin,
   ReservaAdminDetalhe,
@@ -114,9 +115,13 @@ function HospedagemReservaDetalheContent() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCancelarOpen, setModalCancelarOpen] = useState(false);
+  const [modalReativarOpen, setModalReativarOpen] = useState(false);
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [cancelandoReserva, setCancelandoReserva] = useState(false);
+  const [reativandoReserva, setReativandoReserva] = useState(false);
   const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
+  const [erroReativacao, setErroReativacao] = useState<string | null>(null);
+  const [msgReativacao, setMsgReativacao] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [reserva, setReserva] = useState<ReservaAdminDetalhe | null>(null);
@@ -222,6 +227,42 @@ function HospedagemReservaDetalheContent() {
     setModalCancelarOpen(true);
   };
 
+  const abrirModalReativar = () => {
+    setErroReativacao(null);
+    setMsgReativacao(null);
+    setModalReativarOpen(true);
+  };
+
+  const handleConfirmarReativacao = async () => {
+    if (!reserva?.id || reativandoReserva) return;
+
+    setReativandoReserva(true);
+    setErroReativacao(null);
+    setMsgReativacao(null);
+
+    try {
+      const resp = await postReativarReservaExpirada(reserva.id);
+      if (!resp.success || !resp.data) {
+        setErroReativacao(
+          resp.message || "Não foi possível reativar a reserva.",
+        );
+        return;
+      }
+
+      setReserva(resp.data);
+      setModalReativarOpen(false);
+      setMsgReativacao(
+        resp.message ||
+          "Reserva reativada com sucesso.\n\nA reserva está aguardando pagamento e um novo link foi enviado ao cliente.",
+      );
+      notifyOperacaoConcluida();
+    } catch {
+      setErroReativacao("Erro ao reativar a reserva.");
+    } finally {
+      setReativandoReserva(false);
+    }
+  };
+
   const handleConfirmarCancelamento = async () => {
     if (!reserva?.id) return;
     const motivo = motivoCancelamento.trim();
@@ -265,6 +306,9 @@ function HospedagemReservaDetalheContent() {
   const mostrarCadastrarCliente = isHospedeSemCpf(nomeResponsavel);
   const observacoesReservaCadastro = textoObservacoesReserva(reserva);
   const exibirBotaoCancelar = podeExibirCancelamentoReservaAdmin(reserva);
+  const exibirBotaoReativar =
+    (reserva?.statusOriginal === "Expirada" || status === "Expirada") &&
+    !reativandoReserva;
   const totalDescontoReserva = (reserva?.suites ?? []).reduce((sum, suite) => {
     if (
       suite.valorOriginal != null &&
@@ -343,6 +387,22 @@ function HospedagemReservaDetalheContent() {
                       {labelStatusReserva(status)}
                     </Text>
                   </View>
+                  {exibirBotaoReativar ? (
+                    <TouchableOpacity
+                      style={styles.botaoLink}
+                      onPress={abrirModalReativar}
+                      disabled={reativandoReserva}
+                    >
+                      {reativandoReserva ? (
+                        <ActivityIndicator color={colors.branco} />
+                      ) : (
+                        <Text style={styles.botaoLinkTexto}>
+                          Reativar reserva
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
+
                   {podeReenviarLink ? (
                     <TouchableOpacity
                       style={styles.botaoLink}
@@ -357,6 +417,10 @@ function HospedagemReservaDetalheContent() {
                         </Text>
                       )}
                     </TouchableOpacity>
+                  ) : null}
+
+                  {msgReativacao ? (
+                    <Text style={styles.msgSucesso}>{msgReativacao}</Text>
                   ) : null}
 
                   {msgLink ? (
@@ -790,6 +854,59 @@ function HospedagemReservaDetalheContent() {
       </Modal>
 
       <Modal
+        visible={modalReativarOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!reativandoReserva) setModalReativarOpen(false);
+        }}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              if (!reativandoReserva) setModalReativarOpen(false);
+            }}
+          >
+            <View style={styles.overlay} />
+          </TouchableWithoutFeedback>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitulo}>Reativar reserva?</Text>
+            <Text style={styles.modalSubtitulo}>
+              A reserva será novamente disponibilizada para pagamento se a suíte
+              e o período ainda estiverem disponíveis.
+              {"\n\n"}
+              Um novo link de pagamento será enviado ao cliente.
+              {"\n\n"}
+              Deseja continuar?
+            </Text>
+            {erroReativacao ? (
+              <Text style={styles.erroCadastro}>{erroReativacao}</Text>
+            ) : null}
+            <View style={styles.modalAcoes}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnSec]}
+                onPress={() => setModalReativarOpen(false)}
+                disabled={reativandoReserva}
+              >
+                <Text style={styles.modalBtnSecTexto}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.botaoLink]}
+                onPress={handleConfirmarReativacao}
+                disabled={reativandoReserva}
+              >
+                {reativandoReserva ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.botaoLinkTexto}>Reativar reserva</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={modalCancelarOpen}
         transparent
         animationType="fade"
@@ -932,6 +1049,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.azul,
     fontWeight: "600",
+  },
+  msgSucesso: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#1e7e34",
+    fontWeight: "600",
+    lineHeight: 20,
   },
   secaoTitulo: {
     fontSize: 12,
