@@ -23,11 +23,14 @@ function formatarDataHospedagem(valor: string): string {
 
 type ResumoPagamentoHospedagemProps = {
   resumo: ResumoPagamentoHospedagemData;
+  /** Checkout site: oculta subtotal e taxa (incl. taxa plataforma na transação). */
+  ocultarSubtotalETaxa?: boolean;
   footerExtra?: React.ReactNode;
 };
 
 export default function ResumoPagamentoHospedagem({
   resumo,
+  ocultarSubtotalETaxa = false,
   footerExtra,
 }: ResumoPagamentoHospedagemProps) {
   return (
@@ -79,39 +82,61 @@ export default function ResumoPagamentoHospedagem({
         </View>
       ))}
 
-      <View
-        style={{
-          flexDirection: "column",
-          alignItems: "flex-end",
-          paddingRight: 8,
-          marginTop: 8,
-        }}
-      >
-        <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-          Subtotal:{" "}
-          <Text style={{ fontWeight: "bold" }}>
-            {formatCurrency(resumo.subtotalGeral)}
-          </Text>
-        </Text>
-        <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-          Taxa de serviço:{" "}
-          {resumo.taxaServicoDesconto && resumo.taxaServicoDesconto > 0 ? (
-            <Text style={{ color: colors.greenEscuro, paddingHorizontal: 5 }}>
-              Desconto: {formatCurrency(resumo.taxaServicoDesconto)}
-            </Text>
-          ) : null}
-          <Text style={{ fontWeight: "bold" }}>
-            {formatCurrency(resumo.taxaServico)}
-          </Text>
-        </Text>
-        <Text style={{ fontSize: 16 }}>
-          Total:{" "}
-          <Text style={{ fontWeight: "bold" }}>
+      {ocultarSubtotalETaxa ? (
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingRight: 8,
+            marginTop: 12,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "bold" }}>Total</Text>
+          <Text style={{ fontSize: 16, fontWeight: "bold" }}>
             {formatCurrency(resumo.valorTotal)}
           </Text>
-        </Text>
-        {footerExtra}
-      </View>
+        </View>
+      ) : (
+        <View
+          style={{
+            flexDirection: "column",
+            alignItems: "flex-end",
+            paddingRight: 8,
+            marginTop: 8,
+          }}
+        >
+          <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+            Subtotal:{" "}
+            <Text style={{ fontWeight: "bold" }}>
+              {formatCurrency(resumo.subtotalGeral)}
+            </Text>
+          </Text>
+          <Text style={{ fontSize: 16, paddingBottom: 3 }}>
+            Taxa de serviço:{" "}
+            {resumo.taxaServicoDesconto && resumo.taxaServicoDesconto > 0 ? (
+              <Text style={{ color: colors.greenEscuro, paddingHorizontal: 5 }}>
+                Desconto: {formatCurrency(resumo.taxaServicoDesconto)}
+              </Text>
+            ) : null}
+            <Text style={{ fontWeight: "bold" }}>
+              {formatCurrency(resumo.taxaServico)}
+            </Text>
+          </Text>
+          <Text style={{ fontSize: 16 }}>
+            Total:{" "}
+            <Text style={{ fontWeight: "bold" }}>
+              {formatCurrency(resumo.valorTotal)}
+            </Text>
+          </Text>
+          {footerExtra}
+        </View>
+      )}
+      {ocultarSubtotalETaxa && footerExtra ? (
+        <View style={{ alignItems: "flex-end", paddingRight: 8, marginTop: 8 }}>
+          {footerExtra}
+        </View>
+      ) : null}
     </View>
   );
 }

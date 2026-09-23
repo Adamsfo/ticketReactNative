@@ -233,7 +233,10 @@ export default function Index() {
               <View style={styles.areaResumo}>
                 <Text style={styles.titulo}>Resumo</Text>
                 {isHospedagem && resumoHospedagem ? (
-                  <ResumoPagamentoHospedagem resumo={resumoHospedagem} />
+                  <ResumoPagamentoHospedagem
+                    resumo={resumoHospedagem}
+                    ocultarSubtotalETaxa
+                  />
                 ) : (
                   <>
                     <View>
