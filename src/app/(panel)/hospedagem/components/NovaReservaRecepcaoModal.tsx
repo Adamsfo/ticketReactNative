@@ -451,6 +451,13 @@ export default function NovaReservaRecepcaoModal() {
     [checkoutDate, checkoutTime],
   );
 
+  const handleCheckinDateChange = useCallback((novaData: Date) => {
+    setCheckinDate(novaData);
+    const novaCheckout = new Date(novaData);
+    novaCheckout.setDate(novaCheckout.getDate() + 1);
+    setCheckoutDate(novaCheckout);
+  }, []);
+
   const calcularErrosPeriodo = useCallback(() => {
     const newErrors: Record<string, string> = {};
     const agora = new Date();
@@ -1315,7 +1322,7 @@ export default function NovaReservaRecepcaoModal() {
                 <View style={styles.dateField}>
                   <DatePickerComponente
                     value={checkinDate}
-                    onChange={setCheckinDate}
+                    onChange={handleCheckinDateChange}
                   />
                 </View>
                 <View style={styles.timeField}>

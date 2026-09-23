@@ -298,6 +298,13 @@ export default function Index() {
   const getCheckoutIso = () =>
     combineDateTime(checkoutDate, checkoutTime).toISOString();
 
+  const handleCheckinDateChange = (novaData: Date) => {
+    setCheckinDate(novaData);
+    const novaCheckout = new Date(novaData);
+    novaCheckout.setDate(novaCheckout.getDate() + 1);
+    setCheckoutDate(novaCheckout);
+  };
+
   const validarFiltros = () => {
     const newErrors: { [key: string]: string } = {};
     const agora = new Date();
@@ -1096,7 +1103,7 @@ export default function Index() {
                 <View style={styles.filtroDateField}>
                   <DatePickerComponente
                     value={checkinDate}
-                    onChange={setCheckinDate}
+                    onChange={handleCheckinDateChange}
                   />
                 </View>
                 <View style={styles.filtroTimeField}>
