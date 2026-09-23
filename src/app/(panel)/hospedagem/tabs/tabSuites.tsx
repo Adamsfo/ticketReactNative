@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -100,6 +107,11 @@ function hojeStrCuiaba(): string {
   return formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
 }
 
+/** Comparação civil (yyyy-MM-dd) — sem horário. */
+function ehMesmoDiaCalendario(a: string, b: string): boolean {
+  return String(a) === String(b);
+}
+
 function mesDeData(data: string): string {
   return data.slice(0, 7);
 }
@@ -162,6 +174,7 @@ function DiaCalendarioChip({
   label,
   diaSemana,
   selecionado,
+  ehDiaAtual = false,
   indicadores,
   onPress,
   estiloExtra,
@@ -170,6 +183,7 @@ function DiaCalendarioChip({
   label: string;
   diaSemana?: string;
   selecionado: boolean;
+  ehDiaAtual?: boolean;
   indicadores?: IndicadoresDiaCalendario | null;
   onPress: () => void;
   estiloExtra?: object;
@@ -227,17 +241,27 @@ function DiaCalendarioChip({
             {diaSemana}
           </Text>
         ) : null}
-        <Text
+        <View
           style={[
-            labelNumerico ? styles.diaNum : styles.diaHojeLabel,
-            selecionado &&
-              (labelNumerico
-                ? styles.diaNumSelecionado
-                : styles.diaHojeLabelSelecionado),
+            labelNumerico && ehDiaAtual ? styles.diaNumHojeWrap : null,
+            labelNumerico && ehDiaAtual && selecionado
+              ? styles.diaNumHojeWrapSelecionado
+              : null,
           ]}
         >
-          {label}
-        </Text>
+          <Text
+            style={[
+              labelNumerico ? styles.diaNum : styles.diaHojeLabel,
+              selecionado &&
+                (labelNumerico
+                  ? styles.diaNumSelecionado
+                  : styles.diaHojeLabelSelecionado),
+              labelNumerico && ehDiaAtual && styles.diaNumHojeTexto,
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
         <IndicadoresDots
           indicadores={indicadores}
           layoutMobile={layoutMobile}
@@ -284,9 +308,8 @@ function CalendarioHorizontal({
     scrollRef.current.scrollTo({ x, animated: true });
   }, [dias, dataSelecionada]);
 
-  React.useEffect(() => {
-    const t = setTimeout(scrollParaSelecionado, 50);
-    return () => clearTimeout(t);
+  useLayoutEffect(() => {
+    scrollParaSelecionado();
   }, [mesVisivel, dataSelecionada, scrollParaSelecionado]);
 
   return (
@@ -320,7 +343,7 @@ function CalendarioHorizontal({
       >
         <DiaCalendarioChip
           label="Hoje"
-          selecionado={dataSelecionada === hoje}
+          selecionado={ehMesmoDiaCalendario(dataSelecionada, hoje)}
           indicadores={byData.get(hoje)?.indicadores}
           onPress={() => onSelecionarData(hoje)}
           estiloExtra={styles.diaChipHojeAtalho}
@@ -328,9 +351,10 @@ function CalendarioHorizontal({
         />
 
         {dias.map((data) => {
-          const selecionado = data === dataSelecionada;
+          const selecionado = ehMesmoDiaCalendario(data, dataSelecionada);
           const diaNum = String(Number(data.slice(8, 10)));
           const indicadores = byData.get(data)?.indicadores;
+          const ehDiaAtual = ehMesmoDiaCalendario(data, hoje);
 
           return (
             <DiaCalendarioChip
@@ -338,6 +362,7 @@ function CalendarioHorizontal({
               label={diaNum}
               diaSemana={labelDiaSemanaPtCurto(data)}
               selecionado={selecionado}
+              ehDiaAtual={ehDiaAtual}
               indicadores={indicadores}
               onPress={() => onSelecionarData(data)}
               layoutMobile={layoutMobile}
@@ -1357,8 +1382,12 @@ export default function TabSuites() {
           onMesAnterior={() => irMes(-1)}
           onMesProximo={() => irMes(1)}
           onSelecionarData={(data) => {
+            if (ehMesmoDiaCalendario(data, dataReferencia)) return;
             setDataReferencia(data);
-            setMesVisivel(mesDeData(data));
+            const novoMes = mesDeData(data);
+            if (novoMes !== mesVisivel) {
+              setMesVisivel(novoMes);
+            }
           }}
           layoutMobile={layoutMobile}
         />
@@ -1557,7 +1586,7 @@ export default function TabSuites() {
           ref={suitesListaRef}
           key={`suites-cols-${suiteColumns}`}
           {...suitesFlatListProps}
-          ListHeaderComponent={cabecalhoSuites}
+          ListHeaderComponent={cabecalhoSuites()}
           ListEmptyComponent={listEmptySuitesMobile}
           onScroll={aoRolarListaMobile}
           scrollEventThrottle={16}
@@ -1759,6 +1788,22 @@ const styles = StyleSheet.create({
   },
   diaNumSelecionado: {
     fontWeight: "600",
+  },
+  diaNumHojeWrap: {
+    backgroundColor: "rgba(25, 118, 210, 0.2)",
+    borderRadius: 8,
+    minWidth: 30,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  diaNumHojeWrapSelecionado: {
+    backgroundColor: "rgba(25, 118, 210, 0.28)",
+  },
+  diaNumHojeTexto: {
+    color: CALENDARIO_SELECAO_BORDA,
+    fontWeight: "700",
   },
   dotsRow: {
     flexDirection: "row",
