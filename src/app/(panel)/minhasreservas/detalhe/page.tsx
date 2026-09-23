@@ -171,6 +171,7 @@ export default function MinhasReservaDetalhePage() {
     ? acaoRemarcarDisponivel({
         podeRemarcar: Boolean(dados.remarcacao?.podeRemarcar),
         remarcacaoPendente,
+        status: dados.status,
       })
     : false;
   const cancelarDisponivel = dados

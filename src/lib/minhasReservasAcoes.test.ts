@@ -25,8 +25,31 @@ describe("minhasReservasAcoes", () => {
       acaoRemarcarDisponivel({
         podeRemarcar: false,
         remarcacaoPendente: true,
+        status: "Confirmada",
       }),
     ).toBe(true);
+  });
+
+  it("não exibe remarcação pendente em cancelada ou hospedada", () => {
+    expect(
+      deveExibirAcaoRemarcarReserva({
+        status: "Cancelada",
+        remarcacaoPendente: true,
+      }),
+    ).toBe(false);
+    expect(
+      deveExibirAcaoRemarcarReserva({
+        status: "Hospedada",
+        remarcacaoPendente: true,
+      }),
+    ).toBe(false);
+    expect(
+      acaoRemarcarDisponivel({
+        podeRemarcar: true,
+        remarcacaoPendente: true,
+        status: "Cancelada",
+      }),
+    ).toBe(false);
   });
 
   it("marca cancelamento indisponível quando podeCancelar é false", () => {

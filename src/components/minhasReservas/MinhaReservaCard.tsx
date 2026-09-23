@@ -64,6 +64,7 @@ export default function MinhaReservaCard({
   const remarcarDisponivel = acaoRemarcarDisponivel({
     podeRemarcar: item.podeRemarcar,
     remarcacaoPendente,
+    status: item.status,
   });
   const cancelarDisponivel = acaoCancelarDisponivel(item.podeCancelar);
 

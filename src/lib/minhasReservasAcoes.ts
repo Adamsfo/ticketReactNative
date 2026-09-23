@@ -17,9 +17,6 @@ export function deveExibirAcaoRemarcarReserva(params: {
   status: string;
   remarcacaoPendente?: boolean | null;
 }): boolean {
-  if (params.remarcacaoPendente) {
-    return true;
-  }
   return STATUS_COM_ACOES_CLIENTE.has(String(params.status));
 }
 
@@ -30,7 +27,14 @@ export function acaoCancelarDisponivel(podeCancelar: boolean): boolean {
 export function acaoRemarcarDisponivel(params: {
   podeRemarcar: boolean;
   remarcacaoPendente?: boolean | null;
+  status?: string;
 }): boolean {
+  if (
+    params.status != null &&
+    !STATUS_COM_ACOES_CLIENTE.has(String(params.status))
+  ) {
+    return false;
+  }
   if (params.remarcacaoPendente) {
     return true;
   }
