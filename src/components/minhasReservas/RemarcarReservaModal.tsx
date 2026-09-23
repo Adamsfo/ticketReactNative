@@ -32,6 +32,7 @@ import DeviceIdWeb from "@/src/components/DeviceIdWeb";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
 import { TAXA_REMARCACAO_CLIENTE } from "@/src/lib/remarcacaoClienteConfig";
+import { calcularNoitesHotelaria } from "@/src/lib/reservaSuitePricing";
 
 const MP_PUBLIC_KEY = process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "";
 
@@ -289,6 +290,12 @@ export default function RemarcarReservaModal({
     const checkout = combineDateTime(checkoutDate, checkoutTime);
     if (checkout <= checkin) {
       return "O check-out deve ser posterior ao check-in.";
+    }
+    const noitesNovas = calcularNoitesHotelaria(checkin, checkout);
+    const noitesOriginais = reserva.noites;
+    if (noitesNovas !== noitesOriginais) {
+      const sufixo = noitesOriginais === 1 ? "noite" : "noites";
+      return `A remarcação deve manter a mesma quantidade de noites da reserva: ${noitesOriginais} ${sufixo}.`;
     }
     return null;
   };
