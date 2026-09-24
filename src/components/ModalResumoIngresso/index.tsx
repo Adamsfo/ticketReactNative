@@ -54,7 +54,12 @@ export default function ModalResumoIngresso({
   const { state, dispatch } = useCart();
   const [visibleDetalhe, setVisibleDetalhe] = React.useState(false);
   const navigation = useNavigation() as any;
-  const { id } = route.params as { id: number };
+  const params = route.params as {
+    id?: number;
+    idEvento?: number;
+    idTransacao?: number;
+  };
+  const eventoId = params.idEvento ?? params.id;
   const [visibleLogin, setVisibleLogin] = React.useState(false);
   const [visibleMsg, setVisibleMsg] = React.useState(false);
   const [msg, setMsg] = React.useState("");
@@ -158,13 +163,13 @@ export default function ModalResumoIngresso({
 
     navigation.navigate("conferencia", {
       idTransacao: idTransacao,
-      idEvento: id,
+      idEvento: eventoId,
     });
   };
 
   const handelCloseLogin = () => {
     setVisibleLogin(false);
-    navigation.navigate("ingressos", { id: id });
+    navigation.navigate("ingressos", { id: eventoId });
   };
 
   const handelCloseMsg = () => {
@@ -513,7 +518,7 @@ export default function ModalResumoIngresso({
             <View style={{ flex: 1 }}>
               <ModalCondicoesCompra
                 onClose={handelCloseCondicoesCompra}
-                idEvento={id}
+                idEvento={eventoId ?? 0}
               />
             </View>
           </TouchableWithoutFeedback>
