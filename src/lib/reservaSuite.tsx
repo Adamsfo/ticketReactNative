@@ -147,6 +147,9 @@ export async function checkoutReserva(body: {
   idUsuario: number;
   checkin: string;
   checkout: string;
+  /** Somente contratação direta pelo cliente no site (não PDV). */
+  contratacaoCliente?: boolean;
+  aceitePoliticaHospedagem?: boolean;
   suites: SuiteCheckoutPayload[];
 }) {
   return api.request<{

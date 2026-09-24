@@ -40,6 +40,7 @@ import {
   validarHospedes,
 } from "@/src/lib/hospedagemHospedes";
 import { useFocusEffect } from "expo-router";
+import AceitePoliticaHospedagem from "@/src/components/AceitePoliticaHospedagem";
 
 const { width } = Dimensions.get("window");
 
@@ -67,6 +68,7 @@ export default function ConferenciaHospedagemPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [visibleMsg, setVisibleMsg] = useState(false);
   const [msgApi, setMsgApi] = useState("");
+  const [aceitePolitica, setAceitePolitica] = useState(false);
 
   const chaveSuitesAtual = chaveSuitesHospedagem(state.reserva?.itens);
 
@@ -241,6 +243,14 @@ export default function ConferenciaHospedagemPage() {
       return;
     }
 
+    if (!isPDV && !aceitePolitica) {
+      setMsgApi(
+        "É necessário aceitar a Política de Cancelamento, Remarcação e Alteração de Hóspedes.",
+      );
+      setVisibleMsg(true);
+      return;
+    }
+
     dispatch({ type: "SET_HOSPEDES", hospedes });
     setCheckoutLoading(true);
 
@@ -250,6 +260,12 @@ export default function ConferenciaHospedagemPage() {
         idUsuario,
         checkin: state.reserva.checkin,
         checkout: state.reserva.checkout,
+        ...(isPDV
+          ? {}
+          : {
+              contratacaoCliente: true,
+              aceitePoliticaHospedagem: aceitePolitica,
+            }),
         suites: state.reserva.itens.map((item) => {
           const suiteHospedes = hospedes.find(
             (suite) => suite.idEventoSuite === item.idEventoSuite,
@@ -363,6 +379,7 @@ export default function ConferenciaHospedagemPage() {
     navigation,
     state.reserva,
     user?.id,
+    aceitePolitica,
   ]);
 
   if (!state.reserva) {
@@ -516,6 +533,14 @@ export default function ConferenciaHospedagemPage() {
                 ))}
               </View>
             ))}
+
+            {!isPDV ? (
+              <AceitePoliticaHospedagem
+                value={aceitePolitica}
+                onValueChange={setAceitePolitica}
+                style={{ marginHorizontal: 8, marginBottom: 8 }}
+              />
+            ) : null}
 
             <View style={{ height: 100 }} />
           </View>

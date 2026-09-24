@@ -1119,6 +1119,7 @@ export async function getReservaPublicaPorToken(
 export async function putHospedesReservaPublicaPorToken(
   token: string,
   body: {
+    aceitePoliticaHospedagem?: boolean;
     suites: Array<{
       idReservaSuite: number;
       hospedes: Array<{

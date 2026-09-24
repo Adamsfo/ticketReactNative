@@ -44,6 +44,7 @@ import { useAuth } from "@/src/contexts_/AuthContext";
 import { useCart } from "@/src/contexts_/CartContext";
 import { apiAuth } from "@/src/lib/auth";
 import { Transacao } from "@/src/types/geral";
+import AceitePoliticaHospedagem from "@/src/components/AceitePoliticaHospedagem";
 
 const { width } = Dimensions.get("window");
 
@@ -92,6 +93,7 @@ export default function ReservaPublicaPage() {
     {},
   );
   const [salvandoHospedes, setSalvandoHospedes] = useState(false);
+  const [aceitePolitica, setAceitePolitica] = useState(false);
 
   const userRef = useRef(user);
   const setAuthRef = useRef(setAuth);
@@ -323,12 +325,19 @@ export default function ReservaPublicaPage() {
       return;
     }
 
+    if (!aceitePolitica) {
+      setErro(
+        "É necessário aceitar a Política de Cancelamento, Remarcação e Alteração de Hóspedes.",
+      );
+      return;
+    }
+
     setSalvandoHospedes(true);
     try {
-      const saveResp = await putHospedesReservaPublicaPorToken(
-        token,
-        hospedesFormParaSalvarPublico(hospedes),
-      );
+      const saveResp = await putHospedesReservaPublicaPorToken(token, {
+        aceitePoliticaHospedagem: true,
+        ...hospedesFormParaSalvarPublico(hospedes),
+      });
       if (!saveResp.success) {
         setErro(saveResp.message || "Erro ao salvar os dados dos hóspedes.");
         return;
@@ -616,6 +625,12 @@ export default function ReservaPublicaPage() {
               </View>
 
               {podeIrPagamento ? (
+                <>
+                  <AceitePoliticaHospedagem
+                    value={aceitePolitica}
+                    onValueChange={setAceitePolitica}
+                    style={{ marginTop: 8 }}
+                  />
                 <TouchableOpacity
                   style={[
                     styles.btnPri,
@@ -630,6 +645,7 @@ export default function ReservaPublicaPage() {
                     <Text style={styles.btnPriText}>Ir para o pagamento</Text>
                   )}
                 </TouchableOpacity>
+                </>
               ) : data.podePagar ? (
                 <View style={styles.card}>
                   <Text style={styles.meta}>
