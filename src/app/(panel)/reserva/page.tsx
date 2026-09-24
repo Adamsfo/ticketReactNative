@@ -1,12 +1,14 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
   Dimensions,
 } from "react-native";
@@ -45,8 +47,12 @@ import { useCart } from "@/src/contexts_/CartContext";
 import { apiAuth } from "@/src/lib/auth";
 import { Transacao } from "@/src/types/geral";
 import AceitePoliticaHospedagem from "@/src/components/AceitePoliticaHospedagem";
+import ModalMsg from "@/src/components/ModalMsg";
 
 const { width } = Dimensions.get("window");
+
+const MSG_ACEITE_POLITICA_HOSPEDAGEM =
+  "É necessário aceitar a Política de Cancelamento, Remarcação e Alteração de Hóspedes.";
 
 function formatDateTime(iso: string): string {
   try {
@@ -94,6 +100,8 @@ export default function ReservaPublicaPage() {
   );
   const [salvandoHospedes, setSalvandoHospedes] = useState(false);
   const [aceitePolitica, setAceitePolitica] = useState(false);
+  const [visibleMsg, setVisibleMsg] = useState(false);
+  const [msgApi, setMsgApi] = useState("");
 
   const userRef = useRef(user);
   const setAuthRef = useRef(setAuth);
@@ -326,9 +334,8 @@ export default function ReservaPublicaPage() {
     }
 
     if (!aceitePolitica) {
-      setErro(
-        "É necessário aceitar a Política de Cancelamento, Remarcação e Alteração de Hóspedes.",
-      );
+      setMsgApi(MSG_ACEITE_POLITICA_HOSPEDAGEM);
+      setVisibleMsg(true);
       return;
     }
 
@@ -339,38 +346,39 @@ export default function ReservaPublicaPage() {
         ...hospedesFormParaSalvarPublico(hospedes),
       });
       if (!saveResp.success) {
-        setErro(saveResp.message || "Erro ao salvar os dados dos hóspedes.");
+        setMsgApi(saveResp.message || "Erro ao salvar os dados dos hóspedes.");
+        setVisibleMsg(true);
         return;
       }
+
+      const registroApi = data?.pagamento?.registroTransacao;
+      const idTransacao = Number(registroApi?.id);
+      if (!Number.isFinite(idTransacao) || idTransacao <= 0) {
+        return;
+      }
+      if (!data?.pagamento?.idEvento) {
+        return;
+      }
+
+      if (registroApi && typeof registroApi === "object") {
+        const transacao: Transacao = {
+          ...(registroApi as Transacao),
+          id: idTransacao,
+        };
+        dispatchCart({ type: "ADD_TRANSACAO", transacao });
+      }
+
+      navigation.navigate("pagamento", {
+        idEvento: Number(data.pagamento.idEvento),
+        registroTransacao: idTransacao,
+        tipoCompra: "hospedagem",
+      });
     } catch {
-      setErro("Erro ao salvar os dados dos hóspedes.");
-      return;
+      setMsgApi("Erro ao salvar os dados dos hóspedes.");
+      setVisibleMsg(true);
     } finally {
       setSalvandoHospedes(false);
     }
-
-    const registroApi = data?.pagamento?.registroTransacao;
-    const idTransacao = Number(registroApi?.id);
-    if (!Number.isFinite(idTransacao) || idTransacao <= 0) {
-      return;
-    }
-    if (!data?.pagamento?.idEvento) {
-      return;
-    }
-
-    if (registroApi && typeof registroApi === "object") {
-      const transacao: Transacao = {
-        ...(registroApi as Transacao),
-        id: idTransacao,
-      };
-      dispatchCart({ type: "ADD_TRANSACAO", transacao });
-    }
-
-    navigation.navigate("pagamento", {
-      idEvento: Number(data.pagamento.idEvento),
-      registroTransacao: idTransacao,
-      tipoCompra: "hospedagem",
-    });
   };
 
   const status = data?.status || "AguardandoPagamento";
@@ -682,6 +690,19 @@ export default function ReservaPublicaPage() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
+
+      <Modal
+        visible={visibleMsg}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setVisibleMsg(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setVisibleMsg(false)}>
+          <View style={{ flex: 1 }}>
+            <ModalMsg onClose={() => setVisibleMsg(false)} msg={msgApi} />
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </LinearGradient>
   );
 }
