@@ -1319,7 +1319,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     minHeight: 88,
     textAlignVertical: "top",
-    fontSize: 15,
+    fontSize: 16,
     color: colors.cinza,
   },
   modalAcoes: {

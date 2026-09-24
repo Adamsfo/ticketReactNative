@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   },
   buscaInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: colors.cinza,
     paddingVertical: 4,
   },

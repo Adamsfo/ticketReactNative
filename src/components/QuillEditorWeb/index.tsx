@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "react-quill/dist/quill.snow.css";
+import "./quill-editor-font.css";
 
 interface QuillEditorWebProps {
   value: string;

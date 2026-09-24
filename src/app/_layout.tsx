@@ -1,4 +1,5 @@
 import "react-native-gesture-handler";
+import "../styles/mobile-input-font";
 import { AuthProvider } from "../contexts_/AuthContext";
 import Routes from "./routes";
 import { CartProvider } from "../contexts_/CartContext";

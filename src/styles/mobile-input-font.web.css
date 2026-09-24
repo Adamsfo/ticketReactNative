@@ -1,0 +1,9 @@
+/* Evita zoom automático ao focar campos no Safari/iOS (font-size < 16px).
+   Apenas dispositivos touch; desktop com mouse permanece inalterado. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

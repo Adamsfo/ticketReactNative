@@ -2310,6 +2310,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: colors.branco,
     color: colors.cinza,
+    fontSize: 16,
   },
   textArea: { minHeight: 80, textAlignVertical: "top" },
   erro: { color: colors.red, fontSize: 13, marginTop: 4 },

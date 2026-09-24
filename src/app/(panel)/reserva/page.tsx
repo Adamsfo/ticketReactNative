@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingHorizontal: 8,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 16,
     backgroundColor: "#fff",
   },
   dateRow: {

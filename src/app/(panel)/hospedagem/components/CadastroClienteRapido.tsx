@@ -448,6 +448,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: colors.branco,
     color: colors.cinza,
+    fontSize: 16,
   },
   erro: { color: colors.red, marginTop: 8, fontSize: 13 },
   btns: { flexDirection: "row", gap: 10, marginTop: 16 },

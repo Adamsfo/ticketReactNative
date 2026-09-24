@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === "ios" ? 12 : 8,
-    fontSize: 15,
+    fontSize: 16,
     color: colors.cinza,
   },
   hint: {
