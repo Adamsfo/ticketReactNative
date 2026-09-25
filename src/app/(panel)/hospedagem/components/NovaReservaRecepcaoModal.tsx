@@ -151,6 +151,17 @@ function isMesmaDataLocal(a: Date, b: Date): boolean {
   );
 }
 
+/** Compara só o dia civil local (ignora hora). */
+function isDataLocalPosteriorAHoje(data: Date, referencia: Date): boolean {
+  const ref = new Date(
+    referencia.getFullYear(),
+    referencia.getMonth(),
+    referencia.getDate(),
+  );
+  const alvo = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+  return alvo.getTime() > ref.getTime();
+}
+
 function proximoSlotAposAgora(
   agora: Date,
   intervaloMinutos = INTERVALO_SLOTS_MIN,
@@ -453,6 +464,9 @@ export default function NovaReservaRecepcaoModal() {
 
   const handleCheckinDateChange = useCallback((novaData: Date) => {
     setCheckinDate(novaData);
+    if (isDataLocalPosteriorAHoje(novaData, new Date())) {
+      setCheckinTime(defaultCheckinTime());
+    }
     const novaCheckout = new Date(novaData);
     novaCheckout.setDate(novaCheckout.getDate() + 1);
     setCheckoutDate(novaCheckout);
