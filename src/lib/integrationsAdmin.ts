@@ -326,10 +326,33 @@ export function formatSuccessRate(rate?: number | null): string {
   })}%`;
 }
 
+let syncSummaryRequestInFlight: Promise<
+  ApiResponse<SyncSummaryCounts>
+> | null = null;
+
+/**
+ * Evita HTTP duplicado quando vários pollers disparam ao mesmo tempo.
+ * Chamadas concorrentes compartilham a mesma Promise (não cancela a primeira).
+ */
 export async function getSyncSummary(): Promise<
   ApiResponse<SyncSummaryCounts>
 > {
-  return api.request("/api/integrations/sync-summary", "GET");
+  if (syncSummaryRequestInFlight) {
+    return syncSummaryRequestInFlight;
+  }
+  const request = api.request("/api/integrations/sync-summary", "GET");
+  const tracked = request.finally(() => {
+    if (syncSummaryRequestInFlight === tracked) {
+      syncSummaryRequestInFlight = null;
+    }
+  });
+  syncSummaryRequestInFlight = tracked;
+  return tracked;
+}
+
+/** Expõe estado para testes (não usar na UI). */
+export function __resetSyncSummaryRequestCoalescingForTests(): void {
+  syncSummaryRequestInFlight = null;
 }
 
 export async function getSyncPendencias(params?: {

@@ -76,6 +76,8 @@ type HospedagemAdminRefreshContextValue = {
   /** Badge / atenção total. */
   syncErrosTotal: number;
   refreshSyncSummary: () => void;
+  /** Atualiza o summary global sem HTTP (ex.: já veio de getIntegrationsStatus). */
+  applySyncSummary: (data: SyncSummaryCounts) => void;
   /** Quando true, a aba Reservas deve filtrar sync_erro. */
   filtroSyncErroPedido: boolean;
   pedirFiltroSyncErro: () => void;
@@ -116,6 +118,7 @@ const HospedagemAdminRefreshContext =
     syncErrosSemReserva: 0,
     syncErrosTotal: 0,
     refreshSyncSummary: () => undefined,
+    applySyncSummary: () => undefined,
     filtroSyncErroPedido: false,
     pedirFiltroSyncErro: () => undefined,
     limparFiltroSyncErroPedido: () => undefined,
@@ -156,6 +159,7 @@ export function HospedagemAdminRefreshProvider({
   const refreshPendingRef = useRef(false);
   const editLockCountRef = useRef(0);
   const pollingRef = useRef(false);
+  const syncSummaryFetchRef = useRef(false);
 
   const bumpRefresh = useCallback(() => {
     setRefreshVersion((v) => v + 1);
@@ -204,12 +208,23 @@ export function HospedagemAdminRefreshProvider({
     }
   }, [bumpRefresh]);
 
+  const applySyncSummary = useCallback((data: SyncSummaryCounts) => {
+    setSyncSummary(data);
+  }, []);
+
   const refreshSyncSummary = useCallback(() => {
+    if (syncSummaryFetchRef.current) {
+      return;
+    }
+    syncSummaryFetchRef.current = true;
     void getSyncSummary()
       .then((resp) => {
         if (resp.success && resp.data) setSyncSummary(resp.data);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        syncSummaryFetchRef.current = false;
+      });
   }, []);
 
   const pollRemoteVersion = useCallback(async () => {
@@ -314,6 +329,7 @@ export function HospedagemAdminRefreshProvider({
       syncErrosSemReserva,
       syncErrosTotal,
       refreshSyncSummary,
+      applySyncSummary,
       filtroSyncErroPedido,
       pedirFiltroSyncErro: () => setFiltroSyncErroPedido(true),
       limparFiltroSyncErroPedido: () => setFiltroSyncErroPedido(false),
@@ -334,6 +350,7 @@ export function HospedagemAdminRefreshProvider({
       syncErrosSemReserva,
       syncErrosTotal,
       refreshSyncSummary,
+      applySyncSummary,
       filtroSyncErroPedido,
       abrirPendenciasPedido,
     ],

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -72,10 +72,11 @@ export default function TabIntegracoes() {
   const { isAdministrador, isProdutor } = useAuth();
   const podeIntegracoes = isAdministrador || isProdutor;
   const {
-    refreshSyncSummary,
+    applySyncSummary,
     abrirPendenciasPedido,
     limparAbrirPendenciasPedido,
   } = useHospedagemAdminRefresh();
+  const carregarInFlightRef = useRef(false);
   const [sub, setSub] = useState<SubAba>("providers");
   const [itens, setItens] = useState<IntegrationProviderStatus[]>([]);
   const [summary, setSummary] = useState<SyncSummaryCounts | null>(null);
@@ -109,6 +110,10 @@ export default function TabIntegracoes() {
   }, [abrirPendenciasPedido, limparAbrirPendenciasPedido]);
 
   const carregar = useCallback(async (silent = false) => {
+    if (carregarInFlightRef.current) {
+      return;
+    }
+    carregarInFlightRef.current = true;
     if (!silent) setLoading(true);
     setErro(null);
     try {
@@ -118,20 +123,24 @@ export default function TabIntegracoes() {
       ]);
       if (st.success && st.data) {
         setItens(st.data.providers || []);
-        setSummary(st.data.summary || null);
+        const nextSummary = st.data.summary || null;
+        setSummary(nextSummary);
+        if (nextSummary) {
+          applySyncSummary(nextSummary);
+        }
       }
       if (pend.success && pend.data) {
         setPendencias(pend.data.items || []);
         setPendTotal(pend.data.total || 0);
       }
-      refreshSyncSummary();
     } catch {
       setErro("Erro ao carregar integrações.");
     } finally {
+      carregarInFlightRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
-  }, [refreshSyncSummary]);
+  }, [applySyncSummary]);
 
   useEffect(() => {
     void carregar();

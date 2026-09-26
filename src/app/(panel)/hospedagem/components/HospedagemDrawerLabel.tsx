@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Text } from "react-native";
 import { getSyncSummary } from "@/src/lib/integrationsAdmin";
 
@@ -12,10 +12,15 @@ export default function HospedagemDrawerLabel({
   focused?: boolean;
 }) {
   const [erros, setErros] = useState(0);
+  const fetchInFlightRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
     const load = () => {
+      if (fetchInFlightRef.current) {
+        return;
+      }
+      fetchInFlightRef.current = true;
       void getSyncSummary()
         .then((resp) => {
           if (alive && resp.success && resp.data) {
@@ -28,7 +33,10 @@ export default function HospedagemDrawerLabel({
             );
           }
         })
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(() => {
+          fetchInFlightRef.current = false;
+        });
     };
     load();
     const t = setInterval(load, 30_000);
