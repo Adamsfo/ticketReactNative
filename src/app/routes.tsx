@@ -18,6 +18,7 @@ import HospedagemDrawerLabel from "./(panel)/hospedagem/components/HospedagemDra
 import HospedagemReservaDetalhe from "./(panel)/hospedagem/reservaDetalhe/page";
 import HospedagemSuiteDetalhe from "./(panel)/hospedagem/suiteDetalhe/page";
 import LimpezaSuitesPage from "./(panel)/limpezaSuites/page";
+import CaixaPage from "./(panel)/caixa/page";
 import Produtor from "./(panel)/produtor/page";
 import Usuario from "./(panel)/usuario/page";
 import TipoIngresso from "./(panel)/tipoIngresso/page";
@@ -63,6 +64,48 @@ import PoliticaPrivacidade from "./(panel)/politicaPrivacidade/page";
 // Exemplo: const { isValidador, isCliente, isAdministrador } = useAuth();
 
 const Drawer = createDrawerNavigator();
+
+type DrawerIconProps = {
+  focused: boolean;
+  size: number;
+  color: string;
+};
+
+const drawerIconMeusEventos = ({ focused, size, color }: DrawerIconProps) => (
+  <Ionicons
+    name={focused ? "calendar" : "calendar-outline"}
+    size={size}
+    color={color}
+  />
+);
+
+const drawerIconCupomPromocional = ({
+  focused,
+  size,
+  color,
+}: DrawerIconProps) => (
+  <Ionicons
+    name={focused ? "pricetag" : "pricetag-outline"}
+    size={size}
+    color={color}
+  />
+);
+
+const drawerIconProdutor = ({ focused, size, color }: DrawerIconProps) => (
+  <Ionicons
+    name={focused ? "storefront" : "storefront-outline"}
+    size={size}
+    color={color}
+  />
+);
+
+const drawerIconValidador = ({ focused, size, color }: DrawerIconProps) => (
+  <Ionicons
+    name={focused ? "qr-code" : "qr-code-outline"}
+    size={size}
+    color={color}
+  />
+);
 
 function Routes() {
   const [isLoading, setIsLoading] = useState(true);
@@ -140,7 +183,11 @@ function Routes() {
           <Drawer.Screen
             name="meusevento"
             component={MeusEventos}
-            options={{ headerShown: false, title: "Meus Eventos" }}
+            options={{
+              headerShown: false,
+              title: "Meus Eventos",
+              drawerIcon: drawerIconMeusEventos,
+            }}
           />
           <Drawer.Screen
             name="hospedagem"
@@ -169,14 +216,37 @@ function Routes() {
             }}
           />
           <Drawer.Screen
+            name="caixa"
+            component={CaixaPage}
+            options={{
+              headerShown: false,
+              title: "Caixa",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "cash" : "cash-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="produtor"
             component={Produtor}
-            options={{ headerShown: false, title: "Produtor" }}
+            options={{
+              headerShown: false,
+              title: "Produtor",
+              drawerIcon: drawerIconProdutor,
+            }}
           />
           <Drawer.Screen
             name="validador"
             component={Validador}
-            options={{ headerShown: false, title: "Validador" }}
+            options={{
+              headerShown: false,
+              title: "Validador",
+              drawerIcon: drawerIconValidador,
+            }}
           />
           <Drawer.Screen
             name="tipoingresso"
@@ -216,7 +286,11 @@ function Routes() {
           <Drawer.Screen
             name="cupompromocional"
             component={CupomPromocional}
-            options={{ headerShown: false, title: "Cupom Promocional" }}
+            options={{
+              headerShown: false,
+              title: "Cupom Promocional",
+              drawerIcon: drawerIconCupomPromocional,
+            }}
           />
           <Drawer.Screen
             name="cupompromocionaledit"
@@ -298,7 +372,11 @@ function Routes() {
           <Drawer.Screen
             name="meusevento"
             component={MeusEventos}
-            options={{ headerShown: false, title: "Meus Eventos" }}
+            options={{
+              headerShown: false,
+              title: "Meus Eventos",
+              drawerIcon: drawerIconMeusEventos,
+            }}
           />
           <Drawer.Screen
             name="hospedagem"
@@ -327,9 +405,28 @@ function Routes() {
             }}
           />
           <Drawer.Screen
+            name="caixa"
+            component={CaixaPage}
+            options={{
+              headerShown: false,
+              title: "Caixa",
+              drawerIcon: ({ focused, size, color }) => (
+                <Ionicons
+                  name={focused ? "cash" : "cash-outline"}
+                  size={size}
+                  color={color}
+                />
+              ),
+            }}
+          />
+          <Drawer.Screen
             name="cupompromocional"
             component={CupomPromocional}
-            options={{ headerShown: false, title: "Cupom Promocional" }}
+            options={{
+              headerShown: false,
+              title: "Cupom Promocional",
+              drawerIcon: drawerIconCupomPromocional,
+            }}
           />
           <Drawer.Screen
             name="cupompromocionaledit"
@@ -344,12 +441,20 @@ function Routes() {
           <Drawer.Screen
             name="produtor"
             component={Produtor}
-            options={{ headerShown: false, title: "Produtor" }}
+            options={{
+              headerShown: false,
+              title: "Produtor",
+              drawerIcon: drawerIconProdutor,
+            }}
           />
           <Drawer.Screen
             name="validador"
             component={Validador}
-            options={{ headerShown: false, title: "Validador" }}
+            options={{
+              headerShown: false,
+              title: "Validador",
+              drawerIcon: drawerIconValidador,
+            }}
           />
           <Drawer.Screen
             name="usuario"
@@ -409,6 +514,7 @@ function Routes() {
             options={{
               headerShown: false,
               title: "Validador",
+              drawerIcon: drawerIconValidador,
             }}
           />
         </>
@@ -462,7 +568,11 @@ function Routes() {
           <Drawer.Screen
             name="validador"
             component={Validador}
-            options={{ headerShown: false, title: "Validador" }}
+            options={{
+              headerShown: false,
+              title: "Validador",
+              drawerIcon: drawerIconValidador,
+            }}
           />
           <Drawer.Screen
             name="usuario"
