@@ -19,11 +19,14 @@ registerLocale("pt", pt); // Registra a localidade em português
 interface DatePickerComponenteProps {
   value: Date;
   onChange: (date: Date) => void;
+  /** Se retornar false, a data não pode ser selecionada (ex.: dias fechados). */
+  filterDate?: (date: Date) => boolean;
 }
 
 const DatePickerComponente = ({
   value,
   onChange,
+  filterDate,
 }: DatePickerComponenteProps) => {
   // const [date, setDate] = useState(new Date());
   const [show, setShow] = useState(false);
@@ -31,7 +34,18 @@ const DatePickerComponente = ({
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || value;
     setShow(false);
+    if (filterDate && !filterDate(currentDate)) {
+      return;
+    }
     onChange(currentDate);
+  };
+
+  const handleWebChange = (date: Date | null) => {
+    const next = date || new Date();
+    if (filterDate && !filterDate(next)) {
+      return;
+    }
+    onChange(next);
   };
 
   const showpicker = () => {
@@ -44,7 +58,8 @@ const DatePickerComponente = ({
         <View style={styles.webContainer}>
           <DatePicker
             selected={value}
-            onChange={(date) => onChange(date || new Date())}
+            onChange={handleWebChange}
+            filterDate={filterDate}
             dateFormat="P"
             timeFormat="HH:mm"
             // showTimeSelect

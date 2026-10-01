@@ -59,6 +59,11 @@ import {
   calcularNoitesHotelaria,
   calcularSubtotalSuitePousada,
 } from "@/src/lib/reservaSuitePricing";
+import {
+  isDataSelecionavelEntradaSaidaHospedagem,
+  MSG_DIAS_FECHADOS_HOSPEDAGEM,
+  periodoHospedagemIncluiDiaFechado,
+} from "@/src/lib/hospedagemDiasFechados";
 import { EventoSuite, Usuario } from "@/src/types/geral";
 import CadastroClienteRapido from "./CadastroClienteRapido";
 import { ativarClienteRecemCadastradoHospedagem } from "@/src/lib/hospedagemAtivarCliente";
@@ -484,6 +489,9 @@ export default function NovaReservaRecepcaoModal() {
     }
     if (checkout <= checkin) {
       newErrors.datas = "Check-out deve ser posterior ao check-in.";
+    }
+    if (periodoHospedagemIncluiDiaFechado(checkin, checkout)) {
+      newErrors.datas = MSG_DIAS_FECHADOS_HOSPEDAGEM;
     }
     if (
       isMesmaDataLocal(checkinDate, agora) &&
@@ -1337,6 +1345,7 @@ export default function NovaReservaRecepcaoModal() {
                   <DatePickerComponente
                     value={checkinDate}
                     onChange={handleCheckinDateChange}
+                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
                   />
                 </View>
                 <View style={styles.timeField}>
@@ -1361,6 +1370,7 @@ export default function NovaReservaRecepcaoModal() {
                   <DatePickerComponente
                     value={checkoutDate}
                     onChange={setCheckoutDate}
+                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
                   />
                 </View>
                 <View style={styles.timeField}>

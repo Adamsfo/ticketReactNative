@@ -56,6 +56,11 @@ import {
   VALOR_ADICIONAL_ADULTO_EXTRA,
   VALOR_ADICIONAL_CRIANCA_EXTRA,
 } from "@/src/lib/reservaSuitePricing";
+import {
+  isDataSelecionavelEntradaSaidaHospedagem,
+  MSG_DIAS_FECHADOS_HOSPEDAGEM,
+  periodoHospedagemIncluiDiaFechado,
+} from "@/src/lib/hospedagemDiasFechados";
 
 const { width } = Dimensions.get("window");
 
@@ -331,6 +336,9 @@ export default function Index() {
     }
     if (checkout <= checkin) {
       newErrors.datas = "Check-out deve ser posterior ao check-in.";
+    }
+    if (periodoHospedagemIncluiDiaFechado(checkin, checkout)) {
+      newErrors.datas = MSG_DIAS_FECHADOS_HOSPEDAGEM;
     }
     if (
       isMesmaDataLocal(checkinDate, agora) &&
@@ -1118,6 +1126,7 @@ export default function Index() {
                   <DatePickerComponente
                     value={checkinDate}
                     onChange={handleCheckinDateChange}
+                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
                   />
                 </View>
                 <View style={styles.filtroTimeField}>
@@ -1150,6 +1159,7 @@ export default function Index() {
                   <DatePickerComponente
                     value={checkoutDate}
                     onChange={setCheckoutDate}
+                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
                   />
                 </View>
                 <View style={styles.filtroTimeField}>
