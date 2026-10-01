@@ -551,7 +551,9 @@ export default function Index() {
         ? { payment_message: "" }
         : (response?.data ?? { payment_message: "" });
 
-      setDadosDePagamento(response.data);
+      if (response.data != null) {
+        setDadosDePagamento(response.data);
+      }
       // console.log("dados", dados);
 
       // console.log("dadosDePagamento", dadosDePagamento);
@@ -1213,14 +1215,14 @@ export default function Index() {
                   </View>
                 )}
 
-              {dadosDePagamento.payment_status && (
+              {dadosDePagamento?.payment_status && (
                 <StatusPaymentCustomizadoPOS
                   data={dadosDePagamento}
                   idUsuario={registroTransacao?.idUsuario}
                 />
               )}
 
-              {dadosDePagamento.payment_status === 4 && idEvento >= 1 && (
+              {dadosDePagamento?.payment_status === 4 && idEvento >= 1 && (
                 <TouchableOpacity
                   style={[
                     styles.button,
