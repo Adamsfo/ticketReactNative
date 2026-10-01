@@ -327,6 +327,12 @@ export default function Index() {
 
   const ingressosAgrupados = agruparIngressos(registrosIngressoTransacao);
 
+  const descontoCupomResumo =
+    ingressosAgrupados.reduce(
+      (acc, item) => acc + Number(item.precoDesconto ?? 0) * item.qtde,
+      0,
+    ) + Number(registroTransacao?.taxaServicoDesconto ?? 0);
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -448,28 +454,12 @@ export default function Index() {
                             >
                               {item.Ingresso_EventoIngresso?.nome}
                             </Text>
-                            {item.precoDesconto ? (
-                              <Text
-                                style={{
-                                  paddingHorizontal: 3,
-                                  fontSize: 14,
-                                  color: colors.greenEscuro,
-                                }}
-                              >
-                                Desconto:{" "}
-                                {formatCurrency(
-                                  (item.precoDesconto * item.qtde).toFixed(2)
-                                )}
-                              </Text>
-                            ) : null}
                           </View>
                           <View>
                             <Text
                               style={{ paddingHorizontal: 3, fontSize: 14 }}
                             >
-                              {formatCurrency(
-                                (item.preco * item.qtde).toFixed(2)
-                              )}
+                              {formatCurrency(valorLinhaResumoComTaxa(item))}
                             </Text>
                           </View>
                         </View>
@@ -477,45 +467,48 @@ export default function Index() {
                     )}
                   />
                 </View>
-                <View
-                  style={{
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    paddingRight: 8,
-                  }}
-                >
-                  <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-                    Total Ingressos:{" "}
-                    <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(registroTransacao?.preco ?? 0)}
-                    </Text>
-                  </Text>
-                  <Text style={{ fontSize: 16, paddingBottom: 3 }}>
-                    Total Taxa:{" "}
-                    {registroTransacao?.taxaServicoDesconto &&
-                      registroTransacao?.taxaServicoDesconto > 0 && (
+                <View style={{ marginTop: 8, paddingHorizontal: 5 }}>
+                  {descontoCupomResumo > 0 ? (
+                    <>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          paddingVertical: 4,
+                        }}
+                      >
+                        <Text style={{ fontSize: 16 }}>Desconto do cupom</Text>
                         <Text
-                          style={{
-                            color: colors.greenEscuro,
-                            paddingHorizontal: 5,
-                          }}
+                          style={{ fontSize: 16, color: colors.greenEscuro }}
                         >
-                          Desconto:{" "}
-                          {formatCurrency(
-                            registroTransacao?.taxaServicoDesconto ?? 0
-                          )}
+                          -{" "}
+                          {formatCurrency(descontoCupomResumo.toFixed(2))}
                         </Text>
-                      )}
-                    <Text style={{ fontWeight: "bold" }}>
-                      {formatCurrency(registroTransacao?.taxaServico ?? 0)}
+                      </View>
+                      <View
+                        style={{
+                          borderTopWidth: 1,
+                          borderTopColor: "rgba(0,0,0,0.15)",
+                          marginVertical: 6,
+                        }}
+                      />
+                    </>
+                  ) : null}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+                      Total
                     </Text>
-                  </Text>
-                  <Text style={{ fontSize: 16 }}>
-                    Total incluindo taxas:{" "}
-                    <Text style={{ fontWeight: "bold" }}>
+                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>
                       {formatCurrency(registroTransacao?.valorTotal ?? 0)}
                     </Text>
-                  </Text>
+                  </View>
                 </View>
               </View>
             </>
@@ -552,6 +545,25 @@ export default function Index() {
       )}
     </LinearGradient>
   );
+}
+
+type IngressoLinhaResumo = IngressoTransacao & {
+  qtde: number;
+  precoOriginal?: number | null;
+  taxaServicoOriginal?: number | null;
+};
+
+/** Valor da linha no resumo (preço + taxa por unidade, antes do desconto de cupom quando houver). */
+function valorLinhaResumoComTaxa(item: IngressoLinhaResumo): string {
+  const precoUnit =
+    item.precoOriginal != null && item.precoOriginal !== undefined
+      ? Number(item.precoOriginal)
+      : Number(item.preco ?? 0);
+  const taxaUnit =
+    item.taxaServicoOriginal != null && item.taxaServicoOriginal !== undefined
+      ? Number(item.taxaServicoOriginal)
+      : Number(item.taxaServico ?? 0);
+  return (item.qtde * (precoUnit + taxaUnit)).toFixed(2);
 }
 
 const styles = StyleSheet.create({
