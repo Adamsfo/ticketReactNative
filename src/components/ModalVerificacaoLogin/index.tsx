@@ -59,38 +59,11 @@ export default function ModalVerificacaoLogin({
           user?.telefone ?? "",
           selectedOption
         );
-
-        // === CONFIGURAÇÃO Z-API ===
-        const instanceId = process.env.EXPO_PUBLIC_ZAPI_INSTANCE_ID || "";
-        const token = process.env.EXPO_PUBLIC_ZAPI_TOKEN || "";
-        const clientToken = process.env.EXPO_PUBLIC_ZAPI_CLIENT_TOKEN || "";
-
-        const message = `🔐 Seu código para entrar no Jango Ingressos é: ${result.data.code}.
-Não compartilhe com ninguém.`;
-
-        const options = {
-          method: "POST",
-          headers: {
-            "Client-Token": clientToken,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone: formatPhoneToE164(user?.telefone ?? ""),
-            message,
-          }),
-        };
-
-        const response = await fetch(
-          `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
-          options
-        );
-
-        const data = await response.json();
-        console.log("📤 Retorno Z-API:", data);
-
-        if (!response.ok) {
+        if (!result.success || result.data?.error) {
           throw new Error(
-            data.message || "Erro ao enviar mensagem via WhatsApp"
+            result.message ||
+              result.data?.error ||
+              "Erro ao enviar mensagem via WhatsApp"
           );
         }
       }
@@ -109,13 +82,6 @@ Não compartilhe com ninguém.`;
       setSelectedOption("email");
     }, [])
   );
-
-  function formatPhoneToE164(phone: string): string {
-    // Remove caracteres não numéricos
-    const cleaned = phone.replace(/\D/g, "");
-    // Adiciona o código do país se não estiver presente
-    return cleaned.startsWith("55") ? `+${cleaned}` : `+55${cleaned}`;
-  }
 
   const onVerify = async (code: string) => {
     console.log("code", code);
