@@ -35,8 +35,12 @@ import {
   getDisponibilidadeInterna,
   postReservaRecepcao,
   postReservaRecepcaoEnviarCliente,
+  WhatsappLinkPagamentoManual,
 } from "@/src/lib/hospedagemAdmin";
-import { abrirWhatsAppLinkPagamentoManual } from "@/src/lib/telefoneWhatsApp";
+import {
+  abrirWhatsAppLinkPagamentoManual,
+  prepararJanelaWhatsAppPosAsync,
+} from "@/src/lib/telefoneWhatsApp";
 import {
   nomeCompletoCliente,
   ordenarClientesPorRelevancia,
@@ -1147,6 +1151,7 @@ export default function NovaReservaRecepcaoModal() {
     setSalvando(true);
     setErroGeral(null);
     setPagamentoErro(null);
+    const janelaWhatsApp = prepararJanelaWhatsAppPosAsync();
     try {
       const resp = await postReservaRecepcaoEnviarCliente({
         idEvento,
@@ -1159,6 +1164,7 @@ export default function NovaReservaRecepcaoModal() {
       });
 
       if (!resp.success) {
+        janelaWhatsApp?.close();
         setErroGeral(
           resp.message || "Não foi possível enviar a reserva ao cliente.",
         );
@@ -1166,7 +1172,12 @@ export default function NovaReservaRecepcaoModal() {
       }
 
       const wa = abrirWhatsAppLinkPagamentoManual(
-        resp.data?.whatsappLinkPagamentoManual,
+        (
+          resp.data as
+            | { data?: { whatsappLinkPagamentoManual?: WhatsappLinkPagamentoManual } }
+            | undefined
+        )?.data?.whatsappLinkPagamentoManual,
+        { janelaPreAberta: janelaWhatsApp },
       );
       if (!wa.aberto && wa.mensagemAviso) {
         Alert.alert("WhatsApp", wa.mensagemAviso);
@@ -1175,6 +1186,7 @@ export default function NovaReservaRecepcaoModal() {
       notifyOperacaoConcluida();
       closeNovaReserva();
     } catch {
+      janelaWhatsApp?.close();
       setErroGeral("Erro ao enviar reserva para o cliente.");
     } finally {
       setSalvando(false);

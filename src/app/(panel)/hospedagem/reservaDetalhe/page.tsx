@@ -49,7 +49,10 @@ import {
 } from "../contexts/ReceberSaldoHospedagemContext";
 import ReceberSaldoHospedagemModal from "../components/ReceberSaldoHospedagemModal";
 import { isHospedeSemCpf, textoObservacoesReserva } from "@/src/lib/hospedagemHospedes";
-import { abrirWhatsAppLinkPagamentoManual } from "@/src/lib/telefoneWhatsApp";
+import {
+  abrirWhatsAppLinkPagamentoManual,
+  prepararJanelaWhatsAppPosAsync,
+} from "@/src/lib/telefoneWhatsApp";
 import { HospedagemAdminRefreshProvider, useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 
 function formatDateTime(iso: string): string {
@@ -208,15 +211,32 @@ function HospedagemReservaDetalheContent() {
     if (!reserva?.id) return;
     setReenviandoLink(true);
     setMsgLink(null);
+    const janelaWhatsApp = prepararJanelaWhatsAppPosAsync();
     try {
       const resp = await postReenviarLinkPagamentoReserva(reserva.id);
-      if (!resp.success) {
+      const detalhe = (resp.data as { data?: ReservaAdminDetalhe } | undefined)
+        ?.data;
+      if (!resp.success || !detalhe) {
+        janelaWhatsApp?.close();
         setMsgLink(resp.message || "Não foi possível reenviar o link.");
         return;
       }
-      if (resp.data) setReserva(resp.data as ReservaAdminDetalhe);
-      setMsgLink("Link reenviado ao cliente (WhatsApp/e-mail).");
+      setReserva(detalhe);
+
+      const wa = abrirWhatsAppLinkPagamentoManual(
+        detalhe.whatsappLinkPagamentoManual,
+        { janelaPreAberta: janelaWhatsApp },
+      );
+      if (!wa.aberto && wa.mensagemAviso) {
+        Alert.alert("WhatsApp", wa.mensagemAviso);
+      }
+
+      setMsgLink(
+        resp.message ||
+          "Link reenviado. Abra o WhatsApp para enviar o link ao cliente.",
+      );
     } catch {
+      janelaWhatsApp?.close();
       setMsgLink("Erro ao reenviar o link.");
     } finally {
       setReenviandoLink(false);
@@ -242,20 +262,25 @@ function HospedagemReservaDetalheContent() {
     setErroReativacao(null);
     setMsgReativacao(null);
 
+    const janelaWhatsApp = prepararJanelaWhatsAppPosAsync();
     try {
       const resp = await postReativarReservaExpirada(reserva.id);
-      if (!resp.success || !resp.data) {
+      const detalhe = (resp.data as { data?: ReservaAdminDetalhe } | undefined)
+        ?.data;
+      if (!resp.success || !detalhe) {
+        janelaWhatsApp?.close();
         setErroReativacao(
           resp.message || "Não foi possível reativar a reserva.",
         );
         return;
       }
 
-      setReserva(resp.data);
+      setReserva(detalhe);
       setModalReativarOpen(false);
 
       const wa = abrirWhatsAppLinkPagamentoManual(
-        resp.data.whatsappLinkPagamentoManual,
+        detalhe.whatsappLinkPagamentoManual,
+        { janelaPreAberta: janelaWhatsApp },
       );
       if (!wa.aberto && wa.mensagemAviso) {
         Alert.alert("WhatsApp", wa.mensagemAviso);
@@ -267,6 +292,7 @@ function HospedagemReservaDetalheContent() {
       );
       notifyOperacaoConcluida();
     } catch {
+      janelaWhatsApp?.close();
       setErroReativacao("Erro ao reativar a reserva.");
     } finally {
       setReativandoReserva(false);

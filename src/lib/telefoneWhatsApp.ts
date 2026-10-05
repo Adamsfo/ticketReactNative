@@ -25,24 +25,71 @@ function isWebMobile(): boolean {
   );
 }
 
-export function abrirWhatsAppCliente(
+function montarUrlWhatsAppWaMe(
   telefone: string | null | undefined,
   mensagem?: string | null,
-): boolean {
+): string | null {
   const numero = normalizarTelefoneWhatsAppLink(telefone);
-  if (!numero) return false;
+  if (!numero) return null;
 
   const texto =
     mensagem != null && String(mensagem).trim() !== ""
       ? `?text=${encodeURIComponent(String(mensagem))}`
       : "";
-  const url = `https://wa.me/${numero}${texto}`;
+  return `https://wa.me/${numero}${texto}`;
+}
+
+function fecharJanelaWhatsApp(janela: Window | null | undefined) {
+  if (!janela || janela.closed) return;
+  try {
+    janela.close();
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Desktop web: abre janela em branco no gesto do usuário (antes de await),
+ * para depois navegar para wa.me sem bloqueio de popup.
+ * Mobile / app nativo: retorna null (usa Linking ou location.assign).
+ */
+export function prepararJanelaWhatsAppPosAsync(): Window | null {
+  if (Platform.OS !== "web" || isWebMobile()) return null;
+  if (typeof window === "undefined") return null;
+  try {
+    return window.open("about:blank", "_blank");
+  } catch {
+    return null;
+  }
+}
+
+export type AbrirWhatsAppClienteOptions = {
+  janelaPreAberta?: Window | null;
+};
+
+export function abrirWhatsAppCliente(
+  telefone: string | null | undefined,
+  mensagem?: string | null,
+  options?: AbrirWhatsAppClienteOptions,
+): boolean {
+  const url = montarUrlWhatsAppWaMe(telefone, mensagem);
+  if (!url) {
+    fecharJanelaWhatsApp(options?.janelaPreAberta);
+    return false;
+  }
 
   if (Platform.OS === "web") {
     if (isWebMobile()) {
       window.location.assign(url);
     } else {
-      window.open(url, "_blank", "noopener,noreferrer");
+      const janela = options?.janelaPreAberta;
+      if (janela && !janela.closed) {
+        janela.location.href = url;
+        janela.focus?.();
+      } else {
+        const opened = window.open(url, "_blank");
+        if (!opened) return false;
+      }
     }
   } else {
     Linking.openURL(url).catch((err) =>
@@ -62,8 +109,10 @@ export type WhatsappLinkPagamentoManualPayload = {
 /** Abre wa.me com a mensagem do link de pagamento (fonte: backend). */
 export function abrirWhatsAppLinkPagamentoManual(
   payload: WhatsappLinkPagamentoManualPayload | null | undefined,
+  options?: AbrirWhatsAppClienteOptions,
 ): { aberto: boolean; mensagemAviso?: string } {
   if (!payload?.mensagemWhatsApp) {
+    fecharJanelaWhatsApp(options?.janelaPreAberta);
     return {
       aberto: false,
       mensagemAviso: "Dados do WhatsApp indisponíveis.",
@@ -73,6 +122,7 @@ export function abrirWhatsAppLinkPagamentoManual(
   const aberto = abrirWhatsAppCliente(
     payload.telefone,
     payload.mensagemWhatsApp,
+    options,
   );
 
   if (!aberto) {
