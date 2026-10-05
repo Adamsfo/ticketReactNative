@@ -252,6 +252,12 @@ export type ReservaSuiteMovimentacaoItem = {
   idUsuario?: number;
 };
 
+export type WhatsappLinkPagamentoManual = {
+  telefone?: string | null;
+  mensagemWhatsApp: string;
+  linkPagamento: string;
+};
+
 export type ReservaAdminDetalhe = {
   id: number;
   idReservaHospedagem: number;
@@ -293,6 +299,8 @@ export type ReservaAdminDetalhe = {
   dataConfirmacao?: string | null;
   tokenPagamento?: string | null;
   linkPagamento?: string | null;
+  /** Dados para abrir WhatsApp manualmente (enviar para cliente / reativar). */
+  whatsappLinkPagamentoManual?: WhatsappLinkPagamentoManual | null;
   linkPagamentoEnviadoEm?: string | null;
   expiraEm?: string | null;
   idTransacao?: number | null;

@@ -1,4 +1,5 @@
 import {
+  abrirWhatsAppLinkPagamentoManual,
   normalizarTelefoneWhatsAppLink,
 } from "./telefoneWhatsApp";
 
@@ -18,5 +19,17 @@ describe("normalizarTelefoneWhatsAppLink", () => {
   it("retorna null para telefone vazio ou inválido", () => {
     expect(normalizarTelefoneWhatsAppLink("")).toBeNull();
     expect(normalizarTelefoneWhatsAppLink("123")).toBeNull();
+  });
+});
+
+describe("abrirWhatsAppLinkPagamentoManual", () => {
+  it("falha sem bloquear quando telefone é inválido", () => {
+    const result = abrirWhatsAppLinkPagamentoManual({
+      telefone: "123",
+      mensagemWhatsApp: "Olá, link: https://example.com/reserva/x",
+      linkPagamento: "https://example.com/reserva/x",
+    });
+    expect(result.aberto).toBe(false);
+    expect(result.mensagemAviso).toMatch(/Não foi possível abrir o WhatsApp/);
   });
 });

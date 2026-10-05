@@ -27,11 +27,16 @@ function isWebMobile(): boolean {
 
 export function abrirWhatsAppCliente(
   telefone: string | null | undefined,
+  mensagem?: string | null,
 ): boolean {
   const numero = normalizarTelefoneWhatsAppLink(telefone);
   if (!numero) return false;
 
-  const url = `https://wa.me/${numero}`;
+  const texto =
+    mensagem != null && String(mensagem).trim() !== ""
+      ? `?text=${encodeURIComponent(String(mensagem))}`
+      : "";
+  const url = `https://wa.me/${numero}${texto}`;
 
   if (Platform.OS === "web") {
     if (isWebMobile()) {
@@ -46,4 +51,37 @@ export function abrirWhatsAppCliente(
   }
 
   return true;
+}
+
+export type WhatsappLinkPagamentoManualPayload = {
+  telefone?: string | null;
+  mensagemWhatsApp: string;
+  linkPagamento?: string;
+};
+
+/** Abre wa.me com a mensagem do link de pagamento (fonte: backend). */
+export function abrirWhatsAppLinkPagamentoManual(
+  payload: WhatsappLinkPagamentoManualPayload | null | undefined,
+): { aberto: boolean; mensagemAviso?: string } {
+  if (!payload?.mensagemWhatsApp) {
+    return {
+      aberto: false,
+      mensagemAviso: "Dados do WhatsApp indisponíveis.",
+    };
+  }
+
+  const aberto = abrirWhatsAppCliente(
+    payload.telefone,
+    payload.mensagemWhatsApp,
+  );
+
+  if (!aberto) {
+    return {
+      aberto: false,
+      mensagemAviso:
+        "Não foi possível abrir o WhatsApp (telefone inválido ou ausente). O link de pagamento continua disponível no detalhe da reserva.",
+    };
+  }
+
+  return { aberto: true };
 }

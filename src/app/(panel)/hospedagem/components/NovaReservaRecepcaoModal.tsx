@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   ScrollView,
@@ -35,6 +36,7 @@ import {
   postReservaRecepcao,
   postReservaRecepcaoEnviarCliente,
 } from "@/src/lib/hospedagemAdmin";
+import { abrirWhatsAppLinkPagamentoManual } from "@/src/lib/telefoneWhatsApp";
 import {
   nomeCompletoCliente,
   ordenarClientesPorRelevancia,
@@ -1161,6 +1163,13 @@ export default function NovaReservaRecepcaoModal() {
           resp.message || "Não foi possível enviar a reserva ao cliente.",
         );
         return;
+      }
+
+      const wa = abrirWhatsAppLinkPagamentoManual(
+        resp.data?.whatsappLinkPagamentoManual,
+      );
+      if (!wa.aberto && wa.mensagemAviso) {
+        Alert.alert("WhatsApp", wa.mensagemAviso);
       }
 
       notifyOperacaoConcluida();

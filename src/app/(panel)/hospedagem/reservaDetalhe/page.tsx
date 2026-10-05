@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -48,6 +49,7 @@ import {
 } from "../contexts/ReceberSaldoHospedagemContext";
 import ReceberSaldoHospedagemModal from "../components/ReceberSaldoHospedagemModal";
 import { isHospedeSemCpf, textoObservacoesReserva } from "@/src/lib/hospedagemHospedes";
+import { abrirWhatsAppLinkPagamentoManual } from "@/src/lib/telefoneWhatsApp";
 import { HospedagemAdminRefreshProvider, useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 
 function formatDateTime(iso: string): string {
@@ -251,9 +253,17 @@ function HospedagemReservaDetalheContent() {
 
       setReserva(resp.data);
       setModalReativarOpen(false);
+
+      const wa = abrirWhatsAppLinkPagamentoManual(
+        resp.data.whatsappLinkPagamentoManual,
+      );
+      if (!wa.aberto && wa.mensagemAviso) {
+        Alert.alert("WhatsApp", wa.mensagemAviso);
+      }
+
       setMsgReativacao(
         resp.message ||
-          "Reserva reativada com sucesso.\n\nA reserva está aguardando pagamento e um novo link foi enviado ao cliente.",
+          "Reserva reativada com sucesso.\n\nA reserva está aguardando pagamento. Abra o WhatsApp para enviar o link ao cliente.",
       );
       notifyOperacaoConcluida();
     } catch {
