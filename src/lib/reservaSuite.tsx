@@ -195,6 +195,8 @@ export type ReservaConfirmadaApi = {
     preco: number;
     taxaServico: number;
     valorTotal: number;
+    valorPago: number;
+    saldoPendente: number;
     dataConfirmacao: string | null;
   };
   evento: {

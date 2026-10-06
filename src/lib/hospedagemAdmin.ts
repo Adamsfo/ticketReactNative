@@ -1080,6 +1080,8 @@ export async function postReservaRecepcao(body: {
 }
 
 /** Cria reserva AguardandoPagamento e envia link ao cliente (novo endpoint). */
+export type PercentualCobrancaInicialLink = 100 | 50;
+
 export async function postReservaRecepcaoEnviarCliente(body: {
   idEvento: number;
   idUsuario: number;
@@ -1088,6 +1090,8 @@ export async function postReservaRecepcaoEnviarCliente(body: {
   suites: SuiteRecepcaoPayload[];
   taxasAdicionais?: TaxaAdicionalCheckoutPayload[];
   observacoes?: string | null;
+  /** 100 (padrão) ou 50 — percentual da primeira cobrança no link. */
+  percentualCobrancaInicial?: PercentualCobrancaInicialLink;
 }): Promise<ApiResponse<ReservaAdminDetalhe>> {
   return api.request<ReservaAdminDetalhe>(
     `/hospedagem/reservas/recepcao/enviar-cliente`,

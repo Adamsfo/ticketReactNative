@@ -66,13 +66,57 @@ function formatarOcupacao(adultos: number, criancas: number): string {
   return partes.join(" • ");
 }
 
-function SecaoHeaderSucesso({ numeroReserva }: { numeroReserva: number }) {
+function isPagamentoParcialReserva(
+  valorPago: number,
+  saldoPendente: number,
+): boolean {
+  return saldoPendente > 0.009 && valorPago > 0.009;
+}
+
+/** Percentual exibido no texto (ex.: 50%), derivado dos valores reais da API. */
+function percentualValorPagoSobreTotal(
+  valorPago: number,
+  valorTotal: number,
+): number {
+  if (valorTotal <= 0.009) {
+    return 0;
+  }
+  return Math.round((valorPago / valorTotal) * 100);
+}
+
+function SecaoHeaderSucesso({
+  numeroReserva,
+  pagamentoParcial,
+  percentualPago,
+}: {
+  numeroReserva: number;
+  pagamentoParcial: boolean;
+  percentualPago: number;
+}) {
   return (
     <View style={styles.secao}>
-      <Text style={styles.tituloSucesso}>
-        ✓ Pagamento realizado com sucesso!
-      </Text>
-      <Text style={styles.subtituloSucesso}>Sua reserva foi confirmada.</Text>
+      {pagamentoParcial ? (
+        <>
+          <Text style={styles.tituloSucesso}>
+            ✓ Reserva confirmada com pagamento parcial!
+          </Text>
+          <Text style={styles.subtituloSucesso}>
+            Você pagou {percentualPago}% do valor da reserva.
+          </Text>
+          <Text style={styles.subtituloSucesso}>
+            O restante deverá ser pago no check-in.
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.tituloSucesso}>
+            ✓ Pagamento realizado com sucesso!
+          </Text>
+          <Text style={styles.subtituloSucesso}>
+            Sua reserva foi confirmada.
+          </Text>
+        </>
+      )}
       <Text style={styles.numeroReserva}>Número da reserva: #{numeroReserva}</Text>
     </View>
   );
@@ -165,11 +209,17 @@ function SecaoResumoPagamento({
   preco,
   taxaServico,
   valorTotal,
+  valorPago,
+  saldoPendente,
+  pagamentoParcial,
   status,
 }: {
   preco: number;
   taxaServico: number;
   valorTotal: number;
+  valorPago: number;
+  saldoPendente: number;
+  pagamentoParcial: boolean;
   status: string;
 }) {
   const statusConfirmada =
@@ -178,18 +228,51 @@ function SecaoResumoPagamento({
   return (
     <View style={styles.secao}>
       <Text style={styles.secaoTitulo}>RESUMO DO PAGAMENTO</Text>
-      <View style={styles.linhaResumo}>
-        <Text style={styles.resumoLabel}>Subtotal:</Text>
-        <Text style={styles.resumoValor}>{formatCurrency(preco)}</Text>
-      </View>
-      <View style={styles.linhaResumo}>
-        <Text style={styles.resumoLabel}>Taxa de serviço:</Text>
-        <Text style={styles.resumoValor}>{formatCurrency(taxaServico)}</Text>
-      </View>
-      <View style={[styles.linhaResumo, styles.linhaTotal]}>
-        <Text style={styles.totalLabel}>Total pago:</Text>
-        <Text style={styles.totalValor}>{formatCurrency(valorTotal)}</Text>
-      </View>
+      {pagamentoParcial ? (
+        <>
+          <View style={styles.linhaResumo}>
+            <Text style={styles.resumoLabel}>Total da reserva:</Text>
+            <Text style={styles.resumoValor}>
+              {formatCurrency(valorTotal)}
+            </Text>
+          </View>
+          <View style={[styles.linhaResumo, styles.linhaTotal]}>
+            <Text style={styles.totalLabel}>Total pago:</Text>
+            <Text style={styles.totalValor}>{formatCurrency(valorPago)}</Text>
+          </View>
+          <View style={styles.linhaResumo}>
+            <Text style={styles.resumoLabel}>
+              Restante a pagar no check-in:
+            </Text>
+            <Text style={styles.resumoValor}>
+              {formatCurrency(saldoPendente)}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={styles.linhaResumo}>
+            <Text style={styles.resumoLabel}>Subtotal:</Text>
+            <Text style={styles.resumoValor}>{formatCurrency(preco)}</Text>
+          </View>
+          <View style={styles.linhaResumo}>
+            <Text style={styles.resumoLabel}>Taxa de serviço:</Text>
+            <Text style={styles.resumoValor}>{formatCurrency(taxaServico)}</Text>
+          </View>
+          <View style={[styles.linhaResumo, styles.linhaTotal]}>
+            <Text style={styles.totalLabel}>Total pago:</Text>
+            <Text style={styles.totalValor}>{formatCurrency(valorPago)}</Text>
+          </View>
+          {saldoPendente > 0.009 ? (
+            <View style={styles.linhaResumo}>
+              <Text style={styles.resumoLabel}>Saldo pendente:</Text>
+              <Text style={styles.resumoValor}>
+                {formatCurrency(saldoPendente)}
+              </Text>
+            </View>
+          ) : null}
+        </>
+      )}
       <Text style={[styles.rotulo, { marginTop: 14 }]}>Status:</Text>
       <Text
         style={[
@@ -258,6 +341,17 @@ export default function ReservaConfirmadaPage() {
       })()
     : new Date();
 
+  const valorPagoExibicao = Number(dados?.reserva?.valorPago ?? 0);
+  const saldoPendenteExibicao = Number(dados?.reserva?.saldoPendente ?? 0);
+  const valorTotalReserva = Number(dados?.reserva?.valorTotal ?? 0);
+  const pagamentoParcial = dados?.reserva
+    ? isPagamentoParcialReserva(valorPagoExibicao, saldoPendenteExibicao)
+    : false;
+  const percentualPago = percentualValorPagoSobreTotal(
+    valorPagoExibicao,
+    valorTotalReserva,
+  );
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -287,7 +381,11 @@ export default function ReservaConfirmadaPage() {
               </View>
             ) : (
               <>
-                <SecaoHeaderSucesso numeroReserva={dados.reserva.id} />
+                <SecaoHeaderSucesso
+                  numeroReserva={dados.reserva.id}
+                  pagamentoParcial={pagamentoParcial}
+                  percentualPago={percentualPago}
+                />
                 <SecaoPeriodoHospedagem
                   checkin={toIsoString(dados.reserva.checkin)}
                   checkout={toIsoString(dados.reserva.checkout)}
@@ -300,7 +398,10 @@ export default function ReservaConfirmadaPage() {
                 <SecaoResumoPagamento
                   preco={dados.reserva.preco}
                   taxaServico={dados.reserva.taxaServico}
-                  valorTotal={dados.reserva.valorTotal}
+                  valorTotal={valorTotalReserva}
+                  valorPago={valorPagoExibicao}
+                  saldoPendente={saldoPendenteExibicao}
+                  pagamentoParcial={pagamentoParcial}
                   status={dados.reserva.status}
                 />
                 <SecaoFuturaPlaceholder />

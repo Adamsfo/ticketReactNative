@@ -35,6 +35,7 @@ import {
   getDisponibilidadeInterna,
   postReservaRecepcao,
   postReservaRecepcaoEnviarCliente,
+  type PercentualCobrancaInicialLink,
   WhatsappLinkPagamentoManual,
 } from "@/src/lib/hospedagemAdmin";
 import {
@@ -65,6 +66,7 @@ import {
   calcularNoitesHotelaria,
   calcularSubtotalSuitePousada,
 } from "@/src/lib/reservaSuitePricing";
+import { roundMoney } from "@/src/lib/mascaraMoeda";
 import {
   isDataSelecionavelEntradaSaidaHospedagem,
   MSG_DIAS_FECHADOS_HOSPEDAGEM,
@@ -333,6 +335,12 @@ export default function NovaReservaRecepcaoModal() {
   const [taxaFormErro, setTaxaFormErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [percentualCobrancaInicial, setPercentualCobrancaInicial] =
+    useState<PercentualCobrancaInicialLink>(100);
+  const [modalEnviarClienteVisible, setModalEnviarClienteVisible] =
+    useState(false);
+  const [percentualCobrancaModal, setPercentualCobrancaModal] =
+    useState<PercentualCobrancaInicialLink>(100);
 
   const prefillSuiteRef = useRef<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -385,6 +393,9 @@ export default function NovaReservaRecepcaoModal() {
     setTaxaFormErro(null);
     setSalvando(false);
     setErroGeral(null);
+    setPercentualCobrancaInicial(100);
+    setModalEnviarClienteVisible(false);
+    setPercentualCobrancaModal(100);
     prefillSuiteRef.current = null;
   }, []);
 
@@ -627,6 +638,11 @@ export default function NovaReservaRecepcaoModal() {
       criancas,
     };
   }, [carrinho, taxasAdicionais]);
+
+  const valorCobrancaLink50 = useMemo(
+    () => roundMoney(totaisResumo.total * 0.5),
+    [totaisResumo.total],
+  );
 
   const valorPagoNumero = useMemo(
     () => parseValorMonetario(valorPagoInput),
@@ -1125,9 +1141,25 @@ export default function NovaReservaRecepcaoModal() {
     }
   };
 
+  const abrirModalEnviarCliente = () => {
+    setPercentualCobrancaModal(100);
+    setModalEnviarClienteVisible(true);
+  };
+
+  const confirmarEnviarClienteModal = async () => {
+    const percentual = percentualCobrancaModal;
+    setModalEnviarClienteVisible(false);
+    setPercentualCobrancaInicial(percentual);
+    await handleEnviarParaCliente(percentual);
+  };
+
   /** Cria AguardandoPagamento + envia link (reutiliza pagamentos existentes). */
-  const handleEnviarParaCliente = async () => {
+  const handleEnviarParaCliente = async (
+    percentualOverride?: PercentualCobrancaInicialLink,
+  ) => {
     if (!cliente?.id || !idEvento || carrinho.length === 0) return;
+
+    const percentual = percentualOverride ?? percentualCobrancaInicial;
 
     if (carrinhoTemDescontoInvalido) {
       setErroGeral(MSG_DESCONTO_INVALIDO);
@@ -1161,6 +1193,7 @@ export default function NovaReservaRecepcaoModal() {
         suites: montarSuitesPayload(),
         taxasAdicionais: montarTaxasPayload(),
         observacoes: observacoes.trim() || null,
+        percentualCobrancaInicial: percentual,
       });
 
       if (!resp.success) {
@@ -2054,7 +2087,7 @@ export default function NovaReservaRecepcaoModal() {
                   styles.btnFooterEnviarCliente,
                   salvando && { opacity: 0.6 },
                 ]}
-                onPress={handleEnviarParaCliente}
+                onPress={abrirModalEnviarCliente}
                 disabled={salvando}
               >
                 <Text style={styles.btnFooterEnviarClienteText}>
@@ -2151,6 +2184,73 @@ export default function NovaReservaRecepcaoModal() {
                 <Text style={styles.btnFooterPriText}>
                   {taxaEditandoId ? "Salvar" : "Adicionar"}
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={modalEnviarClienteVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalEnviarClienteVisible(false)}
+      >
+        <View style={styles.taxaModalOverlay}>
+          <View style={styles.taxaModalCard}>
+            <Text style={styles.taxaModalTitulo}>Enviar para o cliente</Text>
+            <Text style={styles.enviarClienteModalPergunta}>
+              Quanto deseja cobrar agora?
+            </Text>
+            <TouchableOpacity
+              style={styles.cobrancaClienteOpcao}
+              onPress={() => setPercentualCobrancaModal(100)}
+              disabled={salvando}
+            >
+              <View
+                style={[
+                  styles.cobrancaClienteRadio,
+                  percentualCobrancaModal === 100 &&
+                    styles.cobrancaClienteRadioAtivo,
+                ]}
+              />
+              <Text style={styles.cobrancaClienteOpcaoTexto}>
+                100% — {formatCurrency(totaisResumo.total)}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cobrancaClienteOpcao}
+              onPress={() => setPercentualCobrancaModal(50)}
+              disabled={salvando}
+            >
+              <View
+                style={[
+                  styles.cobrancaClienteRadio,
+                  percentualCobrancaModal === 50 &&
+                    styles.cobrancaClienteRadioAtivo,
+                ]}
+              />
+              <Text style={styles.cobrancaClienteOpcaoTexto}>
+                50% — {formatCurrency(valorCobrancaLink50)}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.taxaModalBotoes}>
+              <TouchableOpacity
+                style={[styles.btnFooterSec, { flex: 1 }]}
+                onPress={() => setModalEnviarClienteVisible(false)}
+                disabled={salvando}
+              >
+                <Text style={styles.btnFooterSecText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btnFooterPri, { flex: 1 }]}
+                onPress={confirmarEnviarClienteModal}
+                disabled={salvando}
+              >
+                {salvando ? (
+                  <ActivityIndicator color={colors.branco} />
+                ) : (
+                  <Text style={styles.btnFooterPriText}>Continuar</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -2606,6 +2706,33 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   btnFooterPriText: { fontWeight: "700", color: colors.branco },
+  enviarClienteModalPergunta: {
+    fontSize: 14,
+    color: colors.cinza,
+    marginBottom: 8,
+  },
+  cobrancaClienteOpcao: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  cobrancaClienteRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.line,
+  },
+  cobrancaClienteRadioAtivo: {
+    borderColor: colors.azul,
+    backgroundColor: colors.azul,
+  },
+  cobrancaClienteOpcaoTexto: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.cinza,
+  },
   btnFooterEnviarCliente: {
     backgroundColor: colors.branco,
     borderWidth: 2,

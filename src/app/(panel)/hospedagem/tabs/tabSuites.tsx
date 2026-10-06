@@ -77,6 +77,26 @@ function textoAtualizadoHa(lastRefreshAt: number, agora: number): string {
   return `Atualizado há ${h} h`;
 }
 
+/** Tick local — evita remontar o ListHeaderComponent do FlatList a cada 5 s. */
+function RefreshAtualizadoHaTicker({
+  lastRefreshAt,
+}: {
+  lastRefreshAt: number;
+}) {
+  const [agoraTick, setAgoraTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setAgoraTick(Date.now()), 5_000);
+    return () => clearInterval(id);
+  }, [lastRefreshAt]);
+
+  return (
+    <Text style={styles.refreshMeta} numberOfLines={1}>
+      {textoAtualizadoHa(lastRefreshAt, agoraTick)}
+    </Text>
+  );
+}
+
 const MESES_PT = [
   "Janeiro",
   "Fevereiro",
@@ -337,7 +357,7 @@ function CalendarioHorizontal({
       <ScrollView
         ref={scrollRef}
         horizontal
-        nestedScrollEnabled
+        nestedScrollEnabled={layoutMobile}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.diasScroll}
       >
@@ -1201,13 +1221,6 @@ export default function TabSuites() {
   const suitesListaRef = useRef<FlatList<SuiteOperacionalCard>>(null);
   const { refreshVersion, requestRefresh, lastRefreshAt } =
     useHospedagemAdminRefresh();
-  const [agoraTick, setAgoraTick] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (lastRefreshAt == null) return;
-    const id = setInterval(() => setAgoraTick(Date.now()), 5_000);
-    return () => clearInterval(id);
-  }, [lastRefreshAt]);
 
   useEffect(() => {
     if (!layoutMobile) {
@@ -1291,7 +1304,8 @@ export default function TabSuites() {
   useEffect(() => {
     if (refreshVersion === 0) return;
     carregar(true);
-  }, [refreshVersion, carregar]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega só no bump de refreshVersion
+  }, [refreshVersion]);
 
   const abrirReserva = (ref: ReservaOperacaoRef) => {
     if (!ref.idReservaHospedagem) return;
@@ -1367,12 +1381,16 @@ export default function TabSuites() {
     setDataReferencia(dataNoMes(novoMes, dataReferencia));
   };
 
-  const cabecalhoSuites = useCallback(
+  const cabecalhoSuitesElement = useMemo(
     () => (
       <View
-        onLayout={(event) => {
-          aoMedirCabecalhoLista(event.nativeEvent.layout.height);
-        }}
+        onLayout={
+          layoutMobile
+            ? (event) => {
+                aoMedirCabecalhoLista(event.nativeEvent.layout.height);
+              }
+            : undefined
+        }
       >
         <CalendarioHorizontal
           mesVisivel={mesVisivel}
@@ -1397,7 +1415,7 @@ export default function TabSuites() {
         >
           <FlatList
             horizontal
-            nestedScrollEnabled
+            nestedScrollEnabled={layoutMobile}
             data={FILTROS}
             keyExtractor={(item) => item.key}
             showsHorizontalScrollIndicator={false}
@@ -1428,9 +1446,7 @@ export default function TabSuites() {
           />
           <View style={styles.refreshBox}>
             {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
-              <Text style={styles.refreshMeta} numberOfLines={1}>
-                {textoAtualizadoHa(lastRefreshAt, agoraTick)}
-              </Text>
+              <RefreshAtualizadoHaTicker lastRefreshAt={lastRefreshAt} />
             ) : null}
             <TouchableOpacity
               style={[
@@ -1468,7 +1484,6 @@ export default function TabSuites() {
       refreshing,
       mostrarTextoAtualizadoHa,
       lastRefreshAt,
-      agoraTick,
       requestRefresh,
       aoMedirCabecalhoLista,
     ],
@@ -1586,7 +1601,7 @@ export default function TabSuites() {
         key={`suites-cols-${suiteColumns}`}
         style={styles.suitesLista}
         {...suitesFlatListProps}
-        ListHeaderComponent={cabecalhoSuites}
+        ListHeaderComponent={cabecalhoSuitesElement}
         ListEmptyComponent={listEmptySuitesMobile}
         onScroll={layoutMobile ? aoRolarListaMobile : undefined}
         scrollEventThrottle={16}

@@ -386,6 +386,16 @@ export default function ReservaPublicaPage() {
   const podeIrPagamento =
     !!data?.podePagar && magicLoginOk && !conflitoConta && !avisoAutenticacao;
 
+  const valorTotalHospedagem = Number(data?.valores?.valorTotal ?? 0);
+  const valorDestaCobranca = Number(
+    data?.pagamento?.registroTransacao?.valorTotal ?? valorTotalHospedagem,
+  );
+  const exibirCobrancaParcial =
+    !erro &&
+    !!data &&
+    valorTotalHospedagem > 0.009 &&
+    Math.abs(valorDestaCobranca - valorTotalHospedagem) > 0.009;
+
   return (
     <LinearGradient
       colors={[colors.branco, colors.laranjado]}
@@ -625,11 +635,25 @@ export default function ReservaPublicaPage() {
                   </View>
                 ) : null}
                 <View style={styles.row}>
-                  <Text style={styles.label}>Total</Text>
+                  <Text style={styles.label}>
+                    {exibirCobrancaParcial
+                      ? "Valor total da hospedagem"
+                      : "Total"}
+                  </Text>
                   <Text style={[styles.valor, { color: colors.azul }]}>
-                    {formatCurrency(Number(data.valores?.valorTotal ?? 0))}
+                    {formatCurrency(valorTotalHospedagem)}
                   </Text>
                 </View>
+                {exibirCobrancaParcial ? (
+                  <View style={styles.row}>
+                    <Text style={[styles.label, { color: colors.azul }]}>
+                      Valor desta cobrança
+                    </Text>
+                    <Text style={[styles.valor, { color: colors.azul }]}>
+                      {formatCurrency(valorDestaCobranca)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               {podeIrPagamento ? (
