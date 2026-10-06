@@ -208,6 +208,7 @@ function SecaoSuitesEHospedes({
 function SecaoResumoPagamento({
   preco,
   taxaServico,
+  valorTaxasAdicionais,
   valorTotal,
   valorPago,
   saldoPendente,
@@ -216,6 +217,7 @@ function SecaoResumoPagamento({
 }: {
   preco: number;
   taxaServico: number;
+  valorTaxasAdicionais: number;
   valorTotal: number;
   valorPago: number;
   saldoPendente: number;
@@ -252,9 +254,17 @@ function SecaoResumoPagamento({
       ) : (
         <>
           <View style={styles.linhaResumo}>
-            <Text style={styles.resumoLabel}>Subtotal:</Text>
+            <Text style={styles.resumoLabel}>Subtotal das suítes:</Text>
             <Text style={styles.resumoValor}>{formatCurrency(preco)}</Text>
           </View>
+          {valorTaxasAdicionais > 0.009 ? (
+            <View style={styles.linhaResumo}>
+              <Text style={styles.resumoLabel}>Taxas adicionais:</Text>
+              <Text style={styles.resumoValor}>
+                {formatCurrency(valorTaxasAdicionais)}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.linhaResumo}>
             <Text style={styles.resumoLabel}>Taxa de serviço:</Text>
             <Text style={styles.resumoValor}>{formatCurrency(taxaServico)}</Text>
@@ -398,6 +408,9 @@ export default function ReservaConfirmadaPage() {
                 <SecaoResumoPagamento
                   preco={dados.reserva.preco}
                   taxaServico={dados.reserva.taxaServico}
+                  valorTaxasAdicionais={Number(
+                    dados.reserva.valorTaxasAdicionais ?? 0,
+                  )}
                   valorTotal={valorTotalReserva}
                   valorPago={valorPagoExibicao}
                   saldoPendente={saldoPendenteExibicao}

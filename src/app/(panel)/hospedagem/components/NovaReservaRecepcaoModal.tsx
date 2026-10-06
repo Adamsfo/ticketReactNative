@@ -1204,14 +1204,36 @@ export default function NovaReservaRecepcaoModal() {
         return;
       }
 
-      const wa = abrirWhatsAppLinkPagamentoManual(
-        (
-          resp.data as
-            | { data?: { whatsappLinkPagamentoManual?: WhatsappLinkPagamentoManual } }
-            | undefined
-        )?.data?.whatsappLinkPagamentoManual,
-        { janelaPreAberta: janelaWhatsApp },
-      );
+      const detalheReserva = (
+        resp.data as
+          | {
+              data?: {
+                whatsappLinkPagamentoManual?: WhatsappLinkPagamentoManual;
+                linkPagamento?: string | null;
+              };
+            }
+          | undefined
+      )?.data;
+      const whatsappPayload = detalheReserva?.whatsappLinkPagamentoManual;
+
+      if (!whatsappPayload?.mensagemWhatsApp) {
+        janelaWhatsApp?.close();
+        if (detalheReserva?.linkPagamento) {
+          setErroGeral(
+            "A reserva foi criada, mas os dados para abrir o WhatsApp não foram retornados. Reenvie o link pelo detalhe da reserva.",
+          );
+        } else {
+          setErroGeral(
+            "A reserva pode ter sido criada, mas o link de pagamento não foi retornado. Verifique a lista de reservas ou tente novamente.",
+          );
+        }
+        notifyOperacaoConcluida();
+        return;
+      }
+
+      const wa = abrirWhatsAppLinkPagamentoManual(whatsappPayload, {
+        janelaPreAberta: janelaWhatsApp,
+      });
       if (!wa.aberto && wa.mensagemAviso) {
         Alert.alert("WhatsApp", wa.mensagemAviso);
       }

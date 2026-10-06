@@ -242,6 +242,8 @@ export default function Index() {
                   <ResumoPagamentoHospedagem
                     resumo={resumoHospedagem}
                     ocultarSubtotalETaxa
+                    mostrarResumoFinanceiro
+                    ocultarTaxasAdicionaisETaxaServico
                   />
                 ) : (
                   <>

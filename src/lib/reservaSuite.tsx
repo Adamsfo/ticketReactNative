@@ -161,6 +161,14 @@ export async function checkoutReserva(body: {
   }>("/reservasuite/checkout", "POST", body);
 }
 
+export type ResumoPagamentoHospedagemTaxaAdicionalApi = {
+  id: number;
+  descricao: string;
+  valor: number;
+  ordem: number;
+  idReservaSuite: number | null;
+};
+
 export type ResumoPagamentoHospedagemApi = {
   checkin: string;
   checkout: string;
@@ -172,6 +180,8 @@ export type ResumoPagamentoHospedagemApi = {
     subtotal: number;
   }>;
   subtotalGeral: number;
+  taxasAdicionais?: ResumoPagamentoHospedagemTaxaAdicionalApi[];
+  valorTaxasAdicionais?: number;
   taxaServico: number;
   valorTotal: number;
 };
@@ -198,6 +208,8 @@ export type ReservaConfirmadaApi = {
     valorPago: number;
     saldoPendente: number;
     dataConfirmacao: string | null;
+    taxasAdicionais?: ResumoPagamentoHospedagemTaxaAdicionalApi[];
+    valorTaxasAdicionais?: number;
   };
   evento: {
     id: number;

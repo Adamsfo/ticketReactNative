@@ -93,6 +93,14 @@ class Api {
       //   return { success: false, message: "Token inválido!" };
       // }
 
+      if (!response.ok) {
+        const message =
+          (typeof data?.message === "string" && data.message.trim()) ||
+          (typeof data?.error === "string" && data.error.trim()) ||
+          `Erro na requisição (${response.status}).`;
+        return { success: false, message };
+      }
+
       if (data.status === "fail") {
         return { success: false, message: data.message };
       }

@@ -4,6 +4,14 @@ import { HospedagemReserva } from "@/src/contexts_/HospedagemContext";
 import { getResumoPagamentoHospedagem } from "@/src/lib/reservaSuite";
 import { Transacao } from "@/src/types/geral";
 
+export type ResumoPagamentoHospedagemTaxaAdicional = {
+  id: number;
+  descricao: string;
+  valor: number;
+  ordem: number;
+  idReservaSuite: number | null;
+};
+
 export type ResumoPagamentoHospedagemData = {
   checkin: string;
   checkout: string;
@@ -15,15 +23,22 @@ export type ResumoPagamentoHospedagemData = {
     subtotal: number;
   }>;
   subtotalGeral: number;
+  taxasAdicionais: ResumoPagamentoHospedagemTaxaAdicional[];
+  valorTaxasAdicionais: number;
   taxaServico: number;
   taxaServicoDesconto?: number;
+  /** Total integral da reserva (hospedagem). */
   valorTotal: number;
+  /** Valor da transação/cobrança atual (ex.: 50% do link), quando diferente do total da reserva. */
+  valorTotalCobranca?: number;
 };
 
 function resumoFromContext(
   reserva: HospedagemReserva,
   transacao: Transacao,
 ): ResumoPagamentoHospedagemData {
+  const valorTotalReserva = Number(transacao.valorTotal ?? 0);
+  const valorCobranca = Number(transacao.valorTotal ?? 0);
   return {
     checkin: reserva.checkin,
     checkout: reserva.checkout,
@@ -34,10 +49,16 @@ function resumoFromContext(
       criancas: item.criancas,
       subtotal: Number(item.cotacao.totais.preco),
     })),
-    subtotalGeral: Number(transacao.preco ?? 0),
+    subtotalGeral: reserva.itens.reduce(
+      (acc, item) => acc + Number(item.cotacao.totais.preco),
+      0,
+    ),
+    taxasAdicionais: [],
+    valorTaxasAdicionais: 0,
     taxaServico: Number(transacao.taxaServico ?? 0),
     taxaServicoDesconto: transacao.taxaServicoDesconto,
-    valorTotal: Number(transacao.valorTotal ?? 0),
+    valorTotal: valorTotalReserva,
+    valorTotalCobranca: valorCobranca,
   };
 }
 
@@ -47,9 +68,13 @@ function resumoFromApi(data: {
   noites: number;
   suites: ResumoPagamentoHospedagemData["suites"];
   subtotalGeral: number;
+  taxasAdicionais?: ResumoPagamentoHospedagemTaxaAdicional[];
+  valorTaxasAdicionais?: number;
   taxaServico: number;
   valorTotal: number;
 }): ResumoPagamentoHospedagemData {
+  const taxasAdicionais = data.taxasAdicionais ?? [];
+  const valorTaxasAdicionais = Number(data.valorTaxasAdicionais ?? 0);
   return {
     checkin:
       data.checkin instanceof Date ? data.checkin.toISOString() : String(data.checkin),
@@ -60,8 +85,32 @@ function resumoFromApi(data: {
     noites: data.noites,
     suites: data.suites,
     subtotalGeral: Number(data.subtotalGeral),
+    taxasAdicionais,
+    valorTaxasAdicionais,
     taxaServico: Number(data.taxaServico),
     valorTotal: Number(data.valorTotal),
+  };
+}
+
+function aplicarTransacaoNoResumo(
+  resumo: ResumoPagamentoHospedagemData,
+  registroTransacao?: Transacao | null,
+): ResumoPagamentoHospedagemData {
+  if (!registroTransacao) {
+    return resumo;
+  }
+  const valorCobranca = Number(registroTransacao.valorTotal ?? resumo.valorTotal);
+  const valorTotalReserva = Number(resumo.valorTotal);
+  const cobrancaDiferente =
+    Math.abs(valorCobranca - valorTotalReserva) > 0.009;
+  return {
+    ...resumo,
+    taxaServicoDesconto: registroTransacao.taxaServicoDesconto,
+    taxaServico: Number(
+      registroTransacao.taxaServico ?? resumo.taxaServico,
+    ),
+    valorTotal: valorTotalReserva,
+    valorTotalCobranca: cobrancaDiferente ? valorCobranca : undefined,
   };
 }
 
@@ -92,19 +141,7 @@ export function useResumoPagamentoHospedagem(params: {
     }
 
     if (resumoBootstrap) {
-      setResumo({
-        ...resumoBootstrap,
-        taxaServicoDesconto: registroTransacao?.taxaServicoDesconto,
-        subtotalGeral: Number(
-          registroTransacao?.preco ?? resumoBootstrap.subtotalGeral,
-        ),
-        taxaServico: Number(
-          registroTransacao?.taxaServico ?? resumoBootstrap.taxaServico,
-        ),
-        valorTotal: Number(
-          registroTransacao?.valorTotal ?? resumoBootstrap.valorTotal,
-        ),
-      });
+      setResumo(aplicarTransacaoNoResumo(resumoBootstrap, registroTransacao));
       return;
     }
 
@@ -132,13 +169,7 @@ export function useResumoPagamentoHospedagem(params: {
       }
 
       const resumoApi = resumoFromApi(response.data);
-      setResumo({
-        ...resumoApi,
-        taxaServicoDesconto: registroTransacao?.taxaServicoDesconto,
-        subtotalGeral: Number(registroTransacao?.preco ?? resumoApi.subtotalGeral),
-        taxaServico: Number(registroTransacao?.taxaServico ?? resumoApi.taxaServico),
-        valorTotal: Number(registroTransacao?.valorTotal ?? resumoApi.valorTotal),
-      });
+      setResumo(aplicarTransacaoNoResumo(resumoApi, registroTransacao));
     });
 
     return () => {
