@@ -337,7 +337,7 @@ function CalendarioHorizontal({
       <ScrollView
         ref={scrollRef}
         horizontal
-        nestedScrollEnabled={layoutMobile}
+        nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.diasScroll}
       >
@@ -1397,7 +1397,7 @@ export default function TabSuites() {
         >
           <FlatList
             horizontal
-            nestedScrollEnabled={layoutMobile}
+            nestedScrollEnabled
             data={FILTROS}
             keyExtractor={(item) => item.key}
             showsHorizontalScrollIndicator={false}
@@ -1581,41 +1581,16 @@ export default function TabSuites() {
         </Pressable>
       ) : null}
 
-      {layoutMobile ? (
-        <FlatList
-          ref={suitesListaRef}
-          key={`suites-cols-${suiteColumns}`}
-          {...suitesFlatListProps}
-          ListHeaderComponent={cabecalhoSuites()}
-          ListEmptyComponent={listEmptySuitesMobile}
-          onScroll={aoRolarListaMobile}
-          scrollEventThrottle={16}
-        />
-      ) : (
-        <>
-          {cabecalhoSuites()}
-
-          {loading && !refreshing ? (
-            <View style={styles.estadoBox}>
-              <ActivityIndicator size="large" color={colors.azul} />
-              <Text style={styles.estadoTexto}>Carregando suítes...</Text>
-            </View>
-          ) : (
-            <FlatList
-              key={`suites-cols-${suiteColumns}`}
-              {...suitesFlatListProps}
-              ListEmptyComponent={
-                <View style={styles.vazioBox}>
-                  <Feather name="home" size={48} color="#999" />
-                  <Text style={styles.vazio}>
-                    {metaMsg || "Nenhuma suíte encontrada."}
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </>
-      )}
+      <FlatList
+        ref={suitesListaRef}
+        key={`suites-cols-${suiteColumns}`}
+        style={styles.suitesLista}
+        {...suitesFlatListProps}
+        ListHeaderComponent={cabecalhoSuites}
+        ListEmptyComponent={listEmptySuitesMobile}
+        onScroll={layoutMobile ? aoRolarListaMobile : undefined}
+        scrollEventThrottle={16}
+      />
 
       <ReservaOperacaoSheet
         reserva={reservaOperacao}
@@ -1639,8 +1614,13 @@ export default function TabSuites() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
     paddingHorizontal: 0,
     position: "relative",
+  },
+  suitesLista: {
+    flex: 1,
+    minHeight: 0,
   },
   resumoSticky: {
     position: "absolute",
