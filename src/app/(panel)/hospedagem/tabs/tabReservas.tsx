@@ -355,123 +355,158 @@ export default function TabReservas() {
     carregar(page);
   };
 
-  const irParaPagina = (novaPagina: number) => {
-    const destino = Math.min(Math.max(1, novaPagina), totalPages);
-    if (destino === page) return;
-    setPage(destino);
-    carregar(destino);
-  };
+  const irParaPagina = useCallback(
+    (novaPagina: number) => {
+      const destino = Math.min(Math.max(1, novaPagina), totalPages);
+      if (destino === page) return;
+      setPage(destino);
+      carregar(destino);
+    },
+    [carregar, page, totalPages],
+  );
+
+  const cabecalhoReservas = useMemo(
+    () => (
+      <View>
+        <View style={styles.buscaBox}>
+          <Feather name="search" size={20} color={colors.cinza} />
+          <TextInput
+            style={styles.buscaInput}
+            placeholder="Buscar responsável, hóspede, reserva, telefone..."
+            placeholderTextColor="#888"
+            value={buscaInput}
+            onChangeText={setBuscaInput}
+          />
+        </View>
+
+        <FlatList
+          horizontal
+          data={FILTROS}
+          keyExtractor={(item) => item.key}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtrosScroll}
+          style={styles.filtrosWrap}
+          renderItem={({ item }) => {
+            const ativo = filtro === item.key;
+            return (
+              <TouchableOpacity
+                style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
+                onPress={() => setFiltro(item.key)}
+              >
+                <Text
+                  style={[
+                    styles.filtroTexto,
+                    ativo && styles.filtroTextoAtivo,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+
+        <FlatList
+          horizontal
+          data={ORDENACOES}
+          keyExtractor={(item) => item.key}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtrosScroll}
+          style={styles.ordenacaoWrap}
+          renderItem={({ item }) => {
+            const ativo = ordenacao === item.key;
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.ordenacaoChip,
+                  ativo && styles.ordenacaoChipAtivo,
+                ]}
+                onPress={() => setOrdenacao(item.key)}
+              >
+                <Text
+                  style={[
+                    styles.ordenacaoTexto,
+                    ativo && styles.ordenacaoTextoAtivo,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+
+        {!loading || refreshing ? (
+          <PaginacaoReservas
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            loading={loading && !refreshing}
+            onPageChange={irParaPagina}
+          />
+        ) : null}
+
+        {loading && !refreshing ? (
+          <View style={styles.estadoBox}>
+            <ActivityIndicator size="large" color={colors.azul} />
+            <Text style={styles.estadoTexto}>Carregando reservas...</Text>
+          </View>
+        ) : null}
+      </View>
+    ),
+    [
+      buscaInput,
+      filtro,
+      ordenacao,
+      loading,
+      refreshing,
+      page,
+      totalPages,
+      total,
+      irParaPagina,
+    ],
+  );
+
+  const listEmptyReservas = useCallback(() => {
+    if (loading && !refreshing) {
+      return null;
+    }
+    return (
+      <View style={styles.vazioBox}>
+        <Feather name="inbox" size={48} color="#999" />
+        <Text style={styles.vazio}>Nenhuma reserva encontrada.</Text>
+      </View>
+    );
+  }, [loading, refreshing]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.buscaBox}>
-        <Feather name="search" size={20} color={colors.cinza} />
-        <TextInput
-          style={styles.buscaInput}
-          placeholder="Buscar responsável, hóspede, reserva, telefone..."
-          placeholderTextColor="#888"
-          value={buscaInput}
-          onChangeText={setBuscaInput}
-        />
-      </View>
-
       <FlatList
-        horizontal
-        data={FILTROS}
-        keyExtractor={(item) => item.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtrosScroll}
-        style={styles.filtrosWrap}
-        renderItem={({ item }) => {
-          const ativo = filtro === item.key;
-          return (
-            <TouchableOpacity
-              style={[styles.filtroChip, ativo && styles.filtroChipAtivo]}
-              onPress={() => setFiltro(item.key)}
-            >
-              <Text
-                style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
+        style={styles.reservasLista}
+        data={loading && !refreshing ? [] : reservas}
+        keyExtractor={(item) =>
+          String(item.idReservaHospedagem || item.numeroReserva || item.id)
+        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listaContent}
+        ListHeaderComponent={cabecalhoReservas}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={listEmptyReservas}
+        ListFooterComponent={<View style={{ height: 24 }} />}
+        renderItem={({ item }) => (
+          <CardReserva
+            item={item}
+            onPress={() =>
+              navigation.navigate("hospedagemReservaDetalhe", {
+                idReserva:
+                  item.idReservaHospedagem || item.numeroReserva || item.id,
+              })
+            }
+          />
+        )}
       />
-
-      <FlatList
-        horizontal
-        data={ORDENACOES}
-        keyExtractor={(item) => item.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtrosScroll}
-        style={styles.ordenacaoWrap}
-        renderItem={({ item }) => {
-          const ativo = ordenacao === item.key;
-          return (
-            <TouchableOpacity
-              style={[styles.ordenacaoChip, ativo && styles.ordenacaoChipAtivo]}
-              onPress={() => setOrdenacao(item.key)}
-            >
-              <Text
-                style={[
-                  styles.ordenacaoTexto,
-                  ativo && styles.ordenacaoTextoAtivo,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
-
-      {!loading || refreshing ? (
-        <PaginacaoReservas
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          loading={loading && !refreshing}
-          onPageChange={irParaPagina}
-        />
-      ) : null}
-
-      {loading && !refreshing ? (
-        <View style={styles.estadoBox}>
-          <ActivityIndicator size="large" color={colors.azul} />
-          <Text style={styles.estadoTexto}>Carregando reservas...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={reservas}
-          keyExtractor={(item) =>
-            String(item.idReservaHospedagem || item.numeroReserva || item.id)
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listaContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          ListEmptyComponent={
-            <View style={styles.vazioBox}>
-              <Feather name="inbox" size={48} color="#999" />
-              <Text style={styles.vazio}>Nenhuma reserva encontrada.</Text>
-            </View>
-          }
-          ListFooterComponent={<View style={{ height: 24 }} />}
-          renderItem={({ item }) => (
-            <CardReserva
-              item={item}
-              onPress={() =>
-                navigation.navigate("hospedagemReservaDetalhe", {
-                  idReserva:
-                    item.idReservaHospedagem || item.numeroReserva || item.id,
-                })
-              }
-            />
-          )}
-        />
-      )}
     </View>
   );
 }
@@ -479,7 +514,12 @@ export default function TabReservas() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
     paddingHorizontal: 0,
+  },
+  reservasLista: {
+    flex: 1,
+    minHeight: 0,
   },
   buscaBox: {
     flexDirection: "row",
@@ -736,9 +776,9 @@ const styles = StyleSheet.create({
     color: colors.cinza,
   },
   estadoBox: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 48,
     paddingBottom: 40,
   },
   estadoTexto: {

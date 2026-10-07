@@ -1,10 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   RefreshControl,
   ScrollView,
@@ -70,11 +66,6 @@ const LEGENDA: Array<{ cor: string; label: string }> = [
   { cor: HOSPEDAGEM_STATUS_COLORS.checkOutHoje, label: "Check-out" },
   { cor: HOSPEDAGEM_STATUS_COLORS.bloqueada, label: "Bloqueada / Manutenção" },
 ];
-
-function alturaListaAgenda(): number {
-  const { height } = Dimensions.get("window");
-  return Math.max(240, height - (Platform.OS === "web" ? 340 : 400));
-}
 
 function BarraReserva({
   barra,
@@ -239,16 +230,12 @@ export default function TabAgenda() {
   const [agoraTick, setAgoraTick] = useState(() => Date.now());
 
   const hScrollRef = useRef<ScrollView>(null);
-  const leftVRef = useRef<FlatList>(null);
-  const bodyVRef = useRef<FlatList>(null);
-  const syncingV = useRef(false);
 
   const diasVisiveis = useMemo(
     () => buildDiasVisiveis(dataInicio, range),
     [dataInicio, range],
   );
   const gridWidth = diasVisiveis.length * AGENDA_DAY_WIDTH;
-  const listaAltura = useMemo(() => alturaListaAgenda(), []);
 
   const carregar = useCallback(
     async (isRefresh = false) => {
@@ -287,16 +274,6 @@ export default function TabAgenda() {
     if (refreshVersion === 0) return;
     carregar(true);
   }, [refreshVersion, carregar]);
-
-  const syncVertical = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (syncingV.current) return;
-    syncingV.current = true;
-    leftVRef.current?.scrollToOffset({
-      offset: e.nativeEvent.contentOffset.y,
-      animated: false,
-    });
-    syncingV.current = false;
-  };
 
   const irMes = (delta: number) => {
     const novoMes = addMes(mesVisivel, delta);
@@ -367,208 +344,199 @@ export default function TabAgenda() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.toolbar}>
-        <View style={styles.mesNav}>
-          <TouchableOpacity
-            onPress={() => irMes(-1)}
-            style={styles.mesNavBtn}
-            accessibilityLabel="Mês anterior"
-          >
-            <Feather name="chevron-left" size={22} color={colors.cinza} />
-          </TouchableOpacity>
-          <Text style={styles.mesNavTitulo}>{labelMesAno(mesVisivel)}</Text>
-          <TouchableOpacity
-            onPress={() => irMes(1)}
-            style={styles.mesNavBtn}
-            accessibilityLabel="Próximo mês"
-          >
-            <Feather name="chevron-right" size={22} color={colors.cinza} />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.btnHoje} onPress={irHoje}>
-          <Text style={styles.btnHojeTexto}>Hoje</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.rangeRow}>
-        <View style={styles.rangeChipsWrap}>
-          {RANGES.map((r) => {
-            const ativo = range === r.key;
-            return (
-              <TouchableOpacity
-                key={r.key}
-                style={[styles.rangeChip, ativo && styles.rangeChipAtivo]}
-                onPress={() => setRange(r.key)}
-              >
-                <Text
-                  style={[styles.rangeTexto, ativo && styles.rangeTextoAtivo]}
-                >
-                  {r.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <View style={styles.refreshBox}>
-          {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
-            <Text style={styles.refreshMeta} numberOfLines={1}>
-              {textoAtualizadoHa(lastRefreshAt, agoraTick)}
-            </Text>
-          ) : null}
-          <TouchableOpacity
-            style={[
-              styles.refreshBtn,
-              refreshing && styles.refreshBtnDisabled,
-            ]}
-            onPress={() => {
-              if (refreshing) return;
-              requestRefresh();
-            }}
-            disabled={refreshing}
-            accessibilityLabel="Atualizar agora"
-            // @ts-expect-error title = tooltip no web
-            title={Platform.OS === "web" ? "Atualizar agora" : undefined}
-            hitSlop={8}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color={colors.azul} />
-            ) : (
-              <Feather name="refresh-cw" size={18} color={colors.azul} />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.legendaRow}>
-        {LEGENDA.map((item) => (
-          <View key={item.label} style={styles.legendaItem}>
-            <View style={[styles.legendaDot, { backgroundColor: item.cor }]} />
-            <Text style={styles.legendaTexto}>{item.label}</Text>
+      <ScrollView
+        style={styles.agendaScroll}
+        contentContainerStyle={styles.agendaScrollContent}
+        showsVerticalScrollIndicator
+        nestedScrollEnabled
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => carregar(true)}
+          />
+        }
+      >
+        <View style={styles.toolbar}>
+          <View style={styles.mesNav}>
+            <TouchableOpacity
+              onPress={() => irMes(-1)}
+              style={styles.mesNavBtn}
+              accessibilityLabel="Mês anterior"
+            >
+              <Feather name="chevron-left" size={22} color={colors.cinza} />
+            </TouchableOpacity>
+            <Text style={styles.mesNavTitulo}>{labelMesAno(mesVisivel)}</Text>
+            <TouchableOpacity
+              onPress={() => irMes(1)}
+              style={styles.mesNavBtn}
+              accessibilityLabel="Próximo mês"
+            >
+              <Feather name="chevron-right" size={22} color={colors.cinza} />
+            </TouchableOpacity>
           </View>
-        ))}
-      </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.estadoBox}>
-          <ActivityIndicator size="large" color={colors.azul} />
-          <Text style={styles.estadoTexto}>Carregando agenda...</Text>
+          <TouchableOpacity style={styles.btnHoje} onPress={irHoje}>
+            <Text style={styles.btnHojeTexto}>Hoje</Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.timelineWrap}>
-          <View style={styles.timelineRow}>
-            <View style={styles.suiteCol}>
-              <View style={styles.suiteHeaderCell}>
-                <Text style={styles.suiteHeaderTexto}>Suíte</Text>
-              </View>
-              <FlatList
-                ref={leftVRef}
-                data={suites}
-                keyExtractor={(s) => String(s.idEventoSuite)}
-                renderItem={renderSuiteNome}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                style={{ height: listaAltura }}
-                getItemLayout={(_, index) => ({
-                  length: AGENDA_ROW_HEIGHT,
-                  offset: AGENDA_ROW_HEIGHT * index,
-                  index,
-                })}
-                ListEmptyComponent={
+
+        <View style={styles.rangeRow}>
+          <View style={styles.rangeChipsWrap}>
+            {RANGES.map((r) => {
+              const ativo = range === r.key;
+              return (
+                <TouchableOpacity
+                  key={r.key}
+                  style={[styles.rangeChip, ativo && styles.rangeChipAtivo]}
+                  onPress={() => setRange(r.key)}
+                >
+                  <Text
+                    style={[
+                      styles.rangeTexto,
+                      ativo && styles.rangeTextoAtivo,
+                    ]}
+                  >
+                    {r.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={styles.refreshBox}>
+            {mostrarTextoAtualizadoHa && lastRefreshAt != null ? (
+              <Text style={styles.refreshMeta} numberOfLines={1}>
+                {textoAtualizadoHa(lastRefreshAt, agoraTick)}
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              style={[
+                styles.refreshBtn,
+                refreshing && styles.refreshBtnDisabled,
+              ]}
+              onPress={() => {
+                if (refreshing) return;
+                requestRefresh();
+              }}
+              disabled={refreshing}
+              accessibilityLabel="Atualizar agora"
+              // @ts-expect-error title = tooltip no web
+              title={Platform.OS === "web" ? "Atualizar agora" : undefined}
+              hitSlop={8}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color={colors.azul} />
+              ) : (
+                <Feather name="refresh-cw" size={18} color={colors.azul} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.legendaRow}>
+          {LEGENDA.map((item) => (
+            <View key={item.label} style={styles.legendaItem}>
+              <View
+                style={[styles.legendaDot, { backgroundColor: item.cor }]}
+              />
+              <Text style={styles.legendaTexto}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {loading && !refreshing ? (
+          <View style={styles.estadoBoxCarregando}>
+            <ActivityIndicator size="large" color={colors.azul} />
+            <Text style={styles.estadoTexto}>Carregando agenda...</Text>
+          </View>
+        ) : (
+          <View style={styles.timelineWrap}>
+            <View style={styles.timelineRow}>
+              <View style={styles.suiteCol}>
+                <View style={styles.suiteHeaderCell}>
+                  <Text style={styles.suiteHeaderTexto}>Suíte</Text>
+                </View>
+                {suites.length === 0 ? (
                   <View style={styles.suiteNomeCell}>
                     <Text style={styles.vazioTexto}>Nenhuma suíte</Text>
                   </View>
-                }
-              />
-            </View>
+                ) : (
+                  suites.map((item) => (
+                    <View key={String(item.idEventoSuite)}>
+                      {renderSuiteNome({ item })}
+                    </View>
+                  ))
+                )}
+              </View>
 
-            <ScrollView
-              ref={hScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              scrollEventThrottle={16}
-              bounces={false}
-              style={styles.gridArea}
-              contentContainerStyle={styles.gridContent}
-            >
-              <View style={{ width: gridWidth }}>
-                <View
-                  style={[
-                    styles.headerDiasRow,
-                    { width: gridWidth, height: AGENDA_HEADER_HEIGHT },
-                  ]}
-                >
-                  {diasVisiveis.map((data) => {
-                    const ehHoje = data === hoje;
-                    return (
-                      <View
-                        key={data}
-                        style={[
-                          styles.headerDiaCell,
-                          { width: AGENDA_DAY_WIDTH },
-                        ]}
-                      >
-                        <Text
+              <ScrollView
+                ref={hScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                scrollEventThrottle={16}
+                bounces={false}
+                nestedScrollEnabled
+                style={styles.gridArea}
+                contentContainerStyle={styles.gridContent}
+              >
+                <View style={{ width: gridWidth }}>
+                  <View
+                    style={[
+                      styles.headerDiasRow,
+                      { width: gridWidth, height: AGENDA_HEADER_HEIGHT },
+                    ]}
+                  >
+                    {diasVisiveis.map((data) => {
+                      const ehHoje = data === hoje;
+                      return (
+                        <View
+                          key={data}
                           style={[
-                            styles.headerDiaSemana,
-                            ehHoje && styles.headerDiaHoje,
+                            styles.headerDiaCell,
+                            { width: AGENDA_DAY_WIDTH },
                           ]}
                         >
-                          {labelDiaSemana(data)}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.headerDiaNum,
-                            ehHoje && styles.headerDiaHoje,
-                          ]}
-                        >
-                          {labelDiaCurto(data)}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
+                          <Text
+                            style={[
+                              styles.headerDiaSemana,
+                              ehHoje && styles.headerDiaHoje,
+                            ]}
+                          >
+                            {labelDiaSemana(data)}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.headerDiaNum,
+                              ehHoje && styles.headerDiaHoje,
+                            ]}
+                          >
+                            {labelDiaCurto(data)}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
 
-                <FlatList
-                  ref={bodyVRef}
-                  data={suites}
-                  keyExtractor={(s) => String(s.idEventoSuite)}
-                  renderItem={renderLinha}
-                  onScroll={syncVertical}
-                  scrollEventThrottle={16}
-                  showsVerticalScrollIndicator
-                  nestedScrollEnabled
-                  style={{ width: gridWidth, height: listaAltura }}
-                  contentContainerStyle={
-                    suites.length === 0 ? styles.listaVazia : undefined
-                  }
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={refreshing}
-                      onRefresh={() => carregar(true)}
-                    />
-                  }
-                  ListEmptyComponent={
+                  {suites.length === 0 ? (
                     <View style={[styles.linhaGrid, { width: gridWidth }]}>
                       <Text style={styles.vazioTexto}>
                         Nenhuma suíte no período
                       </Text>
                     </View>
-                  }
-                  initialNumToRender={12}
-                  maxToRenderPerBatch={16}
-                  windowSize={8}
-                  getItemLayout={(_, index) => ({
-                    length: AGENDA_ROW_HEIGHT,
-                    offset: AGENDA_ROW_HEIGHT * index,
-                    index,
-                  })}
-                />
-              </View>
-            </ScrollView>
+                  ) : (
+                    suites.map((item) => (
+                      <View key={String(item.idEventoSuite)}>
+                        {renderLinha({ item })}
+                      </View>
+                    ))
+                  )}
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      )}
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
 
       <ReservaOperacaoSheet
         reserva={reservaOperacao}
@@ -583,7 +551,15 @@ export default function TabAgenda() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
     paddingHorizontal: 0,
+  },
+  agendaScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  agendaScrollContent: {
+    flexGrow: 1,
   },
   toolbar: {
     flexDirection: "row",
@@ -703,13 +679,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   timelineWrap: {
-    flex: 1,
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 14,
     overflow: "hidden",
   },
   timelineRow: {
-    flex: 1,
     flexDirection: "row",
   },
   suiteCol: {
@@ -809,10 +783,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-  estadoBox: {
-    flex: 1,
+  estadoBoxCarregando: {
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 48,
     paddingBottom: 40,
   },
   estadoTexto: {
@@ -826,8 +800,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingHorizontal: 12,
     paddingVertical: 24,
-  },
-  listaVazia: {
-    flexGrow: 1,
   },
 });
