@@ -436,16 +436,6 @@ export default function TabReservas() {
           }}
         />
 
-        {!loading || refreshing ? (
-          <PaginacaoReservas
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            loading={loading && !refreshing}
-            onPageChange={irParaPagina}
-          />
-        ) : null}
-
         {loading && !refreshing ? (
           <View style={styles.estadoBox}>
             <ActivityIndicator size="large" color={colors.azul} />
@@ -454,17 +444,25 @@ export default function TabReservas() {
         ) : null}
       </View>
     ),
-    [
-      buscaInput,
-      filtro,
-      ordenacao,
-      loading,
-      refreshing,
-      page,
-      totalPages,
-      total,
-      irParaPagina,
-    ],
+    [buscaInput, filtro, ordenacao, loading, refreshing],
+  );
+
+  const rodapeReservas = useMemo(
+    () =>
+      !loading || refreshing ? (
+        <View style={styles.listaFooter}>
+          <PaginacaoReservas
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            loading={loading && !refreshing}
+            onPageChange={irParaPagina}
+          />
+        </View>
+      ) : (
+        <View style={styles.listaFooterSpacer} />
+      ),
+    [loading, refreshing, page, totalPages, total, irParaPagina],
   );
 
   const listEmptyReservas = useCallback(() => {
@@ -494,7 +492,7 @@ export default function TabReservas() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListEmptyComponent={listEmptyReservas}
-        ListFooterComponent={<View style={{ height: 24 }} />}
+        ListFooterComponent={rodapeReservas}
         renderItem={({ item }) => (
           <CardReserva
             item={item}
@@ -592,12 +590,21 @@ const styles = StyleSheet.create({
   ordenacaoTextoAtivo: {
     color: colors.azul,
   },
+  listaFooter: {
+    marginTop: "auto",
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.1)",
+  },
+  listaFooterSpacer: {
+    height: 24,
+  },
   paginacaoBox: {
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 10,
+    marginTop: 4,
     gap: 4,
   },
   paginacaoResumo: {
