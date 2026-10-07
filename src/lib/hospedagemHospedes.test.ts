@@ -1,4 +1,5 @@
 import {
+  MSG_CRIANCA_ACIMA_IDADE,
   validarHospedes,
   type HospedesSuiteForm,
 } from "./hospedagemHospedes";
@@ -19,7 +20,37 @@ function suiteComAdultos(
   };
 }
 
+function suiteComCrianca(
+  dataNascimento: Date | null,
+): HospedesSuiteForm {
+  return {
+    idEventoSuite: 1,
+    nomeSuite: "Teste",
+    adultos: [],
+    criancas: [
+      {
+        tipo: "crianca",
+        ordem: 1,
+        nomeCompleto: "João",
+        dataNascimento,
+      },
+    ],
+  };
+}
+
 describe("validarHospedes — site/conferência", () => {
+  it("criança sem data → inválido", () => {
+    const errors = validarHospedes([suiteComCrianca(null)]);
+    expect(errors["1-crianca-1-nasc"]).toBeDefined();
+  });
+
+  it("criança com data válida → válido", () => {
+    const errors = validarHospedes([
+      suiteComCrianca(new Date(2020, 0, 15)),
+    ]);
+    expect(errors["1-crianca-1-nasc"]).toBeUndefined();
+  });
+
   it("exige nome de todos os adultos por padrão", () => {
     const errors = validarHospedes([
       suiteComAdultos(1, [
@@ -87,5 +118,35 @@ describe("validarHospedes — recepção (nomeOpcional: true)", () => {
 
     expect(errors["1-crianca-1-nome"]).toBeUndefined();
     expect(errors["1-crianca-1-nasc"]).toBeUndefined();
+  });
+
+  it("criança sem data com dataNascimentoCriancaOpcional → válido", () => {
+    const errors = validarHospedes([suiteComCrianca(null)], {
+      nomeOpcional: true,
+      dataNascimentoCriancaOpcional: true,
+    });
+    expect(errors["1-crianca-1-nasc"]).toBeUndefined();
+  });
+
+  it("criança com data válida na recepção → válido", () => {
+    const errors = validarHospedes(
+      [suiteComCrianca(new Date(2020, 0, 15))],
+      {
+        nomeOpcional: true,
+        dataNascimentoCriancaOpcional: true,
+      },
+    );
+    expect(errors["1-crianca-1-nasc"]).toBeUndefined();
+  });
+
+  it("criança com idade acima do limite na recepção → inválido", () => {
+    const errors = validarHospedes(
+      [suiteComCrianca(new Date(2010, 0, 1))],
+      {
+        nomeOpcional: true,
+        dataNascimentoCriancaOpcional: true,
+      },
+    );
+    expect(errors["1-crianca-1-nasc"]).toBe(MSG_CRIANCA_ACIMA_IDADE);
   });
 });

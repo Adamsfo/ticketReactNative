@@ -89,6 +89,11 @@ import {
 
 const STEPS = ["Cliente", "Período", "Suíte", "Hóspedes", "Resumo"] as const;
 
+const OPCOES_VALIDAR_HOSPEDES_RECEPCAO = {
+  nomeOpcional: true,
+  dataNascimentoCriancaOpcional: true,
+} as const;
+
 /** Nova Reserva (atendente): pagamento antecipado na recepção — demais formas em outras telas. */
 const FORMAS_PAGAMENTO_NOVA_RESERVA: Array<{
   value: FormaPagamentoRecepcao;
@@ -709,7 +714,9 @@ export default function NovaReservaRecepcaoModal() {
         return carrinho.length > 0 && !carrinhoTemDescontoInvalido;
       case 4:
         return (
-          Object.keys(validarHospedes(hospedes, { nomeOpcional: true }))
+          Object.keys(
+            validarHospedes(hospedes, OPCOES_VALIDAR_HOSPEDES_RECEPCAO),
+          )
             .length === 0
         );
       case 5:
@@ -749,7 +756,7 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
     if (step === 4) {
-      const errs = validarHospedes(hospedes, { nomeOpcional: true });
+      const errs = validarHospedes(hospedes, OPCOES_VALIDAR_HOSPEDES_RECEPCAO);
       setHospedesErrors(errs);
       if (Object.keys(errs).length > 0) {
         setErroGeral("Revise os dados dos hóspedes.");
@@ -1101,7 +1108,7 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
 
-    const errs = validarHospedes(hospedes, { nomeOpcional: true });
+    const errs = validarHospedes(hospedes, OPCOES_VALIDAR_HOSPEDES_RECEPCAO);
     setHospedesErrors(errs);
     if (Object.keys(errs).length > 0) {
       setErroGeral("Revise os dados dos hóspedes.");
@@ -1166,7 +1173,7 @@ export default function NovaReservaRecepcaoModal() {
       return;
     }
 
-    const errs = validarHospedes(hospedes, { nomeOpcional: true });
+    const errs = validarHospedes(hospedes, OPCOES_VALIDAR_HOSPEDES_RECEPCAO);
     setHospedesErrors(errs);
     if (Object.keys(errs).length > 0) {
       setErroGeral("Revise os dados dos hóspedes.");
@@ -1695,8 +1702,9 @@ export default function NovaReservaRecepcaoModal() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Dados dos hóspedes</Text>
               <Text style={styles.hint}>
-                Informe os nomes que souber; os demais podem ficar em branco.
-                Crianças ainda precisam de data de nascimento válida.
+                Informe os nomes dos hóspedes. A data de nascimento da criança
+                é opcional nesta reserva; se informada, deve respeitar a idade
+                máxima permitida para crianças.
               </Text>
 
               {hospedes.map((suite) => (

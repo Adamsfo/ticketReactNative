@@ -173,6 +173,8 @@ export function preencherPrimeiroAdultoSeVazio(
 export type ValidarHospedesOptions = {
   /** Recepção/atendente: nome do hóspede é opcional. */
   nomeOpcional?: boolean;
+  /** Nova reserva recepção: data de nascimento da criança pode ficar vazia. */
+  dataNascimentoCriancaOpcional?: boolean;
 };
 
 export function validarHospedes(
@@ -181,6 +183,8 @@ export function validarHospedes(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   const nomeOpcional = options?.nomeOpcional === true;
+  const dataNascimentoCriancaOpcional =
+    options?.dataNascimentoCriancaOpcional === true;
 
   hospedes.forEach((suite) => {
     suite.adultos.forEach((adulto) => {
@@ -196,8 +200,10 @@ export function validarHospedes(
           "Informe o nome completo da criança.";
       }
       if (!crianca.dataNascimento) {
-        errors[`${suite.idEventoSuite}-crianca-${crianca.ordem}-nasc`] =
-          "Informe a data de nascimento da criança.";
+        if (!dataNascimentoCriancaOpcional) {
+          errors[`${suite.idEventoSuite}-crianca-${crianca.ordem}-nasc`] =
+            "Informe a data de nascimento da criança.";
+        }
       } else {
         const idade = calcularIdadeEmAnos(crianca.dataNascimento);
         if (idade > IDADE_MAXIMA_CRIANCA_HOSPEDAGEM) {
