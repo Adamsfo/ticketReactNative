@@ -166,6 +166,29 @@ function getLimitesSuite(suite: EventoSuite) {
   return { min, max };
 }
 
+function capacidadeMaximaSuite(suite: EventoSuite): number {
+  return getLimitesSuite(suite).max;
+}
+
+/** Ordenação só para exibição; empate no máximo preserva a ordem original da API. */
+function ordenarSuitesPublicasPorCapacidadeMaxima(
+  lista: EventoSuite[],
+): EventoSuite[] {
+  return lista
+    .map((suite, index) => ({ suite, index }))
+    .sort((a, b) => {
+      const ca = capacidadeMaximaSuite(a.suite);
+      const cb = capacidadeMaximaSuite(b.suite);
+      if (ca !== cb) return ca - cb;
+      return a.index - b.index;
+    })
+    .map((item) => item.suite);
+}
+
+function labelSeparadorCapacidadeMaxima(suite: EventoSuite): string {
+  return `ATÉ ${capacidadeMaximaSuite(suite)} HÓSPEDES`;
+}
+
 export default function Index() {
   const { width: screenWidth } = useWindowDimensions();
   const isMobileSuiteLayout = screenWidth < 768;
@@ -276,6 +299,11 @@ export default function Index() {
       isMesmaDataLocal(checkinDate, agoraTick) &&
       !haHorariosCheckinDisponiveis(checkinDate, agoraTick),
     [checkinDate, agoraTick],
+  );
+
+  const suitesPublicasOrdenadas = useMemo(
+    () => ordenarSuitesPublicasPorCapacidadeMaxima(registrosEventoSuites),
+    [registrosEventoSuites],
   );
 
   // Mantém o horário selecionado dentro da faixa válida (hoje > agora)
@@ -1243,7 +1271,17 @@ export default function Index() {
                     : undefined
                 }
               >
-                {registrosEventoSuites.map((suite, index) => {
+                {suitesPublicasOrdenadas.map((suite, index) => {
+                  const maxCap = capacidadeMaximaSuite(suite);
+                  const maxCapAnterior =
+                    index > 0
+                      ? capacidadeMaximaSuite(
+                          suitesPublicasOrdenadas[index - 1],
+                        )
+                      : null;
+                  const mostrarSeparadorCapacidade =
+                    index === 0 || maxCap !== maxCapAnterior;
+
                   const noCarrinho = carrinho.some(
                     (i) => i.idEventoSuite === suite.id,
                   );
@@ -1256,12 +1294,31 @@ export default function Index() {
                     formData.imagem,
                   );
                   return (
+                    <React.Fragment key={suite.id}>
+                      {mostrarSeparadorCapacidade ? (
+                        <View
+                          style={[
+                            styles.capacidadeSeparador,
+                            index === 0 && styles.capacidadeSeparadorPrimeiro,
+                          ]}
+                        >
+                          <View style={styles.capacidadeSeparadorLinha} />
+                          <View style={styles.capacidadeSeparadorTitulo}>
+                            <Text style={styles.capacidadeSeparadorTexto}>
+                              {labelSeparadorCapacidadeMaxima(suite)}
+                            </Text>
+                            <Text style={styles.capacidadeSeparadorSeta}>
+                              ↓
+                            </Text>
+                          </View>
+                          <View style={styles.capacidadeSeparadorLinha} />
+                        </View>
+                      ) : null}
                     <View
-                      key={suite.id}
                       style={[
                         styles.areaIngressos,
                         (emEdicao || noCarrinho) && styles.suiteSelecionada,
-                        index < registrosEventoSuites.length - 1 &&
+                        index < suitesPublicasOrdenadas.length - 1 &&
                           styles.areaIngressosSpacing,
                       ]}
                     >
@@ -1583,6 +1640,7 @@ export default function Index() {
 
                       <View style={{ height: 16 }} />
                     </View>
+                    </React.Fragment>
                   );
                 })}
               </View>
@@ -1655,6 +1713,40 @@ const styles = StyleSheet.create({
   areaIngressos: {
     backgroundColor: "rgba(255,255,255, 0.21)",
     borderRadius: 20,
+  },
+  capacidadeSeparador: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 18,
+    marginBottom: 4,
+    width: "100%",
+  },
+  capacidadeSeparadorPrimeiro: {
+    marginTop: 4,
+  },
+  capacidadeSeparadorLinha: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(0,0,0,0.15)",
+  },
+  capacidadeSeparadorTitulo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+    gap: 5,
+  },
+  capacidadeSeparadorTexto: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#98A2B3",
+    letterSpacing: 0.35,
+  },
+  capacidadeSeparadorSeta: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#B0B7C3",
+    lineHeight: 11,
   },
   areaIngressosSpacing: {
     marginBottom: 22,

@@ -1629,9 +1629,12 @@ export default function NovaReservaRecepcaoModal() {
                         ]}
                       >
                         <View style={styles.capacidadeSeparadorLinha} />
-                        <Text style={styles.capacidadeSeparadorTexto}>
-                          {labelSeparadorCapacidadeMaxima(suite)}
-                        </Text>
+                        <View style={styles.capacidadeSeparadorTitulo}>
+                          <Text style={styles.capacidadeSeparadorTexto}>
+                            {labelSeparadorCapacidadeMaxima(suite)}
+                          </Text>
+                          <Text style={styles.capacidadeSeparadorSeta}>↓</Text>
+                        </View>
                         <View style={styles.capacidadeSeparadorLinha} />
                       </View>
                     ) : null}
@@ -2594,12 +2597,23 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.line,
   },
+  capacidadeSeparadorTitulo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+    gap: 5,
+  },
   capacidadeSeparadorTexto: {
     fontSize: 11,
     fontWeight: "700",
     color: "#98A2B3",
     letterSpacing: 0.35,
-    textAlign: "center",
+  },
+  capacidadeSeparadorSeta: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#B0B7C3",
+    lineHeight: 11,
   },
   suiteCard: {
     marginTop: 10,
