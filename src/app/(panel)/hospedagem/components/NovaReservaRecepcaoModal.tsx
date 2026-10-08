@@ -121,6 +121,30 @@ type SuiteDisponivel = EventoSuite & {
   cotacao?: { preco: number; taxaServico: number; valorTotal: number };
 };
 
+function capacidadeMaximaSuite(suite: EventoSuite): number {
+  return getLimitesSuite(suite).max;
+}
+
+function ordenarSuitesDisponiveisNovaReserva(
+  lista: SuiteDisponivel[],
+): SuiteDisponivel[] {
+  return [...lista].sort((a, b) => {
+    const ca = capacidadeMaximaSuite(a);
+    const cb = capacidadeMaximaSuite(b);
+    if (ca !== cb) return ca - cb;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", {
+      sensitivity: "base",
+      numeric: true,
+    });
+  });
+}
+
+/** Título do grupo — somente capacidade máxima (ignora mínimo). */
+function labelSeparadorCapacidadeMaxima(suite: EventoSuite): string {
+  const max = capacidadeMaximaSuite(suite);
+  return `ATÉ ${max} HÓSPEDES`;
+}
+
 type ItemCarrinhoRecepcao = ItemCarrinhoHospedagem & {
   desconto?: DescontoRecepcaoInput | null;
 };
@@ -612,6 +636,11 @@ export default function NovaReservaRecepcaoModal() {
     // Erros de validação só são limpos quando a estrutura é (re)montada ao entrar na etapa.
     setHospedesErrors({});
   }, [visible, step, carrinho, cliente]);
+
+  const suitesDisponiveisOrdenadas = useMemo(
+    () => ordenarSuitesDisponiveisNovaReserva(suites),
+    [suites],
+  );
 
   const totaisResumo = useMemo(() => {
     let preco = 0;
@@ -1553,7 +1582,17 @@ export default function NovaReservaRecepcaoModal() {
                 </Text>
               ) : null}
 
-              {suites.map((suite) => {
+              {suitesDisponiveisOrdenadas.map((suite, index) => {
+                const maxCap = capacidadeMaximaSuite(suite);
+                const maxCapAnterior =
+                  index > 0
+                    ? capacidadeMaximaSuite(
+                        suitesDisponiveisOrdenadas[index - 1],
+                      )
+                    : null;
+                const mostrarSeparadorCapacidade =
+                  index === 0 || maxCap !== maxCapAnterior;
+
                 const noCarrinho = carrinho.some(
                   (i) => i.idEventoSuite === suite.id,
                 );
@@ -1581,13 +1620,27 @@ export default function NovaReservaRecepcaoModal() {
                   : null;
 
                 return (
-                  <View
-                    key={suite.id}
-                    style={[
-                      styles.suiteCard,
-                      (emEdicao || noCarrinho) && styles.suiteCardAtiva,
-                    ]}
-                  >
+                  <React.Fragment key={suite.id}>
+                    {mostrarSeparadorCapacidade ? (
+                      <View
+                        style={[
+                          styles.capacidadeSeparador,
+                          index === 0 && styles.capacidadeSeparadorPrimeiro,
+                        ]}
+                      >
+                        <View style={styles.capacidadeSeparadorLinha} />
+                        <Text style={styles.capacidadeSeparadorTexto}>
+                          {labelSeparadorCapacidadeMaxima(suite)}
+                        </Text>
+                        <View style={styles.capacidadeSeparadorLinha} />
+                      </View>
+                    ) : null}
+                    <View
+                      style={[
+                        styles.suiteCard,
+                        (emEdicao || noCarrinho) && styles.suiteCardAtiva,
+                      ]}
+                    >
                     <Text style={styles.suiteNome}>
                       {suite.nome}
                       {noCarrinho ? " ✓" : ""}
@@ -1693,6 +1746,7 @@ export default function NovaReservaRecepcaoModal() {
                       </View>
                     )}
                   </View>
+                  </React.Fragment>
                 );
               })}
             </View>
@@ -2525,6 +2579,28 @@ const styles = StyleSheet.create({
   dateTimeRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   dateField: { flex: 1.2 },
   timeField: { flex: 1 },
+  capacidadeSeparador: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 18,
+    marginBottom: 2,
+  },
+  capacidadeSeparadorPrimeiro: {
+    marginTop: 8,
+  },
+  capacidadeSeparadorLinha: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.line,
+  },
+  capacidadeSeparadorTexto: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#98A2B3",
+    letterSpacing: 0.35,
+    textAlign: "center",
+  },
   suiteCard: {
     marginTop: 10,
     padding: 14,
