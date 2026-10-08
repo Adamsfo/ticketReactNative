@@ -114,6 +114,8 @@ export type SuiteOperacionalCard = {
   id: number;
   idEventoSuite: number;
   nome: string;
+  /** Capacidade máxima cadastrada na EventoSuite (não é ocupação da reserva). */
+  qtdeMaximaPessoas?: number | null;
   descricao?: string | null;
   idEvento: number;
   eventoNome?: string | null;

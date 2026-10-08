@@ -170,6 +170,33 @@ function formatDataReferenciaBr(data: string): string {
   return `${d}/${m}/${y}`;
 }
 
+function qtdeMaximaPessoasNumerica(qtdeMaximaPessoas?: number | null): number {
+  const max = Math.trunc(Number(qtdeMaximaPessoas));
+  return Number.isFinite(max) && max > 0 ? max : Number.MAX_SAFE_INTEGER;
+}
+
+function labelCapacidadeMaximaSuite(
+  qtdeMaximaPessoas?: number | null,
+): string | null {
+  const max = Math.trunc(Number(qtdeMaximaPessoas));
+  if (!Number.isFinite(max) || max <= 0) return null;
+  return `Capacidade máxima: ${max} hóspede${max === 1 ? "" : "s"}`;
+}
+
+function ordenarSuitesLivresPorCapacidade(
+  cards: SuiteOperacionalCard[],
+): SuiteOperacionalCard[] {
+  return [...cards].sort((a, b) => {
+    const ca = qtdeMaximaPessoasNumerica(a.qtdeMaximaPessoas);
+    const cb = qtdeMaximaPessoasNumerica(b.qtdeMaximaPessoas);
+    if (ca !== cb) return ca - cb;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", {
+      sensitivity: "base",
+      numeric: true,
+    });
+  });
+}
+
 function IndicadoresDots({
   indicadores,
   layoutMobile = false,
@@ -987,6 +1014,9 @@ function CardSuite({
 
   const livre =
     statusExibicao === "LIVRE" || statusExibicao === "Livre";
+  const capacidadeMaximaLabel = livre
+    ? labelCapacidadeMaximaSuite(item.qtdeMaximaPessoas)
+    : null;
   const proxima = item.proximaReservaResumo;
 
   return (
@@ -1041,6 +1071,11 @@ function CardSuite({
               <Text style={styles.livreTituloCompact} numberOfLines={2}>
                 {item.mensagemDisponibilidade || "Disponível para reserva"}
               </Text>
+              {capacidadeMaximaLabel ? (
+                <Text style={styles.metaSecundario} numberOfLines={1}>
+                  {capacidadeMaximaLabel}
+                </Text>
+              ) : null}
               {item.mensagemDisponibilidadeSecundaria ? (
                 <Text style={styles.metaSecundario} numberOfLines={1}>
                   {item.mensagemDisponibilidadeSecundaria}
@@ -1234,6 +1269,11 @@ export default function TabSuites() {
     () => FILTROS.find((item) => item.key === filtro)?.label ?? "Todas",
     [filtro],
   );
+
+  const suitesExibidas = useMemo(() => {
+    if (filtro !== "livres") return suites;
+    return ordenarSuitesLivresPorCapacidade(suites);
+  }, [suites, filtro]);
 
   const atualizarResumoSticky = useCallback(
     (scrollY: number, alturaCabecalho: number) => {
@@ -1550,7 +1590,7 @@ export default function TabSuites() {
   }, [loading, refreshing, metaMsg]);
 
   const suitesFlatListProps = {
-    data: suites,
+    data: suitesExibidas,
     keyExtractor: (item: SuiteOperacionalCard) =>
       String(item.idEventoSuite || item.id),
     numColumns: suiteColumns,
