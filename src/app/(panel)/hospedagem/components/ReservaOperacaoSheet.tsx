@@ -1246,7 +1246,6 @@ export default function ReservaOperacaoSheet({
                             }`}
                           />
                         )}
-                        <Linha label="Status" valor={badgeLabelExibicao} />
                         {!aguardandoAcomodacao && mensagemOpExibicao ? (
                           <Linha label="Situação" valor={mensagemOpExibicao} />
                         ) : null}
