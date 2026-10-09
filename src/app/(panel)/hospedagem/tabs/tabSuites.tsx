@@ -11,6 +11,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  ListRenderItemInfo,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -48,6 +49,9 @@ import OrigemReservaIndicador, {
   labelChipOrigemReserva,
 } from "../components/OrigemReservaIndicador";
 import LinhaClienteComWhatsApp from "@/src/components/hospedagem/LinhaClienteComWhatsApp";
+import CapacidadeSeparadorSuite, {
+  tituloSeparadorCapacidadeMaxima,
+} from "../components/CapacidadeSeparadorSuite";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
 import { useNovaReservaRecepcao } from "../contexts/NovaReservaRecepcaoContext";
 import {
@@ -1529,39 +1533,84 @@ export default function TabSuites() {
     ],
   );
 
-  const renderSuiteCard = useCallback(
-    ({ item }: { item: SuiteOperacionalCard }) => (
-      <View
-        style={[
-          suiteColumns > 1 ? styles.gridItem : undefined,
-          desktopLayout && styles.gridItemDesktop,
-        ]}
-      >
-        <CardSuite
-          item={item}
-          filtroAtivo={filtro}
-          dataSelecionada={dataReferencia}
-          hoje={hoje}
-          compact={cardsCompactos}
-          desktopLayout={desktopLayout}
-          horarioChegadaPorReserva={horarioChegadaPorReserva}
-          onPress={() => abrirSuite(item)}
-          onAbrirReserva={abrirReserva}
-          onNovaReserva={() => {
-            if (!item.idEvento) return;
-            openNovaReserva({
-              idEvento: item.idEvento,
-              idEventoSuite: item.idEventoSuite ?? item.id,
-              checkinDate: dataReferencia,
-            });
-          }}
-        />
-      </View>
-    ),
+  const renderSuiteListItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<SuiteOperacionalCard>) => {
+      const agruparPorCapacidadeMobile =
+        layoutMobile && filtro === "livres";
+      let separadorCapacidade: React.ReactNode = null;
+
+      if (agruparPorCapacidadeMobile) {
+        const maxCap = qtdeMaximaPessoasNumerica(item.qtdeMaximaPessoas);
+        const maxCapAnterior =
+          index > 0
+            ? qtdeMaximaPessoasNumerica(
+                suitesExibidas[index - 1].qtdeMaximaPessoas,
+              )
+            : null;
+        const mostrarSeparadorCapacidade =
+          index === 0 || maxCap !== maxCapAnterior;
+
+        if (mostrarSeparadorCapacidade) {
+          const maxLabel = Math.trunc(Number(item.qtdeMaximaPessoas));
+          if (Number.isFinite(maxLabel) && maxLabel > 0) {
+            separadorCapacidade = (
+              <CapacidadeSeparadorSuite
+                titulo={tituloSeparadorCapacidadeMaxima(maxLabel)}
+                primeiro={index === 0}
+              />
+            );
+          }
+        }
+      }
+
+      const cardWrapperStyle = [
+        suiteColumns > 1 ? styles.gridItem : undefined,
+        desktopLayout && styles.gridItemDesktop,
+      ];
+
+      const card = (
+        <View style={cardWrapperStyle}>
+          <CardSuite
+            item={item}
+            filtroAtivo={filtro}
+            dataSelecionada={dataReferencia}
+            hoje={hoje}
+            compact={cardsCompactos}
+            desktopLayout={desktopLayout}
+            horarioChegadaPorReserva={horarioChegadaPorReserva}
+            onPress={() => abrirSuite(item)}
+            onAbrirReserva={abrirReserva}
+            onNovaReserva={() => {
+              if (!item.idEvento) return;
+              openNovaReserva({
+                idEvento: item.idEvento,
+                idEventoSuite: item.idEventoSuite ?? item.id,
+                checkinDate: dataReferencia,
+              });
+            }}
+          />
+        </View>
+      );
+
+      // numColumns > 1 exige que o item da FlatList seja a célula da grade (flex: 1).
+      // Wrapper extra quebra o layout desktop; separadores só no mobile + Livres.
+      if (!agruparPorCapacidadeMobile) {
+        return card;
+      }
+
+      return (
+        <View>
+          {separadorCapacidade}
+          {card}
+        </View>
+      );
+    },
     [
+      layoutMobile,
+      filtro,
+      suitesExibidas,
       suiteColumns,
       desktopLayout,
-      filtro,
       dataReferencia,
       hoje,
       cardsCompactos,
@@ -1604,7 +1653,7 @@ export default function TabSuites() {
       />
     ),
     ListFooterComponent: <View style={{ height: 40 }} />,
-    renderItem: renderSuiteCard,
+    renderItem: renderSuiteListItem,
   };
 
   return (

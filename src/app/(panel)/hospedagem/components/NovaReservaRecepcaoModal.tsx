@@ -18,6 +18,9 @@ import formatCurrency from "@/src/components/FormatCurrency";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import TimePickerComponente from "@/src/components/TimePickerComponente";
 import { ItemCarrinhoHospedagem } from "@/src/components/ModalResumoPousada";
+import CapacidadeSeparadorSuite, {
+  tituloSeparadorCapacidadeMaxima,
+} from "./CapacidadeSeparadorSuite";
 import { apiAuth } from "@/src/lib/auth";
 import {
   calcularIdadeEmAnos,
@@ -137,12 +140,6 @@ function ordenarSuitesDisponiveisNovaReserva(
       numeric: true,
     });
   });
-}
-
-/** Título do grupo — somente capacidade máxima (ignora mínimo). */
-function labelSeparadorCapacidadeMaxima(suite: EventoSuite): string {
-  const max = capacidadeMaximaSuite(suite);
-  return `ATÉ ${max} HÓSPEDES`;
 }
 
 type ItemCarrinhoRecepcao = ItemCarrinhoHospedagem & {
@@ -1622,21 +1619,12 @@ export default function NovaReservaRecepcaoModal() {
                 return (
                   <React.Fragment key={suite.id}>
                     {mostrarSeparadorCapacidade ? (
-                      <View
-                        style={[
-                          styles.capacidadeSeparador,
-                          index === 0 && styles.capacidadeSeparadorPrimeiro,
-                        ]}
-                      >
-                        <View style={styles.capacidadeSeparadorLinha} />
-                        <View style={styles.capacidadeSeparadorTitulo}>
-                          <Text style={styles.capacidadeSeparadorTexto}>
-                            {labelSeparadorCapacidadeMaxima(suite)}
-                          </Text>
-                          <Text style={styles.capacidadeSeparadorSeta}>↓</Text>
-                        </View>
-                        <View style={styles.capacidadeSeparadorLinha} />
-                      </View>
+                      <CapacidadeSeparadorSuite
+                        titulo={tituloSeparadorCapacidadeMaxima(
+                          capacidadeMaximaSuite(suite),
+                        )}
+                        primeiro={index === 0}
+                      />
                     ) : null}
                     <View
                       style={[
@@ -2582,39 +2570,6 @@ const styles = StyleSheet.create({
   dateTimeRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   dateField: { flex: 1.2 },
   timeField: { flex: 1 },
-  capacidadeSeparador: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 18,
-    marginBottom: 2,
-  },
-  capacidadeSeparadorPrimeiro: {
-    marginTop: 8,
-  },
-  capacidadeSeparadorLinha: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.line,
-  },
-  capacidadeSeparadorTitulo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexShrink: 0,
-    gap: 5,
-  },
-  capacidadeSeparadorTexto: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#98A2B3",
-    letterSpacing: 0.35,
-  },
-  capacidadeSeparadorSeta: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#B0B7C3",
-    lineHeight: 11,
-  },
   suiteCard: {
     marginTop: 10,
     padding: 14,
