@@ -5,7 +5,8 @@ export type FiltroLimpezaSuites =
   | "todas"
   | "pendente"
   | "em_andamento"
-  | "concluida";
+  | "concluida"
+  | "previsao";
 
 export type StatusLimpezaSuite =
   | "Pendente"
@@ -46,6 +47,25 @@ export type MetaLimpezasSuites = {
   filtro?: string;
 };
 
+export type PrevisaoLimpezaSuiteItem = {
+  idEventoSuite: number;
+  nomeSuite: string | null;
+  eventoNome?: string | null;
+  idReservaHospedagem: number;
+  idReservaSuite: number;
+  numeroReserva: number;
+  hospede: string | null;
+  checkin: string | null;
+  checkout: string | null;
+  statusReserva?: string | null;
+  prioridade: boolean;
+};
+
+export type MetaPrevisaoLimpezasSuites = {
+  data: string;
+  total: number;
+};
+
 export function labelStatusLimpeza(status: StatusLimpezaSuite): string {
   switch (status) {
     case "Pendente":
@@ -70,6 +90,25 @@ export function mensagemStatusLimpeza(status: StatusLimpezaSuite): string {
     default:
       return String(status);
   }
+}
+
+export async function getPrevisaoLimpezasSuites(params: {
+  data: string;
+}): Promise<
+  ApiResponse<PrevisaoLimpezaSuiteItem[]> & {
+    meta?: MetaPrevisaoLimpezasSuites;
+  }
+> {
+  return api.request<PrevisaoLimpezaSuiteItem[]>(
+    "/limpeza/suites/previsao",
+    "GET",
+    null,
+    { data: params.data },
+  ) as Promise<
+    ApiResponse<PrevisaoLimpezaSuiteItem[]> & {
+      meta?: MetaPrevisaoLimpezasSuites;
+    }
+  >;
 }
 
 export async function getLimpezasSuites(params?: {

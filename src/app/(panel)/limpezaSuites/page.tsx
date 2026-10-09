@@ -20,12 +20,16 @@ import { formatDateTimeHospedagem } from "@/src/lib/hospedagemOperacao";
 import {
   FiltroLimpezaSuites,
   getLimpezasSuites,
+  getPrevisaoLimpezasSuites,
   labelOrigemLimpeza,
   labelStatusLimpeza,
   LimpezaSuiteCard,
   postConcluirLimpezaSuite,
   postIniciarLimpezaSuite,
+  PrevisaoLimpezaSuiteItem,
 } from "@/src/lib/limpezaSuites";
+import { dataCivilHospedagem } from "@/src/lib/hospedagemDiasFechados";
+import DatePickerComponente from "@/src/components/DatePickerComponente";
 import { useHospedagemDesktopLayout } from "../hospedagem/useHospedagemDesktopLayout";
 import ModalAdicionarLimpezaSuite from "./ModalAdicionarLimpezaSuite";
 
@@ -35,6 +39,7 @@ const FILTROS: Array<{ key: FiltroLimpezaSuites; label: string }> = [
   { key: "pendente", label: "Pendentes" },
   { key: "em_andamento", label: "Em andamento" },
   { key: "concluida", label: "Concluídas" },
+  { key: "previsao", label: "Previsão" },
 ];
 
 function corStatusLimpeza(status: string): string {
@@ -64,6 +69,68 @@ function LinhaInfo({
       <Text style={styles.valor} numberOfLines={2}>
         {valor}
       </Text>
+    </View>
+  );
+}
+
+function CardPrevisaoLimpeza({
+  item,
+  gradeMultiCol,
+}: {
+  item: PrevisaoLimpezaSuiteItem;
+  gradeMultiCol?: boolean;
+}) {
+  const cor = item.prioridade ? "#c0392b" : "#e67e22";
+
+  return (
+    <View
+      style={[
+        styles.card,
+        gradeMultiCol && styles.cardGradeMultiCol,
+        { borderLeftColor: cor },
+      ]}
+    >
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.suiteNome}>{item.nomeSuite ?? "Suíte"}</Text>
+          {item.eventoNome ? (
+            <Text style={styles.eventoNome}>{item.eventoNome}</Text>
+          ) : null}
+        </View>
+        {item.prioridade ? (
+          <View style={[styles.badge, { backgroundColor: cor }]}>
+            <Text style={styles.badgeTexto}>PRIORIDADE</Text>
+          </View>
+        ) : (
+          <View style={[styles.badge, { backgroundColor: cor }]}>
+            <Text style={styles.badgeTexto}>PREVISTA</Text>
+          </View>
+        )}
+      </View>
+
+      {item.prioridade ? (
+        <Text style={styles.prioridadeAviso}>
+          Novo check-in previsto no mesmo dia — limpeza prioritária.
+        </Text>
+      ) : null}
+
+      <LinhaInfo rotulo="Hóspede (saída)" valor={item.hospede} />
+      <LinhaInfo
+        rotulo="Reserva"
+        valor={item.numeroReserva ? `#${item.numeroReserva}` : null}
+      />
+      <LinhaInfo
+        rotulo="Check-out previsto"
+        valor={
+          item.checkout ? formatDateTimeHospedagem(item.checkout) : null
+        }
+      />
+      <LinhaInfo
+        rotulo="Check-in da reserva"
+        valor={
+          item.checkin ? formatDateTimeHospedagem(item.checkin) : null
+        }
+      />
     </View>
   );
 }
@@ -178,7 +245,11 @@ export default function LimpezaSuitesPage() {
   const { isDesktop, suiteColumns, contentMaxWidth } = useHospedagemDesktopLayout();
   const desktopLayout = suiteColumns >= 3;
   const [filtro, setFiltro] = useState<FiltroLimpezaSuites>("pendente");
+  const [dataPrevisao, setDataPrevisao] = useState(() => new Date());
   const [itens, setItens] = useState<LimpezaSuiteCard[]>([]);
+  const [itensPrevisao, setItensPrevisao] = useState<PrevisaoLimpezaSuiteItem[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -189,7 +260,12 @@ export default function LimpezaSuitesPage() {
   const requisicaoEmAndamentoRef = useRef(false);
   const acaoEmAndamentoRef = useRef(false);
 
-  const carregar = useCallback(async (silencioso = false, filtroOverride?: FiltroLimpezaSuites) => {
+  const carregar = useCallback(
+    async (
+      silencioso = false,
+      filtroOverride?: FiltroLimpezaSuites,
+      dataPrevisaoOverride?: Date,
+    ) => {
     if (requisicaoEmAndamentoRef.current) return;
 
     const filtroAtivo = filtroOverride ?? filtro;
@@ -197,25 +273,39 @@ export default function LimpezaSuitesPage() {
     if (!silencioso) setLoading(true);
     setErro(null);
     try {
-      const resp = await getLimpezasSuites({
-        filtro: filtroAtivo,
-        page: 1,
-        pageSize: 50,
-      });
-      setItens(resp.data ?? []);
-      setTotal(resp.meta?.total ?? resp.data?.length ?? 0);
+      if (filtroAtivo === "previsao") {
+        const dataRef = dataPrevisaoOverride ?? dataPrevisao;
+        const resp = await getPrevisaoLimpezasSuites({
+          data: dataCivilHospedagem(dataRef),
+        });
+        setItensPrevisao(resp.data ?? []);
+        setItens([]);
+        setTotal(resp.meta?.total ?? resp.data?.length ?? 0);
+      } else {
+        const resp = await getLimpezasSuites({
+          filtro: filtroAtivo,
+          page: 1,
+          pageSize: 50,
+        });
+        setItens(resp.data ?? []);
+        setItensPrevisao([]);
+        setTotal(resp.meta?.total ?? resp.data?.length ?? 0);
+      }
     } catch (e: unknown) {
       const msg =
         e instanceof Error ? e.message : "Não foi possível carregar as limpezas.";
       setErro(msg);
       setItens([]);
+      setItensPrevisao([]);
       setTotal(0);
     } finally {
       requisicaoEmAndamentoRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filtro]);
+  },
+    [filtro, dataPrevisao],
+  );
 
   const carregarAuto = useCallback(() => {
     if (acaoEmAndamentoRef.current) return;
@@ -225,9 +315,12 @@ export default function LimpezaSuitesPage() {
   useFocusEffect(
     useCallback(() => {
       void carregar(true);
+      if (filtro === "previsao") {
+        return undefined;
+      }
       const timer = setInterval(() => carregarAuto(), AUTO_REFRESH_MS);
       return () => clearInterval(timer);
-    }, [carregar, carregarAuto]),
+    }, [carregar, carregarAuto, filtro]),
   );
 
   const onRefresh = () => {
@@ -291,15 +384,17 @@ export default function LimpezaSuitesPage() {
             Operação de limpeza — módulo independente da hospedagem.
           </Text>
 
-          <TouchableOpacity
-            style={styles.botaoAdicionar}
-            onPress={() => setModalAdicionarOpen(true)}
-          >
-            <Feather name="plus-circle" size={18} color={colors.white} />
-            <Text style={styles.botaoAdicionarTexto}>
-              Adicionar suíte para limpeza
-            </Text>
-          </TouchableOpacity>
+          {filtro !== "previsao" ? (
+            <TouchableOpacity
+              style={styles.botaoAdicionar}
+              onPress={() => setModalAdicionarOpen(true)}
+            >
+              <Feather name="plus-circle" size={18} color={colors.white} />
+              <Text style={styles.botaoAdicionarTexto}>
+                Adicionar suíte para limpeza
+              </Text>
+            </TouchableOpacity>
+          ) : null}
 
           <View style={styles.filtrosRow}>
             <FlatList
@@ -342,8 +437,23 @@ export default function LimpezaSuitesPage() {
             </TouchableOpacity>
           </View>
 
+          {filtro === "previsao" ? (
+            <View style={styles.previsaoDataRow}>
+              <Text style={styles.previsaoDataLabel}>Data da previsão</Text>
+              <DatePickerComponente
+                value={dataPrevisao}
+                onChange={(date) => {
+                  setDataPrevisao(date);
+                  void carregar(true, "previsao", date);
+                }}
+              />
+            </View>
+          ) : null}
+
           <Text style={styles.resumoTexto}>
-            {total} registro{total === 1 ? "" : "s"}
+            {filtro === "previsao"
+              ? `${total} suíte${total === 1 ? "" : "s"} prevista${total === 1 ? "" : "s"} para limpeza`
+              : `${total} registro${total === 1 ? "" : "s"}`}
           </Text>
 
           {mensagemAcao ? (
@@ -358,6 +468,43 @@ export default function LimpezaSuitesPage() {
             />
           ) : erro ? (
             <Text style={styles.erro}>{erro}</Text>
+          ) : filtro === "previsao" ? (
+            itensPrevisao.length === 0 ? (
+              <Text style={styles.vazio}>
+                Nenhuma suíte prevista para limpeza nesta data.
+              </Text>
+            ) : (
+              <FlatList
+                key={`limpeza-previsao-cols-${suiteColumns}`}
+                data={itensPrevisao}
+                keyExtractor={(item) =>
+                  `previsao-${item.idEventoSuite}-${item.idReservaSuite}`
+                }
+                numColumns={suiteColumns}
+                columnWrapperStyle={
+                  suiteColumns > 1 ? styles.columnWrapper : undefined
+                }
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.listaContent}
+                renderItem={({ item }) => (
+                  <View
+                    style={[
+                      suiteColumns > 1 ? styles.gridItem : undefined,
+                      desktopLayout && styles.gridItemDesktop,
+                    ]}
+                  >
+                    <CardPrevisaoLimpeza
+                      item={item}
+                      gradeMultiCol={suiteColumns > 1}
+                    />
+                  </View>
+                )}
+                refreshControl={
+                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+                ListFooterComponent={<View style={{ height: 40 }} />}
+              />
+            )
           ) : itens.length === 0 ? (
             <Text style={styles.vazio}>
               Nenhuma limpeza encontrada para este filtro.
@@ -496,6 +643,29 @@ const styles = StyleSheet.create({
   resumoTexto: {
     color: "#6b7280",
     fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  previsaoDataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 12,
+  },
+  previsaoDataLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.cinza,
+    flexShrink: 0,
+  },
+  prioridadeAviso: {
+    fontSize: 12,
+    color: "#c0392b",
     fontWeight: "600",
     marginBottom: 6,
   },
