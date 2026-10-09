@@ -45,7 +45,8 @@ import {
 import { useAuth } from "@/src/contexts_/AuthContext";
 import { useCart } from "@/src/contexts_/CartContext";
 import { apiAuth } from "@/src/lib/auth";
-import { Transacao } from "@/src/types/geral";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Transacao, Usuario } from "@/src/types/geral";
 import AceitePoliticaHospedagem from "@/src/components/AceitePoliticaHospedagem";
 import ModalMsg from "@/src/components/ModalMsg";
 
@@ -53,6 +54,150 @@ const { width } = Dimensions.get("window");
 
 const MSG_ACEITE_POLITICA_HOSPEDAGEM =
   "É necessário aceitar a Política de Cancelamento, Remarcação e Alteração de Hóspedes.";
+
+const MSG_SESSAO_PAGAMENTO =
+  "Não foi possível preparar sua sessão para pagamento. Atualize a página e tente novamente.";
+
+const MSG_CONFLITO_CONTA =
+  "Este link pertence a outra conta. Para pagar com segurança, saia da conta atual e abra o link novamente, ou entre com a conta correta.";
+
+const MSG_TOKEN_NAO_FORNECIDO = "Token de autenticação não fornecido.";
+
+const MSG_AVISO_RENOVAR_SESSAO =
+  "Sua sessão expirou ou foi interrompida. Toque em Ir para o pagamento para continuar com segurança.";
+
+async function obterJwtArmazenado(): Promise<string> {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return localStorage.getItem("token") || "";
+  }
+  return (await AsyncStorage.getItem("token")) || "";
+}
+
+type ResultadoSessaoReservaPublica =
+  | { status: "ok"; usuario: Usuario }
+  | { status: "conflito" }
+  | { status: "falha"; message: string };
+
+type MagicLoginEmAndamento = {
+  tokenLink: string;
+  promise: Promise<ResultadoSessaoReservaPublica>;
+};
+
+async function executarMagicLoginReservaPublica(input: {
+  tokenLink: string;
+  idUsuarioReserva: number;
+  magicLoginTentadoRef: React.MutableRefObject<string | null>;
+  magicLoginEmAndamentoRef: React.MutableRefObject<MagicLoginEmAndamento | null>;
+}): Promise<ResultadoSessaoReservaPublica> {
+  const {
+    tokenLink,
+    idUsuarioReserva,
+    magicLoginTentadoRef,
+    magicLoginEmAndamentoRef,
+  } = input;
+
+  const emAndamento = magicLoginEmAndamentoRef.current;
+  if (emAndamento?.tokenLink === tokenLink) {
+    return emAndamento.promise;
+  }
+
+  const idReservaValido =
+    Number.isFinite(idUsuarioReserva) && idUsuarioReserva > 0;
+
+  const promise = (async (): Promise<ResultadoSessaoReservaPublica> => {
+    magicLoginTentadoRef.current = tokenLink;
+
+    const authResp = await apiAuth.autenticarReservaPublica(tokenLink);
+    if (!authResp.success) {
+      return {
+        status: "falha",
+        message: authResp.message || MSG_SESSAO_PAGAMENTO,
+      };
+    }
+
+    const jwtPersistido = await obterJwtArmazenado();
+    if (!jwtPersistido) {
+      return { status: "falha", message: MSG_SESSAO_PAGAMENTO };
+    }
+
+    const usuario = await apiAuth.carregarUsuarioDaSessaoArmazenada();
+    if (
+      !usuario?.id ||
+      !usuario.ativo ||
+      !idReservaValido ||
+      Number(usuario.id) !== idUsuarioReserva
+    ) {
+      return { status: "falha", message: MSG_SESSAO_PAGAMENTO };
+    }
+
+    return { status: "ok", usuario };
+  })();
+
+  magicLoginEmAndamentoRef.current = { tokenLink, promise };
+  try {
+    return await promise;
+  } finally {
+    if (magicLoginEmAndamentoRef.current?.promise === promise) {
+      magicLoginEmAndamentoRef.current = null;
+    }
+  }
+}
+
+async function sincronizarSessaoReservaPublica(input: {
+  tokenLink: string;
+  idUsuarioReserva: number;
+  usuarioContextoId?: number;
+  magicLoginTentadoRef: React.MutableRefObject<string | null>;
+  magicLoginEmAndamentoRef: React.MutableRefObject<MagicLoginEmAndamento | null>;
+  forcarMagicLogin?: boolean;
+}): Promise<ResultadoSessaoReservaPublica> {
+  const {
+    tokenLink,
+    idUsuarioReserva,
+    usuarioContextoId,
+    magicLoginTentadoRef,
+    magicLoginEmAndamentoRef,
+    forcarMagicLogin = false,
+  } = input;
+
+  const idReservaValido =
+    Number.isFinite(idUsuarioReserva) && idUsuarioReserva > 0;
+
+  if (!forcarMagicLogin) {
+    const jwt = await obterJwtArmazenado();
+    if (jwt) {
+      const usuarioSessao = await apiAuth.carregarUsuarioDaSessaoArmazenada();
+      if (usuarioSessao?.id && idReservaValido) {
+        if (Number(usuarioSessao.id) !== idUsuarioReserva) {
+          return { status: "conflito" };
+        }
+        return { status: "ok", usuario: usuarioSessao };
+      }
+    }
+  }
+
+  if (
+    usuarioContextoId &&
+    idReservaValido &&
+    Number(usuarioContextoId) !== idUsuarioReserva
+  ) {
+    return { status: "conflito" };
+  }
+
+  if (!forcarMagicLogin && magicLoginTentadoRef.current === tokenLink) {
+    return {
+      status: "falha",
+      message: MSG_SESSAO_PAGAMENTO,
+    };
+  }
+
+  return executarMagicLoginReservaPublica({
+    tokenLink,
+    idUsuarioReserva,
+    magicLoginTentadoRef,
+    magicLoginEmAndamentoRef,
+  });
+}
 
 function formatDateTime(iso: string): string {
   try {
@@ -92,7 +237,6 @@ export default function ReservaPublicaPage() {
   const [avisoAutenticacao, setAvisoAutenticacao] = useState<string | null>(
     null,
   );
-  const [magicLoginOk, setMagicLoginOk] = useState(false);
   const [data, setData] = useState<any | null>(null);
   const [hospedes, setHospedes] = useState<HospedesSuiteForm[]>([]);
   const [hospedesErrors, setHospedesErrors] = useState<Record<string, string>>(
@@ -109,6 +253,8 @@ export default function ReservaPublicaPage() {
   setAuthRef.current = setAuth;
 
   const carregamentoEmAndamentoRef = useRef(false);
+  const pagamentoEmAndamentoRef = useRef(false);
+  const magicLoginEmAndamentoRef = useRef<MagicLoginEmAndamento | null>(null);
   const magicLoginTentadoParaTokenRef = useRef<string | null>(null);
   const hospedesInicializadosParaTokenRef = useRef<string | null>(null);
 
@@ -137,76 +283,30 @@ export default function ReservaPublicaPage() {
         setAvisoAutenticacao(null);
 
         const idUsuarioReserva = Number(reservaData?.cliente?.idUsuario);
-        const usuarioAtual = userRef.current?.id
-          ? userRef.current
-          : await apiAuth.carregarUsuarioDaSessaoArmazenada();
+        const resultado = await sincronizarSessaoReservaPublica({
+          tokenLink: token,
+          idUsuarioReserva,
+          usuarioContextoId: userRef.current?.id
+            ? Number(userRef.current.id)
+            : undefined,
+          magicLoginTentadoRef: magicLoginTentadoParaTokenRef,
+          magicLoginEmAndamentoRef,
+        });
 
-        if (
-          usuarioAtual?.id &&
-          Number.isFinite(idUsuarioReserva) &&
-          idUsuarioReserva > 0 &&
-          Number(usuarioAtual.id) !== idUsuarioReserva
-        ) {
-          setConflitoConta(
-            "Este link pertence a outra conta. Para pagar com segurança, saia da conta atual e abra o link novamente, ou entre com a conta correta.",
-          );
-          setMagicLoginOk(false);
+        if (resultado.status === "conflito") {
+          setConflitoConta(MSG_CONFLITO_CONTA);
           return;
         }
 
-        if (
-          usuarioAtual?.id &&
-          Number.isFinite(idUsuarioReserva) &&
-          idUsuarioReserva > 0 &&
-          Number(usuarioAtual.id) === idUsuarioReserva
-        ) {
-          if (!userRef.current?.id) {
-            setAuthRef.current(usuarioAtual);
-          }
-          setMagicLoginOk(true);
+        if (resultado.status === "falha") {
+          setAvisoAutenticacao(MSG_AVISO_RENOVAR_SESSAO);
           return;
         }
 
-        if (magicLoginTentadoParaTokenRef.current === token) {
-          const usuarioSessao =
-            await apiAuth.carregarUsuarioDaSessaoArmazenada();
-          if (
-            usuarioSessao?.id &&
-            Number.isFinite(idUsuarioReserva) &&
-            idUsuarioReserva > 0 &&
-            Number(usuarioSessao.id) === idUsuarioReserva
-          ) {
-            if (!userRef.current?.id) {
-              setAuthRef.current(usuarioSessao);
-            }
-            setMagicLoginOk(true);
-          }
-          return;
+        if (!userRef.current?.id) {
+          setAuthRef.current(resultado.usuario);
         }
-
-        magicLoginTentadoParaTokenRef.current = token;
-
-        const authResp = await apiAuth.autenticarReservaPublica(token);
-        if (!authResp.success) {
-          setAvisoAutenticacao(
-            authResp.message ||
-              "Não foi possível iniciar sua sessão para pagamento.",
-          );
-          setMagicLoginOk(false);
-          return;
-        }
-
-        const usuario = await apiAuth.carregarUsuarioDaSessaoArmazenada();
-        if (!usuario?.id || !usuario.ativo) {
-          setAvisoAutenticacao(
-            "Não foi possível recuperar sua conta para pagamento.",
-          );
-          setMagicLoginOk(false);
-          return;
-        }
-
-        setAuthRef.current(usuario);
-        setMagicLoginOk(true);
+        setAvisoAutenticacao(null);
       };
 
       (async () => {
@@ -320,7 +420,7 @@ export default function ReservaPublicaPage() {
   };
 
   const handlePagar = async () => {
-    if (conflitoConta || !magicLoginOk || salvandoHospedes) {
+    if (conflitoConta || salvandoHospedes) {
       return;
     }
     if (data?.expirada || data?.status === "Expirada" || !data?.podePagar) {
@@ -339,12 +439,99 @@ export default function ReservaPublicaPage() {
       return;
     }
 
+    if (pagamentoEmAndamentoRef.current) {
+      return;
+    }
+    pagamentoEmAndamentoRef.current = true;
     setSalvandoHospedes(true);
     try {
-      const saveResp = await putHospedesReservaPublicaPorToken(token, {
+      const idUsuarioReserva = Number(data?.cliente?.idUsuario);
+      const corpoHospedes = {
         aceitePoliticaHospedagem: true,
         ...hospedesFormParaSalvarPublico(hospedes),
+      };
+
+      let sessao = await sincronizarSessaoReservaPublica({
+        tokenLink: token,
+        idUsuarioReserva,
+        usuarioContextoId: user?.id ? Number(user.id) : undefined,
+        magicLoginTentadoRef: magicLoginTentadoParaTokenRef,
+        magicLoginEmAndamentoRef,
       });
+
+      if (sessao.status === "conflito") {
+        setConflitoConta(MSG_CONFLITO_CONTA);
+        setMsgApi(MSG_CONFLITO_CONTA);
+        setVisibleMsg(true);
+        return;
+      }
+
+      if (sessao.status === "falha") {
+        sessao = await sincronizarSessaoReservaPublica({
+          tokenLink: token,
+          idUsuarioReserva,
+          usuarioContextoId: user?.id ? Number(user.id) : undefined,
+          magicLoginTentadoRef: magicLoginTentadoParaTokenRef,
+          magicLoginEmAndamentoRef,
+          forcarMagicLogin: true,
+        });
+      }
+
+      if (sessao.status === "conflito") {
+        setConflitoConta(MSG_CONFLITO_CONTA);
+        setMsgApi(MSG_CONFLITO_CONTA);
+        setVisibleMsg(true);
+        return;
+      }
+
+      if (sessao.status !== "ok") {
+        setAvisoAutenticacao(sessao.message);
+        setMsgApi(sessao.message);
+        setVisibleMsg(true);
+        return;
+      }
+
+      setAuth(sessao.usuario);
+      setAvisoAutenticacao(null);
+
+      let saveResp = await putHospedesReservaPublicaPorToken(
+        token,
+        corpoHospedes,
+      );
+
+      if (
+        !saveResp.success &&
+        saveResp.message?.trim() === MSG_TOKEN_NAO_FORNECIDO
+      ) {
+        const reauth = await sincronizarSessaoReservaPublica({
+          tokenLink: token,
+          idUsuarioReserva,
+          usuarioContextoId: user?.id ? Number(user.id) : undefined,
+          magicLoginTentadoRef: magicLoginTentadoParaTokenRef,
+          magicLoginEmAndamentoRef,
+          forcarMagicLogin: true,
+        });
+
+        if (reauth.status === "ok") {
+          setAuth(reauth.usuario);
+          setAvisoAutenticacao(null);
+          saveResp = await putHospedesReservaPublicaPorToken(
+            token,
+            corpoHospedes,
+          );
+        } else if (reauth.status === "conflito") {
+          setConflitoConta(MSG_CONFLITO_CONTA);
+          setMsgApi(MSG_CONFLITO_CONTA);
+          setVisibleMsg(true);
+          return;
+        } else {
+          setAvisoAutenticacao(reauth.message);
+          setMsgApi(reauth.message);
+          setVisibleMsg(true);
+          return;
+        }
+      }
+
       if (!saveResp.success) {
         setMsgApi(saveResp.message || "Erro ao salvar os dados dos hóspedes.");
         setVisibleMsg(true);
@@ -377,6 +564,7 @@ export default function ReservaPublicaPage() {
       setMsgApi("Erro ao salvar os dados dos hóspedes.");
       setVisibleMsg(true);
     } finally {
+      pagamentoEmAndamentoRef.current = false;
       setSalvandoHospedes(false);
     }
   };
@@ -384,7 +572,7 @@ export default function ReservaPublicaPage() {
   const status = data?.status || "AguardandoPagamento";
   const cor = corStatusReserva(status);
   const podeIrPagamento =
-    !!data?.podePagar && magicLoginOk && !conflitoConta && !avisoAutenticacao;
+    !!data?.podePagar && !conflitoConta && !loading;
 
   const valorTotalHospedagem = Number(data?.valores?.valorTotal ?? 0);
   const valorDestaCobranca = Number(
@@ -428,7 +616,7 @@ export default function ReservaPublicaPage() {
               ) : null}
               {avisoAutenticacao ? (
                 <View style={styles.card}>
-                  <Text style={styles.erro}>{avisoAutenticacao}</Text>
+                  <Text style={styles.meta}>{avisoAutenticacao}</Text>
                 </View>
               ) : null}
 
@@ -678,13 +866,9 @@ export default function ReservaPublicaPage() {
                   )}
                 </TouchableOpacity>
                 </>
-              ) : data.podePagar ? (
+              ) : data.podePagar && loading ? (
                 <View style={styles.card}>
-                  <Text style={styles.meta}>
-                    {loading
-                      ? "Preparando pagamento..."
-                      : "Aguardando autenticação para prosseguir ao pagamento."}
-                  </Text>
+                  <Text style={styles.meta}>Preparando pagamento...</Text>
                 </View>
               ) : (
                 <View style={styles.card}>
