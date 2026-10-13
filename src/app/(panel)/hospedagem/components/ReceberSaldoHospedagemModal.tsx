@@ -377,7 +377,7 @@ export default function ReceberSaldoHospedagemModal() {
 
     const interval = setInterval(() => {
       verificarStatusPagamentoPos();
-    }, 2000);
+    }, 4000);
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps

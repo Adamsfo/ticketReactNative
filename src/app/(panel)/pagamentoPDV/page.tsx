@@ -615,7 +615,7 @@ export default function Index() {
 
     const interval = setInterval(() => {
       verificarStatusPagamentoPos();
-    }, 2000);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [payment_uniqueid, consultaPagamento]);
