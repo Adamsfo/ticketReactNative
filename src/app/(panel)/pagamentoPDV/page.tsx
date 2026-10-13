@@ -547,6 +547,13 @@ export default function Index() {
         pageSize: 10,
       });
 
+      if (
+        response?.success === false &&
+        response.message === "SUPERTEF_RATE_LIMIT"
+      ) {
+        return;
+      }
+
       const dados: { payment_message: string } = Array.isArray(response?.data)
         ? { payment_message: "" }
         : (response?.data ?? { payment_message: "" });
