@@ -16,13 +16,15 @@ import { formatInTimeZone } from "date-fns-tz";
 import colors from "@/src/constants/colors";
 import formatCurrency from "@/src/components/FormatCurrency";
 import {
-  corStatusReserva,
   FiltroRapidoReserva,
   getReservasAdmin,
-  labelStatusReserva,
   OrdenacaoReservas,
   ReservaAdminCard,
 } from "@/src/lib/hospedagemAdmin";
+import {
+  corStatusOperacionalPadrao,
+  labelStatusOperacionalPadrao,
+} from "@/src/lib/hospedagemStatusOperacional";
 import ResumoFinanceiroRecepcao from "../components/ResumoFinanceiroRecepcao";
 import OrigemReservaIndicador from "../components/OrigemReservaIndicador";
 import SyncStatusIndicator from "../components/SyncStatusIndicator";
@@ -102,7 +104,7 @@ function CardReserva({
 }) {
   const checkin = formatHoraParte(item.checkin);
   const checkout = formatHoraParte(item.checkout);
-  const cor = corStatusReserva(item.status);
+  const cor = corStatusOperacionalPadrao(item.status);
   const adultos = item.totalAdultos ?? item.adultos;
   const criancas = item.totalCriancas ?? item.criancas;
   const responsavel = item.nomeResponsavel || item.responsavel;
@@ -152,7 +154,7 @@ function CardReserva({
           <View style={styles.statusValorRow}>
             <View style={[styles.statusBadge, { backgroundColor: cor }]}>
               <Text style={styles.statusTexto}>
-                {labelStatusReserva(item.status)}
+                {labelStatusOperacionalPadrao(item.status)}
               </Text>
             </View>
             <Text style={styles.valorTotal}>
