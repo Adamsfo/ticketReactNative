@@ -18,6 +18,8 @@ interface DataItem {
   id: number;
   isButton?: boolean;
   onPress?: (id: number) => void;
+  iconColor?: string;
+  actionBackgroundColor?: string;
 }
 
 interface CustomGridProps {
@@ -54,7 +56,11 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
                 </Text>
               )}
               {isIcon ? (
-                <Feather name={item.iconName} size={18} color={colors.branco} />
+                <Feather
+                  name={item.iconName!}
+                  size={18}
+                  color={item.iconColor ?? colors.branco}
+                />
               ) : (
                 <Text style={styles.text}>{item.content}</Text>
               )}
@@ -64,7 +70,12 @@ const CustomGrid: React.FC<CustomGridProps> = ({ data, onItemPress }) => {
           return item.isButton || isIcon ? (
             <TooltipWrapper label={item.label || ""}>
               <TouchableOpacity
-                style={styles.areaboxAcoes}
+                style={[
+                  styles.areaboxAcoes,
+                  item.actionBackgroundColor
+                    ? { backgroundColor: item.actionBackgroundColor }
+                    : null,
+                ]}
                 key={index}
                 onPress={handlePress}
               >

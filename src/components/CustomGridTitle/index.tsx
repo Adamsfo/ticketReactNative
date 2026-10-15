@@ -34,7 +34,12 @@ const CustomGridTitle: React.FC<CustomGridProps> = ({ data }) => {
           </View> */}
           {/* Se houver pelo menos um item com isButton === true, exibe coluna "Ações" */}
           {data.some((item) => item.isButton) && (
-            <View key="acoes" style={{ width: 55 }}>
+            <View
+              key="acoes"
+              style={{
+                width: Math.max(55, data.filter((i) => i.isButton).length * 48),
+              }}
+            >
               <Text style={styles.textLabel}>Ações</Text>
             </View>
           )}

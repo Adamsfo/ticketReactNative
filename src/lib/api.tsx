@@ -32,6 +32,7 @@ class Api {
 
   private buildQueryString(params: QueryParams): string {
     const query = Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null)
       .map(([key, value]) => {
         if (typeof value === "object") {
           return `${encodeURIComponent(key)}=${encodeURIComponent(
