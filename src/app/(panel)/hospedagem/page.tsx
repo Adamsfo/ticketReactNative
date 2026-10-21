@@ -17,6 +17,7 @@ import TabSuites from "./tabs/tabSuites";
 import TabAgenda from "./tabs/tabAgenda";
 import TabHospedinMapeamento from "./tabs/tabHospedinMapeamento";
 import TabIntegracoes from "./tabs/tabIntegracoes";
+import TabFechamentos from "./tabs/tabFechamentos";
 import { HospedagemAdminRefreshProvider } from "./contexts/HospedagemAdminRefreshContext";
 import { NovaReservaRecepcaoProvider } from "./contexts/NovaReservaRecepcaoContext";
 import { ReceberSaldoHospedagemProvider } from "./contexts/ReceberSaldoHospedagemContext";
@@ -31,7 +32,13 @@ const TABS_BASE = [
   { key: "reservas" as const, label: "📋 Reservas" },
 ];
 
-type TabKey = "suites" | "agenda" | "reservas" | "hospedin" | "integracoes";
+type TabKey =
+  | "suites"
+  | "agenda"
+  | "reservas"
+  | "fechamentos"
+  | "hospedin"
+  | "integracoes";
 
 function HospedagemAdminPageInner() {
   const { isAdministrador, isProdutor } = useAuth();
@@ -56,6 +63,7 @@ function HospedagemAdminPageInner() {
       extra.push({ key: "hospedin", label: "Mapa" });
     }
     if (podeIntegracoes) {
+      extra.push({ key: "fechamentos", label: "Fechamentos" });
       extra.push({ key: "integracoes", label: "Integrações" });
     }
     return [...TABS_BASE, ...extra];
@@ -63,7 +71,8 @@ function HospedagemAdminPageInner() {
 
   const tabAtiva: TabKey =
     (!podeMapaHospedin && activeTab === "hospedin") ||
-    (!podeIntegracoes && activeTab === "integracoes")
+    (!podeIntegracoes && activeTab === "integracoes") ||
+    (!podeIntegracoes && activeTab === "fechamentos")
       ? "suites"
       : activeTab;
 
@@ -192,6 +201,19 @@ function HospedagemAdminPageInner() {
               pointerEvents={tabAtiva === "hospedin" ? "auto" : "none"}
             >
               <TabHospedinMapeamento />
+            </View>
+          ) : null}
+          {podeIntegracoes ? (
+            <View
+              style={[
+                styles.tabPanel,
+                tabAtiva === "fechamentos"
+                  ? styles.tabPanelAtivo
+                  : styles.tabPanelHidden,
+              ]}
+              pointerEvents={tabAtiva === "fechamentos" ? "auto" : "none"}
+            >
+              <TabFechamentos />
             </View>
           ) : null}
           {podeIntegracoes ? (

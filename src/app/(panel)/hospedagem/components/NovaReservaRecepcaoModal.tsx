@@ -71,10 +71,14 @@ import {
 } from "@/src/lib/reservaSuitePricing";
 import { roundMoney } from "@/src/lib/mascaraMoeda";
 import {
-  isDataSelecionavelEntradaSaidaHospedagem,
-  MSG_DIAS_FECHADOS_HOSPEDAGEM,
-  periodoHospedagemIncluiDiaFechado,
+  ajustarDatasIniciaisPeriodoHospedagem,
+  dataCivilHospedagem,
+  mensagemErroPeriodoFechado,
 } from "@/src/lib/hospedagemDiasFechados";
+import {
+  AvisoErroCarregamentoFechamentosExcepcionais,
+  useFechamentosExcepcionaisPousada,
+} from "@/src/lib/useFechamentosExcepcionaisPousada";
 import { EventoSuite, Usuario } from "@/src/types/geral";
 import CadastroClienteRapido from "./CadastroClienteRapido";
 import { ativarClienteRecemCadastradoHospedagem } from "@/src/lib/hospedagemAtivarCliente";
@@ -370,8 +374,20 @@ export default function NovaReservaRecepcaoModal() {
 
   const prefillSuiteRef = useRef<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const usuarioEditouPeriodoRef = useRef(false);
+  const periodoAjustadoInicialRef = useRef<string | null>(null);
 
   const idEvento = prefill?.idEvento ?? 0;
+  const {
+    filterDate: filterDatePousada,
+    verificadorExcepcional,
+    erroCarregamento: erroCarregamentoFechamentos,
+    carregando: carregandoFechamentos,
+    fechamentosExcepcionaisCarregados,
+  } = useFechamentosExcepcionaisPousada(
+    idEvento,
+    visible && idEvento > 0,
+  );
 
   const resetState = useCallback(() => {
     setStep(1);
@@ -434,6 +450,8 @@ export default function NovaReservaRecepcaoModal() {
     }
 
     resetState();
+    usuarioEditouPeriodoRef.current = false;
+    periodoAjustadoInicialRef.current = null;
     const parsed = parsePrefillDates(prefill?.checkinDate);
     setCheckinDate(parsed.checkinDate);
     setCheckoutDate(parsed.checkoutDate);
@@ -441,6 +459,55 @@ export default function NovaReservaRecepcaoModal() {
     setCheckoutTime(parsed.checkoutTime);
     prefillSuiteRef.current = prefill?.idEventoSuite ?? null;
   }, [visible, sessionKey, prefill?.checkinDate, prefill?.idEventoSuite, resetState]);
+
+  useEffect(() => {
+    if (!visible || idEvento <= 0) return;
+    if (carregandoFechamentos) return;
+    if (!fechamentosExcepcionaisCarregados && !erroCarregamentoFechamentos) {
+      return;
+    }
+    if (usuarioEditouPeriodoRef.current) return;
+
+    const ajusteKey = `${sessionKey}|${prefill?.checkinDate ?? ""}|${
+      fechamentosExcepcionaisCarregados ? "fe" : "sem-fe"
+    }`;
+    if (periodoAjustadoInicialRef.current === ajusteKey) return;
+
+    const verificador = fechamentosExcepcionaisCarregados
+      ? verificadorExcepcional
+      : undefined;
+
+    const ajustado = ajustarDatasIniciaisPeriodoHospedagem(
+      checkinDate,
+      checkoutDate,
+      1,
+      verificador,
+    );
+
+    periodoAjustadoInicialRef.current = ajusteKey;
+
+    const ciIgual =
+      dataCivilHospedagem(ajustado.checkinDate) ===
+      dataCivilHospedagem(checkinDate);
+    const coIgual =
+      dataCivilHospedagem(ajustado.checkoutDate) ===
+      dataCivilHospedagem(checkoutDate);
+    if (!ciIgual || !coIgual) {
+      setCheckinDate(ajustado.checkinDate);
+      setCheckoutDate(ajustado.checkoutDate);
+    }
+  }, [
+    visible,
+    idEvento,
+    sessionKey,
+    prefill?.checkinDate,
+    carregandoFechamentos,
+    fechamentosExcepcionaisCarregados,
+    erroCarregamentoFechamentos,
+    verificadorExcepcional,
+    checkinDate,
+    checkoutDate,
+  ]);
 
   useEffect(() => {
     if (!visible) return;
@@ -511,6 +578,7 @@ export default function NovaReservaRecepcaoModal() {
   );
 
   const handleCheckinDateChange = useCallback((novaData: Date) => {
+    usuarioEditouPeriodoRef.current = true;
     setCheckinDate(novaData);
     if (isDataLocalPosteriorAHoje(novaData, new Date())) {
       setCheckinTime(defaultCheckinTime());
@@ -518,6 +586,11 @@ export default function NovaReservaRecepcaoModal() {
     const novaCheckout = new Date(novaData);
     novaCheckout.setDate(novaCheckout.getDate() + 1);
     setCheckoutDate(novaCheckout);
+  }, []);
+
+  const handleCheckoutDateChange = useCallback((novaData: Date) => {
+    usuarioEditouPeriodoRef.current = true;
+    setCheckoutDate(novaData);
   }, []);
 
   const calcularErrosPeriodo = useCallback(() => {
@@ -533,8 +606,13 @@ export default function NovaReservaRecepcaoModal() {
     if (checkout <= checkin) {
       newErrors.datas = "Check-out deve ser posterior ao check-in.";
     }
-    if (periodoHospedagemIncluiDiaFechado(checkin, checkout)) {
-      newErrors.datas = MSG_DIAS_FECHADOS_HOSPEDAGEM;
+    const msgFechamento = mensagemErroPeriodoFechado(
+      checkin,
+      checkout,
+      verificadorExcepcional,
+    );
+    if (msgFechamento) {
+      newErrors.datas = msgFechamento;
     }
     if (
       isMesmaDataLocal(checkinDate, agora) &&
@@ -553,7 +631,13 @@ export default function NovaReservaRecepcaoModal() {
     }
 
     return newErrors;
-  }, [checkinDate, checkinTime, checkoutDate, checkoutTime]);
+  }, [
+    checkinDate,
+    checkinTime,
+    checkoutDate,
+    checkoutTime,
+    verificadorExcepcional,
+  ]);
 
   const validarPeriodo = useCallback(() => {
     const newErrors = calcularErrosPeriodo();
@@ -1447,6 +1531,9 @@ export default function NovaReservaRecepcaoModal() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Período da estadia</Text>
               <Text style={styles.hintPersonalizado}>Horário personalizado</Text>
+              <AvisoErroCarregamentoFechamentosExcepcionais
+                mensagem={erroCarregamentoFechamentos}
+              />
 
               <Text style={styles.label}>Check-in</Text>
               <View style={styles.dateTimeRow}>
@@ -1454,7 +1541,7 @@ export default function NovaReservaRecepcaoModal() {
                   <DatePickerComponente
                     value={checkinDate}
                     onChange={handleCheckinDateChange}
-                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
+                    filterDate={filterDatePousada}
                   />
                 </View>
                 <View style={styles.timeField}>
@@ -1478,8 +1565,8 @@ export default function NovaReservaRecepcaoModal() {
                 <View style={styles.dateField}>
                   <DatePickerComponente
                     value={checkoutDate}
-                    onChange={setCheckoutDate}
-                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
+                    onChange={handleCheckoutDateChange}
+                    filterDate={filterDatePousada}
                   />
                 </View>
                 <View style={styles.timeField}>

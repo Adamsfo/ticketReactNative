@@ -57,10 +57,19 @@ import {
   VALOR_ADICIONAL_CRIANCA_EXTRA,
 } from "@/src/lib/reservaSuitePricing";
 import {
-  isDataSelecionavelEntradaSaidaHospedagem,
-  MSG_DIAS_FECHADOS_HOSPEDAGEM,
-  periodoHospedagemIncluiDiaFechado,
+  ajustarDatasIniciaisPeriodoHospedagem,
+  dataCivilHospedagem,
+  mensagemErroPeriodoFechado,
 } from "@/src/lib/hospedagemDiasFechados";
+import {
+  ajustePeriodoInicialConcluido,
+  chaveAjustePeriodoInicialPousada,
+  chaveBuscaAgendaAposAjuste,
+} from "@/src/lib/pousadaAgendaPrefillBusca";
+import {
+  AvisoErroCarregamentoFechamentosExcepcionais,
+  useFechamentosExcepcionaisPousada,
+} from "@/src/lib/useFechamentosExcepcionaisPousada";
 
 const { width } = Dimensions.get("window");
 
@@ -207,6 +216,17 @@ export default function Index() {
     };
   };
   const { id } = routeParams;
+  const idEventoPousada = Number(id) || 0;
+  const {
+    filterDate: filterDatePousada,
+    verificadorExcepcional,
+    erroCarregamento: erroCarregamentoFechamentos,
+    carregando: carregandoFechamentos,
+    fechamentosExcepcionaisCarregados,
+  } = useFechamentosExcepcionaisPousada(idEventoPousada, idEventoPousada > 0);
+  const usuarioEditouPeriodoRef = useRef(false);
+  const periodoAjustadoInicialRef = useRef<string | null>(null);
+  const agendaBuscaDisparadaRef = useRef<string | null>(null);
   const agendaPrefill = routeParams.agendaPrefill;
   const agendaPrefillKey = agendaPrefill
     ? `${agendaPrefill.checkinDate}-${agendaPrefill.idEventoSuite ?? ""}`
@@ -285,6 +305,62 @@ export default function Index() {
   const [agoraTick, setAgoraTick] = useState(() => new Date());
 
   useEffect(() => {
+    usuarioEditouPeriodoRef.current = false;
+    periodoAjustadoInicialRef.current = null;
+    agendaBuscaDisparadaRef.current = null;
+  }, [id, agendaPrefillKey]);
+
+  useEffect(() => {
+    if (idEventoPousada <= 0) return;
+    if (carregandoFechamentos) return;
+    if (!fechamentosExcepcionaisCarregados && !erroCarregamentoFechamentos) {
+      return;
+    }
+    if (usuarioEditouPeriodoRef.current) return;
+
+    const ajusteKey = chaveAjustePeriodoInicialPousada({
+      idEvento: idEventoPousada,
+      agendaPrefillKey,
+      fechamentosExcepcionaisCarregados,
+    });
+    if (periodoAjustadoInicialRef.current === ajusteKey) return;
+
+    const verificador = fechamentosExcepcionaisCarregados
+      ? verificadorExcepcional
+      : undefined;
+
+    const ajustado = ajustarDatasIniciaisPeriodoHospedagem(
+      checkinDate,
+      checkoutDate,
+      1,
+      verificador,
+    );
+
+    const ciIgual =
+      dataCivilHospedagem(ajustado.checkinDate) ===
+      dataCivilHospedagem(checkinDate);
+    const coIgual =
+      dataCivilHospedagem(ajustado.checkoutDate) ===
+      dataCivilHospedagem(checkoutDate);
+    if (!ciIgual || !coIgual) {
+      setCheckinDate(ajustado.checkinDate);
+      setCheckoutDate(ajustado.checkoutDate);
+      return;
+    }
+
+    periodoAjustadoInicialRef.current = ajusteKey;
+  }, [
+    idEventoPousada,
+    agendaPrefillKey,
+    carregandoFechamentos,
+    fechamentosExcepcionaisCarregados,
+    erroCarregamentoFechamentos,
+    verificadorExcepcional,
+    checkinDate,
+    checkoutDate,
+  ]);
+
+  useEffect(() => {
     const id = setInterval(() => setAgoraTick(new Date()), 30_000);
     return () => clearInterval(id);
   }, []);
@@ -343,6 +419,7 @@ export default function Index() {
     combineDateTime(checkoutDate, checkoutTime).toISOString();
 
   const handleCheckinDateChange = (novaData: Date) => {
+    usuarioEditouPeriodoRef.current = true;
     setCheckinDate(novaData);
     if (isDataLocalPosteriorAHoje(novaData, new Date())) {
       setCheckinTime(defaultCheckinTime());
@@ -350,6 +427,11 @@ export default function Index() {
     const novaCheckout = new Date(novaData);
     novaCheckout.setDate(novaCheckout.getDate() + 1);
     setCheckoutDate(novaCheckout);
+  };
+
+  const handleCheckoutDateChange = (novaData: Date) => {
+    usuarioEditouPeriodoRef.current = true;
+    setCheckoutDate(novaData);
   };
 
   const validarFiltros = () => {
@@ -365,8 +447,13 @@ export default function Index() {
     if (checkout <= checkin) {
       newErrors.datas = "Check-out deve ser posterior ao check-in.";
     }
-    if (periodoHospedagemIncluiDiaFechado(checkin, checkout)) {
-      newErrors.datas = MSG_DIAS_FECHADOS_HOSPEDAGEM;
+    const msgFechamento = mensagemErroPeriodoFechado(
+      checkin,
+      checkout,
+      verificadorExcepcional,
+    );
+    if (msgFechamento) {
+      newErrors.datas = msgFechamento;
     }
     if (
       isMesmaDataLocal(checkinDate, agora) &&
@@ -417,10 +504,14 @@ export default function Index() {
     const checkinIso = override?.checkinIso ?? getCheckinIso();
     const checkoutIso = override?.checkoutIso ?? getCheckoutIso();
 
-    if (!override) {
+    const periodoFixoOverride = Boolean(
+      override?.checkinIso || override?.checkoutIso,
+    );
+
+    if (!periodoFixoOverride) {
       if (!validarFiltros()) return;
     } else {
-      // Prefill/agenda: ainda valida check-in de hoje vs horário atual
+      // Override legado com ISO fixo: ainda valida check-in de hoje vs horário atual
       const checkinOverride = new Date(checkinIso);
       const agora = new Date();
       if (
@@ -604,6 +695,53 @@ export default function Index() {
     dispatch({ type: "REMOVE_TRANSACAO" });
   }, [id]);
 
+  useEffect(() => {
+    if (!agendaPrefill?.checkinDate || !id || idEventoPousada <= 0) {
+      return;
+    }
+    if (usuarioEditouPeriodoRef.current) {
+      return;
+    }
+    if (carregandoFechamentos) {
+      return;
+    }
+    if (!fechamentosExcepcionaisCarregados && !erroCarregamentoFechamentos) {
+      return;
+    }
+
+    const ajusteKey = chaveAjustePeriodoInicialPousada({
+      idEvento: idEventoPousada,
+      agendaPrefillKey,
+      fechamentosExcepcionaisCarregados,
+    });
+    if (!ajustePeriodoInicialConcluido(periodoAjustadoInicialRef.current, ajusteKey)) {
+      return;
+    }
+
+    const buscaKey = chaveBuscaAgendaAposAjuste(ajusteKey);
+    if (agendaBuscaDisparadaRef.current === buscaKey) {
+      return;
+    }
+    agendaBuscaDisparadaRef.current = buscaKey;
+
+    handleBuscarDisponibilidade({
+      idEventoSuite: agendaPrefill.idEventoSuite,
+    });
+  }, [
+    id,
+    idEventoPousada,
+    agendaPrefillKey,
+    agendaPrefill?.checkinDate,
+    agendaPrefill?.idEventoSuite,
+    carregandoFechamentos,
+    fechamentosExcepcionaisCarregados,
+    erroCarregamentoFechamentos,
+    checkinDate,
+    checkoutDate,
+    checkinTime,
+    checkoutTime,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
       zerarIngressos();
@@ -652,29 +790,13 @@ export default function Index() {
       );
       const checkoutTimeLocal = defaultCheckoutTime();
 
+      usuarioEditouPeriodoRef.current = false;
+      periodoAjustadoInicialRef.current = null;
       setCheckinDate(checkinDateLocal);
       setCheckinTime(checkinTimeLocal);
       setCheckoutDate(checkoutDateLocal);
       setCheckoutTime(checkoutTimeLocal);
-
-      const checkinIso = combineDateTime(
-        checkinDateLocal,
-        checkinTimeLocal,
-      ).toISOString();
-      const checkoutIso = combineDateTime(
-        checkoutDateLocal,
-        checkoutTimeLocal,
-      ).toISOString();
-
-      const timer = setTimeout(() => {
-        handleBuscarDisponibilidade({
-          checkinIso,
-          checkoutIso,
-          idEventoSuite: agendaPrefill.idEventoSuite,
-        });
-      }, 150);
-
-      return () => clearTimeout(timer);
+      agendaBuscaDisparadaRef.current = null;
     }, [id, agendaPrefillKey]),
   );
 
@@ -1147,6 +1269,9 @@ export default function Index() {
             <Text style={[styles.tituloEvento, { marginBottom: 8 }]}>
               Período da estadia
             </Text>
+            <AvisoErroCarregamentoFechamentosExcepcionais
+              mensagem={erroCarregamentoFechamentos}
+            />
             <View style={styles.filtroRow}>
               <Text style={styles.labelData}>Check-in</Text>
               <View style={styles.filtroDateTime}>
@@ -1154,7 +1279,7 @@ export default function Index() {
                   <DatePickerComponente
                     value={checkinDate}
                     onChange={handleCheckinDateChange}
-                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
+                    filterDate={filterDatePousada}
                   />
                 </View>
                 <View style={styles.filtroTimeField}>
@@ -1186,8 +1311,8 @@ export default function Index() {
                 <View style={styles.filtroDateField}>
                   <DatePickerComponente
                     value={checkoutDate}
-                    onChange={setCheckoutDate}
-                    filterDate={isDataSelecionavelEntradaSaidaHospedagem}
+                    onChange={handleCheckoutDateChange}
+                    filterDate={filterDatePousada}
                   />
                 </View>
                 <View style={styles.filtroTimeField}>

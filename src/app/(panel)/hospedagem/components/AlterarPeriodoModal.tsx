@@ -24,6 +24,11 @@ import {
 import { formatDateTimeHospedagem } from "@/src/lib/hospedagemOperacao";
 import { HOSPEDAGEM_TZ } from "@/src/lib/hospedagemStatusOperacional";
 import { useHospedagemAdminRefresh } from "../contexts/HospedagemAdminRefreshContext";
+import { mensagemErroPeriodoFechado } from "@/src/lib/hospedagemDiasFechados";
+import {
+  AvisoErroCarregamentoFechamentosExcepcionais,
+  useFechamentosExcepcionaisPousada,
+} from "@/src/lib/useFechamentosExcepcionaisPousada";
 
 const MOTIVOS_SUGESTAO = [
   "Prorrogação da hospedagem",
@@ -162,6 +167,16 @@ export default function AlterarPeriodoModal({
   const [motivo, setMotivo] = useState("");
   const [agoraTick, setAgoraTick] = useState(() => new Date());
 
+  const idEventoPousada = Number(detalhe?.evento?.id) || 0;
+  const {
+    filterDate: filterDatePousada,
+    verificadorExcepcional,
+    erroCarregamento: erroCarregamentoFechamentos,
+  } = useFechamentosExcepcionaisPousada(
+    idEventoPousada,
+    visible && idEventoPousada > 0,
+  );
+
   useEffect(() => {
     if (!visible) return;
     const id = setInterval(() => setAgoraTick(new Date()), 30_000);
@@ -243,6 +258,14 @@ export default function AlterarPeriodoModal({
     ) {
       return "O check-out deve ser posterior ao check-in.";
     }
+    const msgFechamento = mensagemErroPeriodoFechado(
+      combineDateTime(checkinDate, checkinTime),
+      combineDateTime(checkoutDate, checkoutTime),
+      verificadorExcepcional,
+    );
+    if (msgFechamento) {
+      return msgFechamento;
+    }
     return null;
   }, [
     checkinDate,
@@ -250,6 +273,7 @@ export default function AlterarPeriodoModal({
     checkoutDate,
     checkoutTime,
     checkinHojeSemHorarios,
+    verificadorExcepcional,
   ]);
 
   const confirmar = async () => {
@@ -340,6 +364,9 @@ export default function AlterarPeriodoModal({
                 <View style={styles.bloco}>
                   <Text style={styles.subtitulo}>Novo período</Text>
                   <Text style={styles.hint}>Horário personalizado</Text>
+                  <AvisoErroCarregamentoFechamentosExcepcionais
+                    mensagem={erroCarregamentoFechamentos}
+                  />
 
                   <Text style={styles.label}>Check-in</Text>
                   <View style={styles.dateTimeRow}>
@@ -347,6 +374,7 @@ export default function AlterarPeriodoModal({
                       <DatePickerComponente
                         value={checkinDate}
                         onChange={setCheckinDate}
+                        filterDate={filterDatePousada}
                       />
                     </View>
                     <View style={styles.timeField}>
@@ -367,6 +395,7 @@ export default function AlterarPeriodoModal({
                       <DatePickerComponente
                         value={checkoutDate}
                         onChange={setCheckoutDate}
+                        filterDate={filterDatePousada}
                       />
                     </View>
                     <View style={styles.timeField}>

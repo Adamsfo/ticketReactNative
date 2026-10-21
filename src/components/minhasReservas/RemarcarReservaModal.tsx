@@ -33,6 +33,11 @@ import * as Device from "expo-device";
 import * as Application from "expo-application";
 import { TAXA_REMARCACAO_CLIENTE } from "@/src/lib/remarcacaoClienteConfig";
 import { calcularNoitesHotelaria } from "@/src/lib/reservaSuitePricing";
+import { mensagemErroPeriodoFechado } from "@/src/lib/hospedagemDiasFechados";
+import {
+  AvisoErroCarregamentoFechamentosExcepcionais,
+  useFechamentosExcepcionaisPousada,
+} from "@/src/lib/useFechamentosExcepcionaisPousada";
 
 const MP_PUBLIC_KEY = process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "";
 
@@ -120,6 +125,15 @@ export default function RemarcarReservaModal({
 }: Props) {
   const { user } = useAuth();
   const remarcacao: RemarcacaoClienteInfo = reserva.remarcacao;
+  const idEventoPousada = Number(reserva.evento?.id) || 0;
+  const {
+    filterDate: filterDatePousada,
+    verificadorExcepcional,
+    erroCarregamento: erroCarregamentoFechamentos,
+  } = useFechamentosExcepcionaisPousada(
+    idEventoPousada,
+    visible && idEventoPousada > 0,
+  );
 
   const checkinAtual = useMemo(() => parseISO(reserva.checkin), [reserva.checkin]);
   const checkoutAtual = useMemo(
@@ -297,6 +311,14 @@ export default function RemarcarReservaModal({
       const sufixo = noitesOriginais === 1 ? "noite" : "noites";
       return `A remarcação deve manter a mesma quantidade de noites da reserva: ${noitesOriginais} ${sufixo}.`;
     }
+    const msgFechamento = mensagemErroPeriodoFechado(
+      checkin,
+      checkout,
+      verificadorExcepcional,
+    );
+    if (msgFechamento) {
+      return msgFechamento;
+    }
     return null;
   };
 
@@ -449,11 +471,22 @@ export default function RemarcarReservaModal({
             {etapa === "datas" && (
               <>
                 <Text style={styles.subtitulo}>Novo período</Text>
+                <AvisoErroCarregamentoFechamentosExcepcionais
+                  mensagem={erroCarregamentoFechamentos}
+                />
                 <Text style={styles.label}>Novo check-in</Text>
-                <DatePickerComponente value={checkinDate} onChange={setCheckinDate} />
+                <DatePickerComponente
+                  value={checkinDate}
+                  onChange={setCheckinDate}
+                  filterDate={filterDatePousada}
+                />
                 <TimePickerComponente value={checkinTime} onChange={setCheckinTime} />
                 <Text style={styles.label}>Novo check-out</Text>
-                <DatePickerComponente value={checkoutDate} onChange={setCheckoutDate} />
+                <DatePickerComponente
+                  value={checkoutDate}
+                  onChange={setCheckoutDate}
+                  filterDate={filterDatePousada}
+                />
                 <TimePickerComponente value={checkoutTime} onChange={setCheckoutTime} />
 
                 <View style={styles.taxaBox}>
