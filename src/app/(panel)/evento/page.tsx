@@ -150,7 +150,7 @@ export default function Index() {
                 )}
               </Text>
             </View>
-            {formData.latitude && formData.longitude && (
+            {/* {formData.latitude && formData.longitude && (
               <MapViewer
                 location={{
                   latitude: Number(formData.latitude),
@@ -158,7 +158,7 @@ export default function Index() {
                 }}
                 setLocation={(location) => console.log(location)}
               />
-            )}
+            )} */}
           </View>
         </>
       );

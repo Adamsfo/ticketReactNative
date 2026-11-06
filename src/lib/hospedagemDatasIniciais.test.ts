@@ -2,7 +2,9 @@ import { fromZonedTime } from "date-fns-tz";
 import {
   ajustarDatasIniciaisPeriodoHospedagem,
   criarVerificadorFechamentosExcepcionais,
+  dataCivilCalendarioPickerHospedagem,
   dataCivilHospedagem,
+  isDataCivilFechadaSemanalHospedagem,
   isDataSelecionavelEntradaSaidaHospedagem,
   proximaDataSelecionavelHospedagem,
 } from "@/src/lib/hospedagemDiasFechados";
@@ -15,6 +17,67 @@ function diaLocal(y: number, m: number, d: number): Date {
     TZ,
   );
 }
+
+/** Meia-noite local — mesmo padrão de react-datepicker (startOfDay). */
+function celulaCalendarioLocal(y: number, m: number, d: number): Date {
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+describe("isDataSelecionavelEntradaSaidaHospedagem (filterDate)", () => {
+  it("terça e quarta indisponíveis; quinta disponível (célula local)", () => {
+    expect(
+      isDataSelecionavelEntradaSaidaHospedagem(celulaCalendarioLocal(2026, 10, 20)),
+    ).toBe(false);
+    expect(
+      isDataSelecionavelEntradaSaidaHospedagem(celulaCalendarioLocal(2026, 10, 21)),
+    ).toBe(false);
+    expect(
+      isDataSelecionavelEntradaSaidaHospedagem(celulaCalendarioLocal(2026, 10, 22)),
+    ).toBe(true);
+  });
+
+  it("meia-noite UTC: seleção segue civil do picker, não dataCivilHospedagem(instante)", () => {
+    const utcQui = new Date(Date.UTC(2026, 9, 22));
+    const civilPicker = dataCivilCalendarioPickerHospedagem(utcQui);
+    const civilInstante = dataCivilHospedagem(utcQui);
+
+    expect(isDataSelecionavelEntradaSaidaHospedagem(utcQui)).toBe(
+      !isDataCivilFechadaSemanalHospedagem(civilPicker),
+    );
+
+    // Regressão: instante em Cuiabá cai na quarta, mas a célula é quinta (picker).
+    if (civilPicker === "2026-10-22" && civilInstante === "2026-10-21") {
+      expect(isDataSelecionavelEntradaSaidaHospedagem(utcQui)).toBe(true);
+    }
+  });
+});
+
+const ambienteUtcLocal =
+  new Date(Date.UTC(2026, 9, 21)).getDate() === 21 &&
+  dataCivilHospedagem(new Date(Date.UTC(2026, 9, 21))) === "2026-10-20";
+
+(ambienteUtcLocal ? describe : describe.skip)(
+  "isDataSelecionavelEntradaSaidaHospedagem (filterDate, TZ local UTC)",
+  () => {
+    it("terça/quarta/quinta na célula com Date em meia-noite UTC", () => {
+      expect(
+        isDataSelecionavelEntradaSaidaHospedagem(
+          new Date(Date.UTC(2026, 9, 20)),
+        ),
+      ).toBe(false);
+      expect(
+        isDataSelecionavelEntradaSaidaHospedagem(
+          new Date(Date.UTC(2026, 9, 21)),
+        ),
+      ).toBe(false);
+      expect(
+        isDataSelecionavelEntradaSaidaHospedagem(
+          new Date(Date.UTC(2026, 9, 22)),
+        ),
+      ).toBe(true);
+    });
+  },
+);
 
 describe("ajuste datas iniciais pousada", () => {
   it("terça avança para quinta", () => {

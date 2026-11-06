@@ -22,6 +22,17 @@ export function dataCivilHospedagem(value: Date): string {
   return formatInTimeZone(value, HOSPEDAGEM_TZ, "yyyy-MM-dd");
 }
 
+/**
+ * Dia civil (yyyy-MM-dd) da célula do calendário do picker.
+ * Usa ano/mês/dia locais do `Date` (como react-datepicker exibe), não o instante em Cuiabá.
+ */
+export function dataCivilCalendarioPickerHospedagem(value: Date): string {
+  const y = value.getFullYear();
+  const m = value.getMonth() + 1;
+  const d = value.getDate();
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 /** Dia da semana da data civil em America/Cuiabá (0=domingo … 6=sábado). */
 export function diaSemanaCivilHospedagem(value: Date): number {
   const iso = Number(formatInTimeZone(value, HOSPEDAGEM_TZ, "i"));
@@ -137,7 +148,7 @@ export function isDataSelecionavelEntradaSaidaHospedagem(
   date: Date,
   excepcional?: VerificadorFechamentoExcepcional,
 ): boolean {
-  const civil = dataCivilHospedagem(date);
+  const civil = dataCivilCalendarioPickerHospedagem(date);
   return !isDataCivilFechadaPousada(civil, excepcional);
 }
 
