@@ -1,11 +1,17 @@
 import React, { ReactNode } from "react";
-import { StyleSheet, Text, View, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { publicTheme } from "@/src/constants/publicTheme";
 
 type Props = {
   children: ReactNode;
   title?: string;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   noPadding?: boolean;
 };
 

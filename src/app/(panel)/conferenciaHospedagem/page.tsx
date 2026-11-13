@@ -10,11 +10,14 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
+  Image,
 } from "react-native";
 import colors from "@/src/constants/colors";
 import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
 import { checkoutScreenStyles as cs } from "@/src/components/public/checkoutScreenStyles";
 import { publicTheme } from "@/src/constants/publicTheme";
+import { api } from "@/src/lib/api";
 import { Evento, Transacao } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useRoute } from "@react-navigation/native";
@@ -393,30 +396,43 @@ export default function ConferenciaHospedagemPage() {
           <StepIndicatorHospedagem currentStep={2} variant="public" />
         </View>
         <Text style={cs.screenTitle}>Conferência da hospedagem</Text>
-        <Text style={[styles.subtitulo, { color: publicTheme.textSecondary, textAlign: "center", marginBottom: 12 }]}>
-          {formData.nome}
-        </Text>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          style={{ flexGrow: 1, height: "100%" }}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.area}>
+          {formData.imagem ? (
+            <PublicShopSection noPadding style={cs.eventHero}>
+              <View style={cs.eventHeroRowHospedagem}>
+                <Image
+                  source={{
+                    uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                  }}
+                  style={cs.imagem}
+                />
+                <Text style={cs.tituloEventoHospedagem} numberOfLines={2}>
+                  {formData.nome}
+                </Text>
+              </View>
+            </PublicShopSection>
+          ) : null}
+
+          <PublicShopSection>
             <Text style={styles.introText}>
               Informe os dados de cada hóspede conforme a reserva. As pulseiras
               serão emitidas somente para as pessoas cadastradas abaixo.
             </Text>
+          </PublicShopSection>
 
-            {hospedes
-              .filter((suite) =>
-                state.reserva?.itens.some(
-                  (item) => item.idEventoSuite === suite.idEventoSuite,
-                ),
-              )
-              .map((suite) => (
-              <View key={suite.idEventoSuite} style={styles.suiteCard}>
-                <Text style={styles.suiteTitulo}>Suíte {suite.nomeSuite}</Text>
-
+          {hospedes
+            .filter((suite) =>
+              state.reserva?.itens.some(
+                (item) => item.idEventoSuite === suite.idEventoSuite,
+              ),
+            )
+            .map((suite) => (
+              <PublicShopSection key={suite.idEventoSuite} title={suite.nomeSuite}>
                 {suite.adultos.map((adulto) => (
                   <View
                     key={`adulto-${suite.idEventoSuite}-${adulto.ordem}`}
@@ -527,19 +543,19 @@ export default function ConferenciaHospedagemPage() {
                     ) : null}
                   </View>
                 ))}
-              </View>
+              </PublicShopSection>
             ))}
 
-            {!isPDV ? (
+          {!isPDV ? (
+            <PublicShopSection>
               <AceitePoliticaHospedagem
                 value={aceitePolitica}
                 onValueChange={setAceitePolitica}
-                style={{ marginHorizontal: 8, marginBottom: 8 }}
               />
-            ) : null}
+            </PublicShopSection>
+          ) : null}
 
-            <View style={{ height: 100 }} />
-          </View>
+          <View style={{ height: 100 }} />
         </ScrollView>
 
         <View style={styles.footer}>
@@ -604,67 +620,45 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textAlign: "center",
   },
-  subtitulo: {
-    fontSize: 16,
-    color: colors.cinza,
-    textAlign: "center",
-    marginBottom: 10,
+  scroll: {
+    flexGrow: 1,
   },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingHorizontal: 12,
-    paddingTop: 15,
-    paddingBottom: 20,
-    borderRadius: 20,
+  scrollContent: {
+    paddingBottom: 16,
   },
   introText: {
     fontSize: 14,
-    color: colors.cinza,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  suiteCard: {
-    backgroundColor: "rgba(255,255,255,0.45)",
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
-  suiteTitulo: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.azul,
-    marginBottom: 10,
+    color: publicTheme.textSecondary,
+    lineHeight: 22,
   },
   hospedeCard: {
     marginBottom: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    borderBottomColor: publicTheme.border,
   },
   hospedeTitulo: {
     fontSize: 15,
-    fontWeight: "600",
-    color: colors.cinza,
+    fontWeight: "700",
+    color: publicTheme.textPrimary,
     marginBottom: 8,
   },
   label: {
-    color: colors.zinc,
+    color: publicTheme.textPrimary,
     marginBottom: 4,
     fontSize: 14,
+    fontWeight: "600",
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.gray,
-    borderRadius: 8,
+    borderColor: publicTheme.border,
+    borderRadius: publicTheme.radiusSm,
     marginBottom: 8,
-    paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: "#fff",
+    backgroundColor: publicTheme.surface,
+    color: publicTheme.textPrimary,
   },
   datePickerWrap: {
     flex: 1,
@@ -684,7 +678,7 @@ const styles = StyleSheet.create({
   },
   idadeTexto: {
     fontSize: 14,
-    color: colors.cinza,
+    color: publicTheme.textSecondary,
     fontWeight: "600",
     minWidth: 60,
   },
@@ -696,24 +690,24 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 12,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 12,
+    paddingBottom: Platform.OS === "ios" ? 20 : 12,
+    backgroundColor: "transparent",
   },
   button: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: publicTheme.radiusMd,
     marginLeft: 10,
     flexDirection: "row",
     alignItems: "center",
   },
   buttonClose: {
-    backgroundColor: "rgb(211, 211, 211)",
+    backgroundColor: publicTheme.border,
   },
   buttonSave: {
-    backgroundColor: colors.azul,
+    backgroundColor: publicTheme.accent,
   },
   buttonText: {
     color: "#FFF",

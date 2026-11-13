@@ -23,6 +23,9 @@ import {
 } from "react-native";
 import colors from "@/src/constants/colors";
 import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
+import { checkoutScreenStyles as cs } from "@/src/components/public/checkoutScreenStyles";
+import { publicTheme } from "@/src/constants/publicTheme";
 import { Evento, EventoSuite, QueryParams, Usuario } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -199,6 +202,7 @@ function labelSeparadorCapacidadeMaxima(suite: EventoSuite): string {
 export default function Index() {
   const { width: screenWidth } = useWindowDimensions();
   const isMobileSuiteLayout = screenWidth < 768;
+  const horizontalPad = screenWidth >= 768 ? 24 : 12;
   const endpointApi = "/evento";
   const { isPDV, user } = useAuth();
   const route = useRoute();
@@ -1051,11 +1055,11 @@ export default function Index() {
 
   return (
     <PublicShopLayout>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingHorizontal: horizontalPad }]}>
         <View style={styles.areaStep}>
           <StepIndicatorHospedagem currentStep={1} variant="public" />
         </View>
-        <Text style={styles.titulo}>Pousada</Text>
+        <Text style={styles.screenTitle}>Monte sua reserva</Text>
 
         <ScrollView
           ref={scrollViewRef}
@@ -1065,21 +1069,22 @@ export default function Index() {
           onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
             scrollOffsetYRef.current = event.nativeEvent.contentOffset.y;
           }}
-          style={{
-            borderRadius: 8,
-            flexGrow: 1,
-            height: "100%",
-          }}
+          contentContainerStyle={styles.scrollContent}
+          style={styles.scroll}
         >
-          <View style={styles.areaEvento}>
-            <Image
-              source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
-              style={styles.imagem}
-            />
-            <View style={styles.areaTextoEvento}>
-              <Text style={styles.tituloEvento}>{formData.nome}</Text>
+          <PublicShopSection noPadding style={cs.eventHero}>
+            <View style={cs.eventHeroRowHospedagem}>
+              <Image
+                source={{
+                  uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                }}
+                style={cs.imagem}
+              />
+              <Text style={cs.tituloEventoHospedagem} numberOfLines={2}>
+                {formData.nome}
+              </Text>
             </View>
-          </View>
+          </PublicShopSection>
 
           {isPDV && id === 1 && (
             <View style={styles.areaUsuario}>
@@ -1233,10 +1238,10 @@ export default function Index() {
             </View>
           )}
 
-          <View style={styles.areaInfoHospedes}>
-            <Text style={styles.infoHospedesTitulo}>
-              ⚠️ Informações importantes
-            </Text>
+          <PublicShopSection
+            title="Informações importantes"
+            style={styles.infoSectionPublic}
+          >
             <Text style={styles.infoHospedesItem}>
               • Informe a quantidade REAL de adultos e crianças que irão se
               hospedar.
@@ -1254,12 +1259,9 @@ export default function Index() {
               regularizando a reserva conforme a tabela vigente, sujeita a
               disponibilidade.
             </Text>
-          </View>
+          </PublicShopSection>
 
-          <View style={styles.areaFiltros}>
-            <Text style={[styles.tituloEvento, { marginBottom: 8 }]}>
-              Período da estadia
-            </Text>
+          <PublicShopSection title="Período da estadia">
             <AvisoErroCarregamentoFechamentosExcepcionais
               mensagem={erroCarregamentoFechamentos}
             />
@@ -1336,20 +1338,22 @@ export default function Index() {
                 <Text style={styles.newButtonText}>Buscar disponibilidade</Text>
               )}
             </TouchableOpacity>
-          </View>
+          </PublicShopSection>
 
-          <View style={styles.area}>
+          <View style={styles.suitesListArea}>
             {disponibilidadeBuscada && registrosEventoSuites.length === 0 && (
-              <Text style={[styles.descricaoSuite, { textAlign: "center" }]}>
-                Nenhuma suíte disponível para o período informado.
-              </Text>
+              <PublicShopSection>
+                <Text style={[styles.descricaoSuite, { textAlign: "center" }]}>
+                  Nenhuma suíte disponível para o período informado.
+                </Text>
+              </PublicShopSection>
             )}
             {carrinho.length > 0 && (
-              <View style={styles.areaCarrinho}>
-                <Text style={[styles.tituloEvento, { marginBottom: 6 }]}>
-                  Carrinho ({carrinho.length} suíte
-                  {carrinho.length > 1 ? "s" : ""})
-                </Text>
+              <PublicShopSection
+                title={`Carrinho (${carrinho.length} suíte${
+                  carrinho.length > 1 ? "s" : ""
+                })`}
+              >
                 {carrinho.map((item) => (
                   <View key={item.idEventoSuite} style={styles.itemCarrinho}>
                     <View style={{ flex: 1 }}>
@@ -1373,7 +1377,7 @@ export default function Index() {
                     </TouchableOpacity>
                   </View>
                 ))}
-              </View>
+              </PublicShopSection>
             )}
 
             {disponibilidadeBuscada && registrosEventoSuites.length > 0 && (
@@ -1430,9 +1434,9 @@ export default function Index() {
                           <View style={styles.capacidadeSeparadorLinha} />
                         </View>
                       ) : null}
-                    <View
+                    <PublicShopSection
                       style={[
-                        styles.areaIngressos,
+                        styles.suiteCardPublic,
                         (emEdicao || noCarrinho) && styles.suiteSelecionada,
                         index < suitesPublicasOrdenadas.length - 1 &&
                           styles.areaIngressosSpacing,
@@ -1755,7 +1759,7 @@ export default function Index() {
                       )}
 
                       <View style={{ height: 16 }} />
-                    </View>
+                    </PublicShopSection>
                     </React.Fragment>
                   );
                 })}
@@ -1802,34 +1806,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 8,
-    paddingHorizontal: 12,
     marginBottom: 20,
-    maxWidth: 1280,
+    maxWidth: publicTheme.contentMaxWidth,
     width: "100%",
     alignSelf: "center",
   },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
+  scroll: {
+    flexGrow: 1,
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: publicTheme.textPrimary,
     textAlign: "center",
+    marginBottom: 12,
   },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    paddingBottom: 25,
-    borderRadius: 20,
-    flex: 1,
+  suitesListArea: {
+    marginTop: 4,
   },
-  areaIngressos: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    borderRadius: 20,
+  infoSectionPublic: {
+    backgroundColor: publicTheme.primarySoft,
+    borderColor: publicTheme.primary,
+  },
+  suiteCardPublic: {
+    overflow: "visible",
   },
   capacidadeSeparador: {
     flexDirection: "row",
@@ -1929,32 +1932,9 @@ const styles = StyleSheet.create({
     alignItems: Platform.OS === "web" ? "flex-start" : "center",
     marginBottom: 5,
   },
-  imagem: {
-    // width: "100%", // 100% para web, largura da tela para mobile
-    borderRadius: 20,
-    height: 110,
-    width: 180,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
-  },
-  areaEvento: {
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 10,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    paddingBottom: 10,
-    borderRadius: 20,
-    flexDirection: "row",
-  },
   areaStep: {
     justifyContent: "center",
     alignItems: "center",
-  },
-  areaTextoEvento: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: "center",
   },
   tituloEvento: {
     fontSize: 22,
@@ -2066,37 +2046,9 @@ const styles = StyleSheet.create({
     color: colors.cinza,
     marginBottom: 4,
   },
-  areaFiltros: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingHorizontal: 10,
-    paddingTop: 12,
-    paddingBottom: 8,
-    marginHorizontal: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    borderRadius: 20,
-  },
-  areaInfoHospedes: {
-    backgroundColor: "rgba(255, 248, 210, 0.95)",
-    marginTop: 10,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginHorizontal: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 193, 7, 0.35)",
-    width: Platform.OS === "web" ? undefined : "100%",
-    alignSelf: "stretch",
-  },
-  infoHospedesTitulo: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.cinza,
-    marginBottom: 8,
-  },
   infoHospedesItem: {
     fontSize: 14,
-    color: "#5c4a00",
+    color: publicTheme.textSecondary,
     marginBottom: 6,
     lineHeight: 20,
     flexShrink: 1,
@@ -2140,7 +2092,7 @@ const styles = StyleSheet.create({
   },
   suiteSelecionada: {
     borderWidth: 2,
-    borderColor: colors.azul,
+    borderColor: publicTheme.accent,
   },
   areaCotacao: {
     marginTop: 8,
@@ -2174,12 +2126,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.azul,
     marginTop: 4,
-  },
-  areaCarrinho: {
-    backgroundColor: "rgba(255,255,255,0.35)",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 10,
   },
   itemCarrinho: {
     flexDirection: "row",
