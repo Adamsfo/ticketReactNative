@@ -3,18 +3,18 @@ import {
   View,
   Text,
   Image,
-  Button,
   StyleSheet,
   Clipboard,
   TouchableOpacity,
-  ActivityIndicator,
   Modal,
 } from "react-native";
 import { api } from "@/src/lib/api";
 import { apiGeral } from "@/src/lib/geral";
 import { QueryParams } from "@/src/types/geral";
-import colors from "@/src/constants/colors";
 import ModalMsg from "../ModalMsg";
+import { publicTheme } from "@/src/constants/publicTheme";
+import PublicPrimaryButton from "../public/PublicPrimaryButton";
+import formatCurrency from "../FormatCurrency";
 
 type Props = {
   valor: number;
@@ -66,8 +66,12 @@ export default function PaymentPix({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Escaneie o QR Code ou copie o código Pix:
+      <Text style={styles.title}>Pagamento via Pix</Text>
+      <Text style={styles.subtitle}>
+        Valor: {formatCurrency(valor)}
+      </Text>
+      <Text style={styles.hint}>
+        Gere o QR Code ou copie o código Pix para concluir o pagamento.
       </Text>
 
       {/* <TouchableOpacity
@@ -79,42 +83,37 @@ export default function PaymentPix({
         <Text>consulta pagamento teste</Text>
       </TouchableOpacity> */}
 
-      <TouchableOpacity
-        style={[styles.button, styles.buttonSave]}
+      <PublicPrimaryButton
+        label={loading ? "Gerando Pix…" : "Gerar Pix"}
         onPress={() => fetchPixPayment()}
         disabled={loading}
-      >
-        <View style={styles.buttonContent}>
-          {loading && (
-            <ActivityIndicator
-              size="small"
-              color={colors.laranjado}
-              style={{ marginRight: 10 }}
-            />
-          )}
-          <Text style={styles.buttonText}>Gerar Pix</Text>
-        </View>
-      </TouchableOpacity>
+        loading={loading}
+        style={styles.generateBtn}
+      />
 
-      {qrCodeBase64 && (
-        <Image
-          style={styles.qr}
-          source={{ uri: `data:image/png;base64,${qrCodeBase64}` }}
-        />
-      )}
+      {qrCodeBase64 ? (
+        <View style={styles.qrWrap}>
+          <Image
+            style={styles.qr}
+            source={{ uri: `data:image/png;base64,${qrCodeBase64}` }}
+          />
+        </View>
+      ) : null}
       {/* <Text selectable style={styles.code}>
         {copyPasteCode}
       </Text> */}
-      {copyPasteCode && (
-        <Button
-          title="Copiar código Pix"
+      {copyPasteCode ? (
+        <PublicPrimaryButton
+          label="Copiar código Pix"
           onPress={() => {
             Clipboard.setString(copyPasteCode);
             setMsg("Código Pix copiado para a área de transferência!");
             setModalMsg(true);
           }}
+          variant="secondary"
+          style={styles.copyBtn}
         />
-      )}
+      ) : null}
       <Modal visible={modalMsg} transparent animationType="fade">
         <ModalMsg
           onClose={() => {
@@ -128,28 +127,47 @@ export default function PaymentPix({
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, alignItems: "center" },
-  title: { fontSize: 18, marginBottom: 10, fontWeight: "bold" },
-  qr: { width: 200, height: 200, marginBottom: 10 },
+  container: {
+    padding: 8,
+    alignItems: "stretch",
+    width: "100%",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: publicTheme.textPrimary,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: publicTheme.primary,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  hint: {
+    fontSize: 14,
+    color: publicTheme.textSecondary,
+    textAlign: "center",
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  generateBtn: {
+    marginBottom: 16,
+  },
+  copyBtn: {
+    marginTop: 12,
+  },
+  qrWrap: {
+    alignSelf: "center",
+    padding: 12,
+    backgroundColor: publicTheme.surface,
+    borderRadius: publicTheme.radiusMd,
+    borderWidth: 1,
+    borderColor: publicTheme.border,
+    marginBottom: 8,
+  },
+  qr: { width: 220, height: 220 },
   code: { textAlign: "center", marginVertical: 10 },
-  button: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginLeft: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonSave: {
-    backgroundColor: colors.azul,
-  },
-  buttonText: {
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { publicTheme } from "@/src/constants/publicTheme";
 
 type AccordionProps = {
   index: number;
   title: string;
   children: React.ReactNode;
+  variant?: "default" | "public";
 };
 
-const Accordion: React.FC<AccordionProps> = ({ index, title, children }) => {
+const Accordion: React.FC<AccordionProps> = ({
+  index,
+  title,
+  children,
+  variant = "default",
+}) => {
   const [expanded, setExpanded] = useState<boolean>(false);
 
   const toggleAccordion = () => {
@@ -20,6 +27,28 @@ const Accordion: React.FC<AccordionProps> = ({ index, title, children }) => {
       setExpanded(true);
     }
   }, []);
+
+  if (variant === "public") {
+    return (
+      <View style={publicStyles.container}>
+        <TouchableOpacity
+          onPress={toggleAccordion}
+          style={publicStyles.header}
+          activeOpacity={0.85}
+        >
+          <Text style={publicStyles.headerText}>{title}</Text>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={22}
+            color={publicTheme.textSecondary}
+          />
+        </TouchableOpacity>
+        {expanded ? (
+          <View style={publicStyles.content}>{children}</View>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -36,6 +65,37 @@ const Accordion: React.FC<AccordionProps> = ({ index, title, children }) => {
     </View>
   );
 };
+
+const publicStyles = StyleSheet.create({
+  container: {
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: publicTheme.border,
+    borderRadius: publicTheme.radiusMd,
+    backgroundColor: publicTheme.surface,
+    overflow: "hidden",
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: publicTheme.primarySoft,
+  },
+  headerText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: publicTheme.textPrimary,
+    flex: 1,
+    paddingRight: 8,
+  },
+  content: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+    backgroundColor: publicTheme.surface,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {

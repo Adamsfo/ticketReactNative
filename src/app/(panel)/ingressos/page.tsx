@@ -2,19 +2,18 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Text,
   StyleSheet,
-  Platform,
-  Dimensions,
   View,
   ScrollView,
+  useWindowDimensions,
   TouchableOpacity,
   Image,
-  TextInput,
   ActivityIndicator,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
-import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
+import PublicTextField from "@/src/components/public/PublicTextField";
+import { checkoutScreenStyles as cs } from "@/src/components/public/checkoutScreenStyles";
+import { publicTheme } from "@/src/constants/publicTheme";
 import {
   Evento,
   EventoIngresso,
@@ -37,9 +36,9 @@ import { useAuth } from "@/src/contexts_/AuthContext";
 import { apiAuth } from "@/src/lib/auth";
 import { Feather } from "@expo/vector-icons";
 
-const { width } = Dimensions.get("window");
-
 export default function Index() {
+  const { width } = useWindowDimensions();
+  const horizontalPad = width >= 768 ? 20 : 12;
   const endpointApi = "/evento";
   const endpointApiIngressos = "/eventoingresso";
   const { isPDV, user } = useAuth();
@@ -419,369 +418,215 @@ export default function Index() {
     }
   };
 
-  return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
+  const infoSuccess =
+    infoUsuario === "Usuário encontrado." ||
+    infoUsuario === "Usuário cadastrado com sucesso!\n\n";
 
-      <View style={styles.container}>
+  return (
+    <PublicShopLayout>
+      <View style={[styles.page, { paddingHorizontal: horizontalPad }]}>
         <View style={styles.areaStep}>
-          <StepIndicator currentStep={1} />
+          <StepIndicator currentStep={1} variant="public" />
         </View>
-        <Text style={styles.titulo}>Ingressos</Text>
+        <Text style={styles.screenTitle}>Selecione seus ingressos</Text>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          style={{
-            borderRadius: 8,
-            flexGrow: 1,
-            height: "100%",
-          }}
+          contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.areaEvento}>
-            <Image
-              source={{ uri: api.getBaseApi() + "/uploads/" + formData.imagem }}
-              style={styles.imagem}
-            />
-            <View style={styles.areaTextoEvento}>
-              <Text style={styles.tituloEvento}>{formData.nome}</Text>
-              {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
+          <PublicShopSection noPadding style={cs.eventHero}>
+            <View style={cs.eventHeroRow}>
+              <Image
+                source={{
+                  uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                }}
+                style={cs.imagem}
+              />
+              <Text style={cs.tituloEvento}>{formData.nome}</Text>
             </View>
-          </View>
+          </PublicShopSection>
 
           {isPDV && id === 1 && (
-            <View style={styles.areaUsuario}>
-              <View style={styles.grupoInput}>
-                <Text style={styles.label}>CPF</Text>
-                <View style={styles.grupoInput}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="CPF..."
-                    keyboardType="numeric"
-                    value={formDataUsuario.cpf}
-                    onChangeText={(text) => {
-                      const formatted = formatCPF(text);
-                      handleChangeUsuario("cpf", formatted);
-                    }}
-                    onBlur={() => {
-                      if ((formDataUsuario.cpf?.length ?? 0) === 14) {
-                        handleBuscarUsuario();
-                      }
-                    }}
-                  ></TextInput>
-                  <TouchableOpacity
-                    style={{
-                      position: "absolute",
-                      right: 10,
-                      top: 12,
-                    }}
-                    onPress={handleBuscarUsuario}
-                  >
-                    <Feather name="search" size={24} color="#212743" />
-                  </TouchableOpacity>
-                </View>
-                {infoUsuario && (
-                  <Text
-                    style={
-                      infoUsuario === "Usuário encontrado." ||
-                      infoUsuario === "Usuário cadastrado com sucesso!\n\n"
-                        ? styles.labelSucess
-                        : styles.labelError
-                    }
-                  >
-                    {infoUsuario}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.grupoInput}>
-                <Text style={styles.label}>Nome</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nome..."
-                  value={formDataUsuario.nomeCompleto}
-                  onChangeText={(text) =>
-                    (formDataUsuario.id ?? 0) > 0
-                      ? ""
-                      : handleChangeUsuario("nomeCompleto", text.toUpperCase())
-                  }
-                ></TextInput>
-                {errors.nomeCompleto && (
-                  <Text style={styles.labelError}>{errors.nomeCompleto}</Text>
-                )}
-              </View>
-              <View style={styles.grupoInput}>
-                <Text style={styles.label}>Sobrenome</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Sobrenome..."
-                  value={formDataUsuario.sobreNome}
-                  onChangeText={(text) =>
-                    formDataUsuario.id
-                      ? ""
-                      : handleChangeUsuario("sobreNome", text.toUpperCase())
-                  }
-                ></TextInput>
-                {errors.sobreNome && (
-                  <Text style={styles.labelError}>{errors.sobreNome}</Text>
-                )}
-              </View>
-              <View style={styles.grupoInput}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Digite seu Email"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={formDataUsuario.email}
-                  onChangeText={(text) =>
-                    formDataUsuario.id ? "" : handleChangeUsuario("email", text)
-                  }
+            <PublicShopSection title="Dados do comprador (PDV)">
+              <View style={styles.cpfRow}>
+                <PublicTextField
+                  label="CPF"
+                  placeholder="CPF..."
+                  keyboardType="numeric"
+                  style={{ paddingRight: 52 }}
+                  value={formDataUsuario.cpf}
+                  onChangeText={(text) => {
+                    const formatted = formatCPF(text);
+                    handleChangeUsuario("cpf", formatted);
+                  }}
                   onBlur={() => {
-                    if (!isEmail(formDataUsuario.email)) {
-                      formDataUsuario.id
-                        ? ""
-                        : handleChangeUsuario(
-                            "email",
-                            formatCPF(formDataUsuario.email)
-                          );
+                    if ((formDataUsuario.cpf?.length ?? 0) === 14) {
+                      handleBuscarUsuario();
                     }
                   }}
+                  error={!infoSuccess ? infoUsuario || errors.cpf : errors.cpf}
+                  success={infoSuccess ? infoUsuario : undefined}
                 />
-                {errors.email && (
-                  <Text style={styles.labelError}>{errors.email}</Text>
-                )}
+                <TouchableOpacity
+                  style={styles.searchCpfBtn}
+                  onPress={handleBuscarUsuario}
+                  accessibilityLabel="Buscar usuário por CPF"
+                >
+                  <Feather name="search" size={20} color={publicTheme.surface} />
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.grupoInput}>
-                <Text style={styles.label}>Telefone</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Telefone..."
-                  keyboardType="numeric"
-                  value={formDataUsuario.telefone}
-                  onChangeText={(text) => {
-                    const formatted = formatPhone(text);
-                    handleChangeUsuario("telefone", formatted);
-                  }}
-                />
-                {errors.telefone && (
-                  <Text style={styles.labelError}>{errors.telefone}</Text>
-                )}
-              </View>
+              <PublicTextField
+                label="Nome"
+                placeholder="Nome..."
+                value={formDataUsuario.nomeCompleto}
+                onChangeText={(text) => {
+                  if ((formDataUsuario.id ?? 0) > 0) return;
+                  handleChangeUsuario("nomeCompleto", text.toUpperCase());
+                }}
+                error={errors.nomeCompleto}
+              />
+              <PublicTextField
+                label="Sobrenome"
+                placeholder="Sobrenome..."
+                value={formDataUsuario.sobreNome}
+                onChangeText={(text) => {
+                  if (formDataUsuario.id) return;
+                  handleChangeUsuario("sobreNome", text.toUpperCase());
+                }}
+                error={errors.sobreNome}
+              />
+              <PublicTextField
+                label="Email"
+                placeholder="Digite seu Email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={formDataUsuario.email}
+                onChangeText={(text) => {
+                  if (formDataUsuario.id) return;
+                  handleChangeUsuario("email", text);
+                }}
+                onBlur={() => {
+                  if (!isEmail(formDataUsuario.email)) {
+                    if (!formDataUsuario.id) {
+                      handleChangeUsuario(
+                        "email",
+                        formatCPF(formDataUsuario.email),
+                      );
+                    }
+                  }
+                }}
+                error={errors.email}
+              />
+              <PublicTextField
+                label="Telefone"
+                placeholder="Telefone..."
+                keyboardType="numeric"
+                value={formDataUsuario.telefone}
+                onChangeText={(text) => {
+                  const formatted = formatPhone(text);
+                  handleChangeUsuario("telefone", formatted);
+                }}
+                error={errors.telefone}
+              />
 
               {formDataUsuario.id === 0 && (
-                <View
-                  style={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
+                <TouchableOpacity
+                  style={styles.newButton}
+                  onPress={() => handleCadastrarUsuario(formDataUsuario)}
                 >
-                  <TouchableOpacity
-                    style={[
-                      styles.newButton,
-                      {
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      },
-                    ]}
-                    onPress={() => handleCadastrarUsuario(formDataUsuario)}
-                  >
-                    {loading && (
-                      <ActivityIndicator
-                        size="small"
-                        color={colors.laranjado}
-                        style={{ marginRight: 8 }}
-                      />
-                    )}
-                    <Text style={styles.newButtonText}>Cadastrar Usuário</Text>
-                  </TouchableOpacity>
-                </View>
+                  {loading && (
+                    <ActivityIndicator
+                      size="small"
+                      color={publicTheme.surface}
+                      style={{ marginRight: 8 }}
+                    />
+                  )}
+                  <Text style={styles.newButtonText}>Cadastrar Usuário</Text>
+                </TouchableOpacity>
               )}
-            </View>
+            </PublicShopSection>
           )}
 
-          <View style={styles.area}>
+          <PublicShopSection title="Modalidades disponíveis">
             {tipoIngressoDescricoes.map((descricao, index) => (
               <Accordion
                 index={index}
                 key={index}
                 title={descricao || "Descrição indisponível"}
+                variant="public"
               >
                 {registrosEventoIngressos
                   .filter(
-                    (ingresso) => ingresso.TipoIngresso_descricao === descricao
+                    (ingresso) => ingresso.TipoIngresso_descricao === descricao,
                   )
-                  .map((ingresso, idx) => (
-                    // <Text key={idx}>{ingresso.nome}</Text>
-                    <View key={ingresso.id} style={{ flexDirection: "column" }}>
-                      <CounterTicket data={ingresso} />
+                  .map((ingresso) => (
+                    <View key={ingresso.id}>
+                      <CounterTicket data={ingresso} variant="public" />
                     </View>
                   ))}
               </Accordion>
             ))}
-            <View style={{ height: 100 }}></View>
-          </View>
+          </PublicShopSection>
+          <View style={{ height: 24 }} />
         </ScrollView>
       </View>
       {modalVisible && (
         <ModalResumoIngresso step={1} UsuarioVenda={formDataUsuario} />
       )}
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    marginBottom: 20,
-    height: 500,
+    paddingTop: 8,
   },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
-    textAlign: "center",
-  },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    paddingBottom: 25,
-    borderRadius: 20,
-    flex: 1,
-  },
-  areaUsuario: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    // paddingBottom: 25,
-    borderRadius: 20,
-    height: 550,
-    // flex: 1,
-  },
-  areaTitulo: {
-    fontSize: 22,
-    // fontWeight: "bold",
-    marginBottom: 30,
-    color: "rgb(0, 146, 250)",
-  },
-  label: {
-    // fontSize: 16,
-    color: colors.zinc,
-    marginBottom: 4,
-    // flexBasis: "45%",
-  },
-  labelData: {
-    // fontSize: 16,
-    color: colors.zinc,
-    marginBottom: 4,
-    width: 140,
-    textAlign: "right",
-    // flexBasis: "45%",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.gray,
-    borderRadius: 8,
-    marginBottom: 18,
-    paddingHorizontal: 8,
-    paddingTop: 14,
-    paddingBottom: 14,
-    fontSize: 16,
-    width: Platform.OS === "web" ? (width <= 1000 ? "100%" : "100%") : "100%",
-  },
-  labelError: {
-    color: colors.red,
-    marginTop: -18,
-    marginBottom: 18,
-  },
-  eventDetails: {
-    flexWrap: "wrap",
-    // justifyContent: "center",
-    width: Platform.OS === "web" ? width - 432 : -32, // Ajusta a largura conforme a tela
-    // width: width - 32, // Ajusta a largura conforme a tela
-  },
-  eventDetailItem: {
-    flexDirection: "row",
-    alignItems: Platform.OS === "web" ? "flex-start" : "center",
-    marginBottom: 5,
-  },
-  imagem: {
-    // width: "100%", // 100% para web, largura da tela para mobile
-    borderRadius: 20,
-    height: 110,
-    width: 180,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
-  },
-  areaEvento: {
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 10,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    paddingBottom: 10,
-    borderRadius: 20,
-    flexDirection: "row",
+  scrollContent: {
+    paddingBottom: 32,
+    gap: 4,
   },
   areaStep: {
-    justifyContent: "center",
-    alignItems: "center",
+    marginBottom: 12,
   },
-  areaTextoEvento: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: "center",
-  },
-  tituloEvento: {
+  screenTitle: {
     fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "left",
-    flexShrink: 1,
-    flexWrap: "wrap",
+    fontWeight: "800",
+    color: publicTheme.textPrimary,
+    textAlign: "center",
+    marginBottom: 12,
   },
-  enderecoEvento: {
-    fontSize: 16,
-    textAlign: "left",
-    flexShrink: 1,
-    flexWrap: "wrap",
+  cpfRow: {
+    position: "relative",
+    marginBottom: 8,
   },
-  grupoInput: {
-    alignItems: "flex-start",
-    width: "100%",
-  },
-  labelSucess: {
-    color: colors.green,
-    marginTop: -18,
-    marginBottom: 18,
+  searchCpfBtn: {
+    position: "absolute",
+    right: 8,
+    top: 34,
+    width: 44,
+    height: 44,
+    borderRadius: publicTheme.radiusSm,
+    backgroundColor: publicTheme.accent,
+    alignItems: "center",
+    justifyContent: "center",
   },
   newButton: {
-    backgroundColor: colors.azul,
-    borderRadius: 5,
-    padding: 10,
-    marginTop: 10,
-    width: Platform.OS === "web" ? 200 : 100,
+    backgroundColor: publicTheme.accent,
+    borderRadius: publicTheme.radiusMd,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    alignSelf: "center",
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 200,
   },
   newButtonText: {
-    color: "white",
-    fontWeight: "bold",
+    color: publicTheme.surface,
+    fontWeight: "700",
+    fontSize: 15,
   },
 });

@@ -11,10 +11,10 @@ import {
   ActivityIndicator,
   Modal,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import { checkoutScreenStyles as cs } from "@/src/components/public/checkoutScreenStyles";
+import { publicTheme } from "@/src/constants/publicTheme";
 import { Evento, Transacao } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useRoute } from "@react-navigation/native";
@@ -387,19 +387,15 @@ export default function ConferenciaHospedagemPage() {
   }
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-
-      <View style={styles.container}>
-        <View style={styles.areaStep}>
-          <StepIndicatorHospedagem currentStep={2} />
+    <PublicShopLayout>
+      <View style={cs.page}>
+        <View style={cs.areaStep}>
+          <StepIndicatorHospedagem currentStep={2} variant="public" />
         </View>
-        <Text style={styles.titulo}>Conferência da hospedagem</Text>
-        <Text style={styles.subtitulo}>{formData.nome}</Text>
+        <Text style={cs.screenTitle}>Conferência da hospedagem</Text>
+        <Text style={[styles.subtitulo, { color: publicTheme.textSecondary, textAlign: "center", marginBottom: 12 }]}>
+          {formData.nome}
+        </Text>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -586,14 +582,14 @@ export default function ConferenciaHospedagemPage() {
           <ModalMsg onClose={() => setVisibleMsg(false)} msg={msgApi} />
         </TouchableOpacity>
       </Modal>
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
+    paddingTop: 0,
     marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
     marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
     marginBottom: 20,

@@ -10,10 +10,11 @@ import {
   FlatList,
   TextInput,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
+import { checkoutScreenStyles as cs } from "@/src/components/public/checkoutScreenStyles";
+import { publicTheme } from "@/src/constants/publicTheme";
 import {
   Evento,
   EventoIngresso,
@@ -334,18 +335,12 @@ export default function Index() {
     ) + Number(registroTransacao?.taxaServicoDesconto ?? 0);
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-
-      <View style={styles.container}>
-        <View style={styles.areaStep}>
-          <StepIndicator currentStep={2} />
+    <PublicShopLayout>
+      <View style={cs.page}>
+        <View style={cs.areaStep}>
+          <StepIndicator currentStep={2} variant="public" />
         </View>
-        <Text style={styles.titulo}>Conferência e atribuição</Text>
+        <Text style={cs.screenTitle}>Conferência e atribuição</Text>
 
         <FlatList
           data={registrosIngressoTransacao}
@@ -353,46 +348,36 @@ export default function Index() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <>
-              <View style={styles.areaEvento}>
-                <Image
-                  source={{
-                    uri: api.getBaseApi() + "/uploads/" + formData.imagem,
-                  }}
-                  style={styles.imagem}
-                />
-                <View style={styles.areaTextoEvento}>
-                  <Text style={styles.tituloEvento}>{formData.nome}</Text>
-                  {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
+              <PublicShopSection noPadding style={cs.eventHero}>
+                <View style={cs.eventHeroRow}>
+                  <Image
+                    source={{
+                      uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                    }}
+                    style={cs.imagem}
+                  />
+                  <Text style={cs.tituloEvento}>{formData.nome}</Text>
                 </View>
-              </View>
+              </PublicShopSection>
 
-              <View style={styles.areaCupomDesconto}>
-                <Text style={{ fontWeight: 700 }}>Cupom de Desconto</Text>
-                <View style={{ flexDirection: "row", marginTop: 10 }}>
+              <PublicShopSection title="Cupom de desconto">
+                <View style={cs.cupomRow}>
                   <TextInput
-                    style={styles.input}
+                    style={cs.cupomInput}
                     multiline={Platform.OS === "web" ? false : true}
                     placeholder="Nome do desconto..."
                     keyboardType="default"
                     value={cupomDesconto}
                     onChangeText={(text) => setCupomDesconto(text)}
-                  ></TextInput>
+                    placeholderTextColor={publicTheme.textMuted}
+                  />
                   <TouchableOpacity
-                    style={{
-                      backgroundColor: colors.azul,
-                      padding: 10,
-                      borderRadius: 8,
-                      alignItems: "center",
-                      height: 50,
-                      justifyContent: "center",
-                    }}
+                    style={cs.cupomBtn}
                     onPress={async () => {
                       await processarCupomDesconto();
                     }}
                   >
-                    <Text style={{ color: colors.branco, fontWeight: "bold" }}>
-                      Aplicar Cupom
-                    </Text>
+                    <Text style={cs.cupomBtnText}>Aplicar</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -407,10 +392,9 @@ export default function Index() {
                     {infoCupomDesconto}
                   </Text>
                 )}
-              </View>
+              </PublicShopSection>
 
-              <View style={styles.areaResumo}>
-                <Text style={styles.titulo}>Resumo</Text>
+              <PublicShopSection title="Resumo da compra">
                 <View>
                   <FlatList<IngressoAgrupado>
                     data={ingressosAgrupados}
@@ -495,27 +479,19 @@ export default function Index() {
                       />
                     </>
                   ) : null}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-                      Total
-                    </Text>
-                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+                  <View style={cs.totalRow}>
+                    <Text style={cs.totalLabel}>Total</Text>
+                    <Text style={cs.totalValue}>
                       {formatCurrency(registroTransacao?.valorTotal ?? 0)}
                     </Text>
                   </View>
                 </View>
-              </View>
+              </PublicShopSection>
             </>
           }
           renderItem={({ item }) => (
-            <View style={styles.ticketContainer}>
-              <Text style={styles.ticketTitle}>
+            <View style={cs.ticketContainer}>
+              <Text style={cs.ticketTitle}>
                 {/* {item.Ingresso_Evento?.nome}{" "} */}
                 {item.Ingresso_EventoIngresso?.TipoIngresso?.descricao}{" "}
                 {item.Ingresso_EventoIngresso?.nome}
@@ -543,7 +519,7 @@ export default function Index() {
           IngressoTransacao={registrosIngressoTransacao}
         />
       )}
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
@@ -567,38 +543,6 @@ function valorLinhaResumoComTaxa(item: IngressoLinhaResumo): string {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    // marginBottom: 20,
-    height: 500,
-  },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
-    textAlign: "center",
-  },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    paddingBottom: 25,
-    borderRadius: 20,
-    flex: 1,
-  },
-  areaTitulo: {
-    fontSize: 22,
-    marginBottom: 30,
-    color: "rgb(0, 146, 250)",
-  },
   label: {
     color: colors.zinc,
     marginBottom: 4,
@@ -629,81 +573,10 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   labelSucesso: {
-    color: colors.greenEscuro,
-    marginTop: -18,
-    marginBottom: 18,
-  },
-  eventDetails: {
-    flexWrap: "wrap",
-    width: Platform.OS === "web" ? width - 432 : -32,
-  },
-  eventDetailItem: {
-    flexDirection: "column",
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-  },
-  imagem: {
-    // width: "100%",
-    borderRadius: 20,
-    height: 110,
-    width: 180,
-    resizeMode: "cover",
-  },
-  areaEvento: {
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderRadius: 20,
-    flexDirection: "row",
-    justifyContent: "center",
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-  },
-  areaCupomDesconto: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingTop: 15,
-    paddingRight: 15,
-    paddingLeft: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    borderRadius: 20,
-    // flex: 1,
-  },
-  areaStep: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  areaResumo: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    borderRadius: 20,
-    flex: 1,
-  },
-  ticketContainer: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: colors.branco,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 5,
-  },
-  ticketTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
+    color: publicTheme.success,
+    marginTop: 8,
+    marginBottom: 4,
+    fontSize: 14,
   },
   inputCard: {
     marginBottom: 15,
@@ -711,23 +584,5 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     marginBottom: 5,
-  },
-  areaTextoEvento: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: "center",
-  },
-  tituloEvento: {
-    fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "left",
-    flexShrink: 1,
-    flexWrap: "wrap",
-  },
-  enderecoEvento: {
-    fontSize: 16,
-    textAlign: "left",
-    flexShrink: 1,
-    flexWrap: "wrap",
   },
 });

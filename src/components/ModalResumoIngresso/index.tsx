@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import colors from "@/src/constants/colors";
+import { publicTheme } from "@/src/constants/publicTheme";
 import formatCurrency from "../FormatCurrency";
 import { useCart } from "@/src/contexts_/CartContext";
 import { useNavigation } from "@react-navigation/native";
@@ -532,35 +533,36 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     width: "100%",
+    justifyContent: "flex-end",
   },
   container: {
-    flex: 1,
-    backgroundColor: "#FFF",
-    // borderTopLeftRadius: 10,
-    // borderTopRightRadius: 10,
-    borderRadius: 20,
-    paddingBottom: 5,
-    shadowColor: "#000",
+    backgroundColor: publicTheme.surface,
+    borderRadius: publicTheme.radiusLg,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderWidth: 1,
+    borderColor: publicTheme.border,
+    shadowColor: publicTheme.shadow,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: -4,
     },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 10,
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 12,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   area: {
-    flex: 1,
     alignItems: "center",
+    width: "100%",
   },
   title: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.cinza,
+    fontSize: 17,
+    fontWeight: "800",
+    color: publicTheme.textPrimary,
   },
   modal: {
     position: "absolute",
@@ -586,10 +588,10 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   buttonClose: {
-    backgroundColor: "rgb(211, 211, 211)",
+    backgroundColor: publicTheme.border,
   },
   buttonSave: {
-    backgroundColor: colors.azul,
+    backgroundColor: publicTheme.accent,
   },
   buttonText: {
     color: "#FFF",

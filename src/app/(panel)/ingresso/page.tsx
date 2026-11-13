@@ -1,14 +1,13 @@
 import React, { useCallback, useState } from "react";
-import { Text, StyleSheet, Platform, View, ScrollView } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
-import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import { Text, StyleSheet, View, ScrollView } from "react-native";
 import { Ingresso, QueryParams } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
 import CardIngresso from "@/src/components/CardIngresso";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
+import { publicTheme } from "@/src/constants/publicTheme";
 
 export default function Index() {
   const endpointApi = "/ingresso";
@@ -29,53 +28,36 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       getRegistros({ filters: { qrcode } });
-    }, [qrcode])
+    }, [qrcode]),
   );
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.titulo}>Ingresso</Text>
-          <View style={styles.area}>
-            {registro && <CardIngresso item={registro} />}
-          </View>
-        </ScrollView>
-      </View>
-    </LinearGradient>
+    <PublicShopLayout>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.titulo}>Seu ingresso</Text>
+        <PublicShopSection>
+          {registro ? <CardIngresso item={registro} /> : null}
+        </PublicShopSection>
+      </ScrollView>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-  },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingBottom: 50,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 48,
+    maxWidth: 1280,
+    width: "100%",
+    alignSelf: "center",
   },
   titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 16,
     textAlign: "center",
-  },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingHorizontal: 5,
-    paddingVertical: 15,
-    borderRadius: 20,
-    // maxWidth: 465,
-    // width: "90%",
+    color: publicTheme.textPrimary,
   },
 });

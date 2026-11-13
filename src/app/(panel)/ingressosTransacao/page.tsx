@@ -1,24 +1,12 @@
 import React, { useCallback, useState } from "react";
-import {
-  Text,
-  StyleSheet,
-  Platform,
-  View,
-  ScrollView,
-  FlatList,
-  Dimensions,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
-import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import { Text, StyleSheet, View, FlatList, useWindowDimensions } from "react-native";
 import { Ingresso, IngressoTransacao, QueryParams } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
 import CardIngresso from "@/src/components/CardIngresso";
-
-const { width } = Dimensions.get("window");
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import { publicTheme } from "@/src/constants/publicTheme";
 
 export default function Index() {
   const endpointApi = "/ingresso";
@@ -27,24 +15,16 @@ export default function Index() {
   >([]);
   const [registrosIngresso, setRegistrosIngresso] = useState<Ingresso[]>([]);
   const route = useRoute();
+  const { width } = useWindowDimensions();
 
   const { idTransacao } = route.params as { idTransacao: number };
-
-  // const getRegistros = async (params: QueryParams) => {
-  //   const response = await apiGeral.getResource<Ingresso>(endpointApi, {
-  //     ...params,
-  //     pageSize: 200,
-  //   });
-  //   const registrosData = response.data ?? [];
-  //   setRegistro(registrosData[0]);
-  // };
 
   useFocusEffect(
     useCallback(() => {
       getIngressoTransacao({
         filters: { idTransacao: idTransacao },
       });
-    }, [idTransacao])
+    }, [idTransacao]),
   );
 
   const getIngressoTransacao = async (params: QueryParams) => {
@@ -53,11 +33,10 @@ export default function Index() {
       {
         ...params,
         pageSize: 200,
-      }
+      },
     );
     const registrosData = response.data ?? [];
 
-    // Buscar todos os ingressos em paralelo pelos ids
     const ingressosPromises = registrosData.map(async (transacao) => {
       const response = await apiGeral.getResource<Ingresso>(endpointApi, {
         filters: { id: transacao.idIngresso },
@@ -69,78 +48,77 @@ export default function Index() {
     });
 
     const ingressos = (await Promise.all(ingressosPromises)).filter(
-      (ingresso): ingresso is Ingresso => ingresso !== null
+      (ingresso): ingresso is Ingresso => ingresso !== null,
     );
     setRegistrosIngresso(ingressos);
 
     setRegistrosIngressoTransacao(registrosData);
   };
 
+  const numColumns = width >= 900 ? 2 : 1;
+
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
+    <PublicShopLayout>
       <View style={styles.container}>
-        <Text style={styles.title}>Ingressos da Compra {idTransacao}</Text>
+        <Text style={styles.title}>Ingressos da compra #{idTransacao}</Text>
+        <Text style={styles.subtitle}>
+          {registrosIngresso.length}{" "}
+          {registrosIngresso.length === 1 ? "ingresso" : "ingressos"}
+        </Text>
 
         <FlatList
-          key={`grid-${width > 600 ? "3" : "1"}`}
+          key={`grid-${numColumns}`}
           data={registrosIngresso}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          numColumns={width > 600 ? 3 : 1}
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrap : undefined}
           renderItem={({ item }) => (
             <CardIngresso item={item} getRegistros={getIngressoTransacao} />
           )}
+          ListEmptyComponent={
+            <Text style={styles.empty}>Carregando ingressos…</Text>
+          }
         />
       </View>
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 5,
-    paddingTop: 10,
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    maxWidth: 1280,
+    width: "100%",
+    alignSelf: "center",
   },
   list: {
     gap: 16,
+    paddingBottom: 32,
+  },
+  columnWrap: {
+    gap: 16,
+    justifyContent: "center",
   },
   title: {
-    fontSize: 24,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "800",
     textAlign: "center",
-    marginBottom: 24,
+    color: publicTheme.textPrimary,
+    marginBottom: 6,
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingBottom: 50,
-  },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
+  subtitle: {
+    fontSize: 14,
     textAlign: "center",
+    color: publicTheme.textSecondary,
+    marginBottom: 20,
   },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingHorizontal: 5,
-    paddingVertical: 15,
-    borderRadius: 20,
-    // maxWidth: 465,
-    // width: "90%",
+  empty: {
+    textAlign: "center",
+    color: publicTheme.textMuted,
+    marginTop: 24,
   },
 });

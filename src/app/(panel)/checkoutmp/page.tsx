@@ -1,50 +1,34 @@
-import React, { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { StyleSheet, View } from "react-native";
 import { initMercadoPago } from "@mercadopago/sdk-react";
 import CheckoutMercadoPago from "@/src/components/CheckoutMercadoPago";
-import { useRoute } from "@react-navigation/native";
-import { Transacao } from "@/src/types/geral";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
 
 export default function Index() {
-  //Jango
-  // initMercadoPago(process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "", {
-  //   locale: "pt-BR",
-  // });
-
   initMercadoPago(process.env.EXPO_PUBLIC_MP_PUBLIC_KEY || "", {
     locale: "pt-BR",
   });
 
-  const route = useRoute();
-
-  const { idEvento, email, registroTransacao } = route.params as {
-    idEvento: number;
-    email?: string;
-    registroTransacao: Transacao;
-  };
-
-  // useEffect(() => {
-  //   if (registroTransacao) {
-  //     try {
-  //       const parsed = JSON.parse(
-  //         decodeURIComponent(registroTransacao as string)
-  //       );
-  //       setRegistroTransacao(parsed);
-  //     } catch (e) {
-  //       console.error("Erro ao fazer parse do registroTransacao:", e);
-  //     }
-  //   }
-  // }, [registroTransacao]);
-
   return (
-    <View style={styles.container}>
-      <CheckoutMercadoPago />
-    </View>
+    <PublicShopLayout>
+      <View style={styles.container}>
+        <PublicShopSection title="Pagamento com cartão">
+          <CheckoutMercadoPago />
+        </PublicShopSection>
+      </View>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 32,
+    maxWidth: 720,
+    width: "100%",
+    alignSelf: "center",
   },
 });

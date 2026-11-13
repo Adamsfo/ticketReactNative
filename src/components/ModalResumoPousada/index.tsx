@@ -188,12 +188,13 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     width: "100%",
+    justifyContent: "flex-end",
   },
   container: {
-    flex: 1,
     backgroundColor: "#FFF",
     borderRadius: 20,
-    paddingBottom: 5,
+    paddingTop: 12,
+    paddingBottom: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
@@ -201,8 +202,8 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   area: {
-    flex: 1,
     alignItems: "center",
+    width: "100%",
   },
   title: {
     fontSize: 16,

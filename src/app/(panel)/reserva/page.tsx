@@ -12,13 +12,11 @@ import {
   View,
   Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "expo-router";
 import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import StatusBarPage from "@/src/components/StatusBarPage";
-import BarMenu from "@/src/components/BarMenu";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import colors from "@/src/constants/colors";
 import formatCurrency from "@/src/components/FormatCurrency";
@@ -585,15 +583,9 @@ export default function ReservaPublicaPage() {
     Math.abs(valorDestaCobranca - valorTotalHospedagem) > 0.009;
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1 }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-
+    <PublicShopLayout>
       <View style={styles.container}>
-        <StepIndicatorHospedagem currentStep={3} />
+        <StepIndicatorHospedagem currentStep={3} variant="public" />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
@@ -911,14 +903,18 @@ export default function ReservaPublicaPage() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
+    paddingTop: 8,
+    paddingHorizontal: 12,
+    maxWidth: 1280,
+    width: "100%",
+    alignSelf: "center",
     marginHorizontal: Platform.OS === "web" ? (width <= 1000 ? 8 : "10%") : 8,
   },
   scroll: { paddingBottom: 24 },

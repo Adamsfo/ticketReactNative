@@ -8,14 +8,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useRoute } from "@react-navigation/native";
 import { formatInTimeZone } from "date-fns-tz";
 import { parseISO } from "date-fns";
-import StatusBarPage from "@/src/components/StatusBarPage";
-import BarMenu from "@/src/components/BarMenu";
 import colors from "@/src/constants/colors";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import { publicTheme } from "@/src/constants/publicTheme";
 import formatCurrency from "@/src/components/FormatCurrency";
 import {
   getReservaConfirmada,
@@ -363,13 +362,7 @@ export default function ReservaConfirmadaPage() {
   );
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" backgroundColor={colors.branco} />
-      <BarMenu />
-
+    <PublicShopLayout>
       <View style={styles.container}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -423,15 +416,18 @@ export default function ReservaConfirmadaPage() {
           </View>
         </ScrollView>
       </View>
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
+    paddingTop: 12,
     paddingHorizontal: Platform.OS === "web" ? (width <= 1000 ? 12 : 24) : 12,
+    maxWidth: publicTheme.contentMaxWidth,
+    width: "100%",
+    alignSelf: "center",
   },
   scrollContent: {
     flexGrow: 1,

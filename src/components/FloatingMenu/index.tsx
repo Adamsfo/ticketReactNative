@@ -17,7 +17,12 @@ import {
 } from "react-native";
 import { FAB } from "react-native-paper";
 
-const FloatingMenu = ({ color }: { color?: string }) => {
+type FloatingMenuProps = {
+  color?: string;
+  embedded?: boolean;
+};
+
+const FloatingMenu = ({ color, embedded }: FloatingMenuProps) => {
   const [open, setOpen] = React.useState(false);
   const toggleMenu = () => setOpen(!open);
   // const [usuario, setUsuario] = React.useState<Usuario>({} as Usuario);
@@ -65,7 +70,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
   return (
     <>
       <TouchableOpacity
-        style={styles.container}
+        style={embedded ? styles.containerEmbedded : styles.container}
         onPress={toggleMenu}
         activeOpacity={0.5}
       >
@@ -81,7 +86,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             </Text>
             <Feather
               name="user"
-              size={36}
+              size={embedded ? 28 : 36}
               color={color ? color : colors.roxo}
             />
           </View>
@@ -91,7 +96,9 @@ const FloatingMenu = ({ color }: { color?: string }) => {
           <View style={styles.containerUsuario}>
             <Text
               style={[
-                styles.tituloMenuUsuarioLogado,
+                embedded
+                  ? styles.tituloMenuUsuarioLogadoEmbedded
+                  : styles.tituloMenuUsuarioLogado,
                 { color: color ? color : colors.roxo },
               ]}
               numberOfLines={1}
@@ -100,7 +107,7 @@ const FloatingMenu = ({ color }: { color?: string }) => {
             </Text>
             <Feather
               name="user"
-              size={36}
+              size={embedded ? 28 : 36}
               color={color ? color : colors.roxo}
             />
           </View>
@@ -169,6 +176,9 @@ const styles = StyleSheet.create({
     right: 10,
     zIndex: 10000, // Garantir que o contêiner fique acima de outros elementos
   },
+  containerEmbedded: {
+    zIndex: 10000,
+  },
   containerUsuario: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -184,6 +194,13 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontWeight: "bold",
     marginRight: 15,
+  },
+  tituloMenuUsuarioLogadoEmbedded: {
+    fontSize: 14,
+    maxWidth: 140,
+    textAlign: "right",
+    fontWeight: "600",
+    marginRight: 8,
   },
   overlay: {
     position: "absolute",

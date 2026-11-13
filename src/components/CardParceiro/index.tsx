@@ -1,20 +1,14 @@
 import React from "react";
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Image,
   Platform,
   ImageSourcePropType,
 } from "react-native";
-import { Evento } from "@/src/types/geral";
-import { format, parseISO } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
-import formatCurrency from "../FormatCurrency";
-import { api } from "@/src/lib/api";
-import { CalendarIcon, MapPinIcon } from "lucide-react-native";
 import { logEvent } from "../GoogleAnalytics/analytics";
+import { publicTheme } from "@/src/constants/publicTheme";
 
 interface CardParceiroProps {
   imagem: ImageSourcePropType;
@@ -56,14 +50,23 @@ export default function CardParceiro({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: publicTheme.surface,
+    borderRadius: publicTheme.radiusLg,
     margin: 8,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: publicTheme.border,
+    ...Platform.select({
+      web: {
+        shadowColor: publicTheme.shadow,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 1,
+        shadowRadius: 16,
+      },
+      default: {
+        elevation: 3,
+      },
+    }),
     flex: 1,
   },
   imageContainer: {

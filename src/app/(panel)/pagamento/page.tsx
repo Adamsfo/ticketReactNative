@@ -1,17 +1,16 @@
 import React, { useCallback, useState } from "react";
 import {
   Text,
-  StyleSheet,
   Platform,
   Dimensions,
   View,
   FlatList,
   Image,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
+import { checkoutScreenStyles as cs } from "@/src/components/public/checkoutScreenStyles";
 import {
   Evento,
   EventoIngresso,
@@ -182,22 +181,16 @@ export default function Index() {
     ) + Number(registroTransacao?.taxaServicoDesconto ?? 0);
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-
-      <View style={styles.container}>
-        <View style={styles.areaStep}>
+    <PublicShopLayout>
+      <View style={cs.page}>
+        <View style={cs.areaStep}>
           {isHospedagem ? (
-            <StepIndicatorHospedagem currentStep={3} />
+            <StepIndicatorHospedagem currentStep={3} variant="public" />
           ) : (
-            <StepIndicator currentStep={3} />
+            <StepIndicator currentStep={3} variant="public" />
           )}
         </View>
-        <Text style={styles.titulo}>Pagamento</Text>
+        <Text style={cs.screenTitle}>Pagamento</Text>
 
         <FlatList
           data={registroTransacao ? [registroTransacao] : []}
@@ -205,39 +198,34 @@ export default function Index() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={() => (
             <View>
-              <View
-                style={[
-                  styles.areaEvento,
-                  isHospedagem && styles.areaEventoHospedagem,
-                ]}
-              >
-                <Image
-                  source={{
-                    uri: api.getBaseApi() + "/uploads/" + formData.imagem,
-                  }}
-                  style={styles.imagem}
-                />
+              <PublicShopSection noPadding style={cs.eventHero}>
                 <View
-                  style={[
-                    styles.areaTextoEvento,
-                    isHospedagem && styles.areaTextoEventoHospedagem,
-                  ]}
+                  style={
+                    isHospedagem
+                      ? cs.eventHeroRowHospedagem
+                      : cs.eventHeroRow
+                  }
                 >
+                  <Image
+                    source={{
+                      uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+                    }}
+                    style={cs.imagem}
+                  />
                   <Text
-                    style={[
-                      styles.tituloEvento,
-                      isHospedagem && styles.tituloEventoHospedagem,
-                    ]}
+                    style={
+                      isHospedagem
+                        ? cs.tituloEventoHospedagem
+                        : cs.tituloEvento
+                    }
                     numberOfLines={isHospedagem ? 1 : undefined}
                   >
                     {formData.nome}
                   </Text>
-                  {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
                 </View>
-              </View>
+              </PublicShopSection>
 
-              <View style={styles.areaResumo}>
-                <Text style={styles.titulo}>Resumo</Text>
+              <PublicShopSection title="Resumo financeiro">
                 {isHospedagem && resumoHospedagem ? (
                   <ResumoPagamentoHospedagem
                     resumo={resumoHospedagem}
@@ -333,49 +321,31 @@ export default function Index() {
                           />
                         </>
                       ) : null}
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-                          Total
-                        </Text>
-                        <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+                      <View style={cs.totalRow}>
+                        <Text style={cs.totalLabel}>Total</Text>
+                        <Text style={cs.totalValue}>
                           {formatCurrency(registroTransacao?.valorTotal ?? 0)}
                         </Text>
                       </View>
                     </View>
                   </>
                 )}
-              </View>
+              </PublicShopSection>
+
+              <PublicShopSection title="Forma de pagamento">
+                <CheckoutMercadoPago />
+                <SimularPagamentoDev
+                  idTransacao={idTransacaoAtual ?? registroTransacao?.id}
+                  tipoCompra={tipoCompra}
+                />
+              </PublicShopSection>
             </View>
           )}
-          renderItem={() => (
-            <View
-              style={[
-                styles.eventDetailItem,
-                {
-                  paddingBottom: 100,
-                  height: "100%",
-                  width: "100%",
-                  borderRadius: 20,
-                },
-              ]}
-            >
-              <CheckoutMercadoPago />
-              <SimularPagamentoDev
-                idTransacao={idTransacaoAtual ?? registroTransacao?.id}
-                tipoCompra={tipoCompra}
-              />
-            </View>
-          )}
+          renderItem={() => null}
+          ListFooterComponent={<View style={{ height: 48 }} />}
         />
       </View>
-      {/* {modalVisible && <ModalResumoIngresso step={2} />} */}
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
@@ -398,170 +368,3 @@ function valorLinhaResumoComTaxa(item: IngressoLinhaResumo): string {
   return (item.qtde * (precoUnit + taxaUnit)).toFixed(2);
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    // marginBottom: 20,
-    // height: 500,
-  },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
-    textAlign: "center",
-  },
-  area: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 0,
-    paddingBottom: 25,
-    borderRadius: 20,
-    flex: 1,
-  },
-  areaTitulo: {
-    fontSize: 22,
-    marginBottom: 30,
-    color: "rgb(0, 146, 250)",
-  },
-  label: {
-    color: colors.zinc,
-    marginBottom: 4,
-  },
-  labelData: {
-    color: colors.zinc,
-    marginBottom: 4,
-    width: 140,
-    textAlign: "right",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.gray,
-    borderRadius: 8,
-    marginBottom: 18,
-    paddingHorizontal: 8,
-    paddingTop: 14,
-    paddingBottom: 14,
-    fontSize: 16,
-  },
-  labelError: {
-    color: colors.red,
-    marginTop: -18,
-    marginBottom: 18,
-  },
-  eventDetails: {
-    flexWrap: "wrap",
-    width: Platform.OS === "web" ? width - 432 : -32,
-  },
-  eventDetailItem: {
-    flexDirection: "column",
-    paddingRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    paddingLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-  },
-  imagem: {
-    // width: "100%",
-    borderRadius: 20,
-    height: 110,
-    width: 180,
-    resizeMode: "cover",
-  },
-  areaEvento: {
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderRadius: 20,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  areaEventoHospedagem: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    gap: 12,
-  },
-  areaStep: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  areaResumo: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 5,
-    paddingLeft: 5,
-    paddingTop: 15,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "30%") : 0,
-    borderRadius: 20,
-    flex: 1,
-  },
-  ticketContainer: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: colors.branco,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 5,
-  },
-  ticketTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  inputCard: {
-    marginBottom: 15,
-  },
-  inputLabel: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  areaTextoEvento: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: "center",
-  },
-  areaTextoEventoHospedagem: {
-    flex: 0,
-    flexGrow: 0,
-    flexShrink: 0,
-    marginLeft: 0,
-    maxWidth: undefined,
-    width: "auto",
-  },
-  tituloEvento: {
-    fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "left",
-    flexShrink: 1,
-    flexWrap: "wrap",
-  },
-  tituloEventoHospedagem: {
-    flexShrink: 0,
-    flexWrap: "nowrap",
-    textAlign: "left",
-    ...(Platform.OS === "web"
-      ? ({ whiteSpace: "nowrap" } as object)
-      : null),
-  },
-  enderecoEvento: {
-    fontSize: 16,
-    textAlign: "left",
-    flexShrink: 1,
-    flexWrap: "wrap",
-  },
-});

@@ -21,10 +21,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
 import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
 import { Evento, EventoSuite, QueryParams, Usuario } from "@/src/types/geral";
 import { apiGeral } from "@/src/lib/geral";
 import { useFocusEffect } from "expo-router";
@@ -1052,16 +1050,10 @@ export default function Index() {
   };
 
   return (
-    <LinearGradient
-      colors={[colors.branco, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-
+    <PublicShopLayout>
       <View style={styles.container}>
         <View style={styles.areaStep}>
-          <StepIndicatorHospedagem currentStep={1} />
+          <StepIndicatorHospedagem currentStep={1} variant="public" />
         </View>
         <Text style={styles.titulo}>Pousada</Text>
 
@@ -1086,7 +1078,6 @@ export default function Index() {
             />
             <View style={styles.areaTextoEvento}>
               <Text style={styles.tituloEvento}>{formData.nome}</Text>
-              {/* <Text style={styles.enderecoEvento}>{formData.endereco}</Text> */}
             </View>
           </View>
 
@@ -1803,18 +1794,19 @@ export default function Index() {
         initialIndex={fotoViewer.initialIndex}
         onClose={() => setFotoViewer((prev) => ({ ...prev, visible: false }))}
       />
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 5,
+    paddingTop: 8,
+    paddingHorizontal: 12,
     marginBottom: 20,
-    height: 500,
+    maxWidth: 1280,
+    width: "100%",
+    alignSelf: "center",
   },
   titulo: {
     fontSize: 24,

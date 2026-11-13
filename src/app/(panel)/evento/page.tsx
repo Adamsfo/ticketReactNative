@@ -4,33 +4,30 @@ import {
   StyleSheet,
   Modal,
   Platform,
-  Dimensions,
   View,
   Image,
-  TouchableOpacity,
   FlatList,
+  useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import StatusBarPage from "@/src/components/StatusBarPage";
 import ModalMsg from "@/src/components/ModalMsg";
-import colors from "@/src/constants/colors";
-import BarMenu from "@/src/components/BarMenu";
-import { Feather } from "@expo/vector-icons";
-import CounterTicket from "@/src/components/CounterTicket";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import PublicShopLayout from "@/src/components/public/PublicShopLayout";
+import PublicShopSection from "@/src/components/public/PublicShopSection";
+import PublicShopStickyCta from "@/src/components/public/PublicShopStickyCta";
+import { publicTheme } from "@/src/constants/publicTheme";
+import { Calendar, MapPin } from "lucide-react-native";
 import { useFocusEffect } from "expo-router";
 import { apiGeral } from "@/src/lib/geral";
 import { Evento, Produtor } from "@/src/types/geral";
-import MapViewer from "@/src/components/MapViewer";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { api } from "@/src/lib/api";
 import WebView, { WebViewMessageEvent } from "react-native-webview";
 import { useAuth } from "@/src/contexts_/AuthContext";
 
-const { width } = Dimensions.get("window");
-
 export default function Index() {
+  const { width } = useWindowDimensions();
+  const horizontalPad = width >= 768 ? 20 : 12;
   const endpointApi = "/evento";
   const route = useRoute();
   const { isPDV } = useAuth();
@@ -60,7 +57,11 @@ export default function Index() {
   const [webViewHeight, setWebViewHeight] = useState(200); // Estado para a altura do WebView
   const [webViewHeightProdutor, setWebViewHeightProdutor] = useState(200); // Estado para a altura do WebView
 
-  const widthCardItem = 460;
+  const ctaLabel = isPDV
+    ? "Vender Ingressos"
+    : formData.tipo === "Pousada"
+      ? "Faça sua reserva"
+      : "Comprar Ingressos";
 
   const getRegistros = async (id: number) => {
     if (id > 0) {
@@ -112,69 +113,48 @@ export default function Index() {
     if (item.type === "header") {
       return (
         <>
-          <View style={styles.dadosBasicosImagem}>
-            <View style={styles.containerImagem}>
-              <Image
-                source={{
-                  uri: api.getBaseApi() + "/uploads/" + formData.imagem,
-                }}
-                style={styles.imagem}
-              />
+          <PublicShopSection noPadding style={styles.heroSection}>
+            <Image
+              source={{
+                uri: api.getBaseApi() + "/uploads/" + formData.imagem,
+              }}
+              style={styles.imagem}
+            />
+          </PublicShopSection>
+
+          <PublicShopSection>
+            <Text style={styles.eventTitle}>{formData.nome}</Text>
+            <View style={styles.metaRow}>
+              <MapPin size={18} color={publicTheme.textSecondary} />
+              <Text style={styles.metaText}>{formData.endereco}</Text>
             </View>
-          </View>
-
-          <View style={styles.dadosBasicos}>
-            <Text style={styles.titulo}>{formData.nome}</Text>
-            <View style={{ flexDirection: "row", padding: 7 }}>
-              <Text
-                style={{ fontWeight: "normal", paddingLeft: 5, marginRight: 5 }}
-              >
-                {formData.endereco}
-              </Text>
-
-              <Feather name="map-pin" size={20}></Feather>
-            </View>
-
-            <View style={{ flexDirection: "row", padding: 7 }}>
-              <Text style={{ fontWeight: "normal", paddingLeft: 5 }}>
+            <View style={styles.metaRow}>
+              <Calendar size={18} color={publicTheme.textSecondary} />
+              <Text style={styles.metaText}>
                 {format(
                   parseISO(formData.data_hora_inicio.toISOString()),
-                  "'Inicio 'dd 'de' MMMM 'de' yyyy 'às' HH:mm 'hs'",
+                  "'Início 'dd 'de' MMMM 'de' yyyy 'às' HH:mm",
                   { locale: ptBR },
                 )}{" "}
                 até{" "}
                 {format(
                   parseISO(formData.data_hora_fim.toISOString()),
-                  "dd 'de' MMMM 'de' yyyy 'às' HH:mm 'hs'",
+                  "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
                   { locale: ptBR },
                 )}
               </Text>
             </View>
-            {/* {formData.latitude && formData.longitude && (
-              <MapViewer
-                location={{
-                  latitude: Number(formData.latitude),
-                  longitude: Number(formData.longitude),
-                }}
-                setLocation={(location) => console.log(location)}
-              />
-            )} */}
-          </View>
+          </PublicShopSection>
         </>
       );
     } else if (item.type === "mapa") {
       return (
-        <View style={styles.dadosBasicosImagem}>
-          <Text style={[styles.titulo, { paddingLeft: 25 }]}>
-            Mapa do Evento
-          </Text>
-          <View style={styles.containerImagem}>
-            <Image
-              source={{ uri: api.getBaseApi() + "/uploads/" + formData.mapa }}
-              style={styles.imagemMapa}
-            />
-          </View>
-        </View>
+        <PublicShopSection title="Mapa do Evento" noPadding>
+          <Image
+            source={{ uri: api.getBaseApi() + "/uploads/" + formData.mapa }}
+            style={styles.imagemMapa}
+          />
+        </PublicShopSection>
       );
     } else if (item.type === "produtor") {
       const htmlContent = `
@@ -206,17 +186,14 @@ export default function Index() {
       };
 
       return (
-        <View style={styles.dadosBasicos}>
-          <View
-            style={{ flexDirection: "row", justifyContent: "space-between" }}
-          >
-            <Text style={styles.titulo}>Produtor</Text>
+        <PublicShopSection title="Produtor">
+          <View style={styles.produtorHeader}>
+            <Text style={styles.produtorNome}>{produtor.nome}</Text>
             <Image
               source={{ uri: api.getBaseApi() + "/uploads/" + produtor.logo }}
               style={styles.imagemCabecalho}
             />
           </View>
-          <Text style={styles.titulo}>{produtor.nome}</Text>
           {Platform.OS === "web" ? (
             <iframe
               srcDoc={htmlContent}
@@ -242,7 +219,7 @@ export default function Index() {
               injectedJavaScript={`window.ReactNativeWebView.postMessage(document.body.scrollHeight)`}
             />
           )}
-        </View>
+        </PublicShopSection>
       );
     } else if (item.type === "descricao") {
       const htmlContent = `
@@ -285,10 +262,7 @@ export default function Index() {
       };
 
       return (
-        <View style={styles.dadosBasicos}>
-          <Text style={[styles.titulo, { marginBottom: 0 }]}>
-            Informações do Evento
-          </Text>
+        <PublicShopSection title="Informações do Evento">
           {Platform.OS === "web" ? (
             <iframe
               srcDoc={htmlContent}
@@ -314,15 +288,12 @@ export default function Index() {
               injectedJavaScript={`window.ReactNativeWebView.postMessage(document.body.scrollHeight)`}
             />
           )}
-        </View>
+        </PublicShopSection>
       );
     } else if (item.type === "cancelamento") {
       return (
-        <View style={[styles.dadosBasicos, { marginBottom: 50 }]}>
-          <Text style={[styles.titulo, { marginBottom: 0 }]}>
-            Política de Cancelamento
-          </Text>
-          <Text style={[styles.subtitulo, { marginBottom: 0 }]}>
+        <PublicShopSection title="Política de Cancelamento">
+          <Text style={styles.subtitulo}>
             {`${
               formData.id != 1
                 ? "* Cancelamentos de pedidos serão aceitos até 7 dias após a compra, desde que a solicitação seja enviada até 48 horas antes do início do evento.\n"
@@ -334,135 +305,104 @@ export default function Index() {
             {"\n"}* Assim que o cancelamento é efetivado, o processo de
             devolução do dinheiro é iniciado.
           </Text>
-        </View>
+        </PublicShopSection>
       );
     }
     return null;
   };
 
   return (
-    <LinearGradient
-      colors={[colors.white, colors.laranjado]}
-      style={{ flex: 1, justifyContent: "center" }}
-    >
-      <StatusBarPage style="dark" />
-      <BarMenu />
-
-      <View style={styles.container}>
+    <PublicShopLayout>
+      <View style={[styles.page, { paddingHorizontal: horizontalPad }]}>
         <FlatList
           data={data}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
+        <PublicShopStickyCta
+          label={ctaLabel}
+          onPress={() =>
+            navigation.navigate(
+              formData.tipo === "Ingresso" ? "ingressos" : "pousada",
+              { id: id },
+            )
+          }
+        />
       </View>
-
-      <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={() =>
-          navigation.navigate(
-            formData.tipo === "Ingresso" ? "ingressos" : "pousada",
-            { id: id },
-          )
-        }
-      >
-        <Text style={styles.floatingButtonText}>
-          {isPDV
-            ? "Vender Ingressos"
-            : formData.tipo === "Pousada"
-              ? "Faça sua reserva"
-              : "Comprar Ingressos"}
-        </Text>
-      </TouchableOpacity>
 
       <Modal visible={visibleMsg} transparent animationType="slide">
         <ModalMsg onClose={() => setVisibleMsg(false)} />
       </Modal>
-    </LinearGradient>
+    </PublicShopLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
     flex: 1,
-    marginTop: Platform.OS === "web" ? 80 : 120,
-    // marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
-    // marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "10%") : 20,
-    // marginBottom: 20,
+    paddingTop: 12,
   },
-  titulo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 3,
+  listContent: {
+    paddingBottom: 120,
+    paddingTop: 4,
   },
-  containerImagem: {
-    alignItems: "center",
-    // padding: 2,
+  heroSection: {
+    marginBottom: 16,
+  },
+  eventTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: publicTheme.textPrimary,
+    marginBottom: 14,
+    lineHeight: 32,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 10,
+  },
+  metaText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    color: publicTheme.textSecondary,
   },
   imagem: {
     width: "100%",
     aspectRatio: 16 / 9,
-    resizeMode: "cover", // ou 'contain', dependendo do comportamento desejado
-    borderRadius: 20,
+    resizeMode: "cover",
   },
   imagemMapa: {
     width: "100%",
     aspectRatio: 16 / 9,
-    resizeMode: "cover", // ou 'contain', dependendo do comportamento desejado
-    borderRadius: 20,
+    resizeMode: "cover",
   },
-  dadosBasicos: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    paddingRight: 25,
-    paddingLeft: 25,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
-    paddingBottom: 25,
-    borderRadius: 20,
-  },
-  dadosBasicosImagem: {
-    backgroundColor: "rgba(255,255,255, 0.21)",
-    marginTop: 7,
-    // paddingRight: 25,
-    // paddingLeft: 25,
-    marginRight: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
-    marginLeft: Platform.OS === "web" ? (width <= 1000 ? 5 : "20%") : 0,
-    // paddingBottom: 25,
-    borderRadius: 20,
-  },
-  floatingButton: {
-    position: "absolute",
-    bottom: 15,
-    left: "50%",
-    transform: [
-      {
-        translateX:
-          Platform.OS === "web" ? (width <= 1000 ? -175 : -135) : -175,
-      },
-    ], // Centraliza o botão
-    backgroundColor: "rgb(0, 146, 250)",
-    borderRadius: 20,
-    padding: 15,
+  produtorHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    width: 350, // Largura do botão
+    marginBottom: 12,
   },
-  floatingButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
+  produtorNome: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: publicTheme.textPrimary,
+    flex: 1,
+    paddingRight: 12,
   },
   imagemCabecalho: {
-    width: Platform.OS === "web" ? 70 : 60, // 100% para web, largura da tela para mobile
-    height: 45,
-    resizeMode: "cover", // Ajuste o modo de redimensionamento conforme necessário
-    marginTop: 10,
+    width: 64,
+    height: 44,
+    resizeMode: "contain",
+    borderRadius: publicTheme.radiusSm,
+    backgroundColor: publicTheme.background,
   },
   subtitulo: {
-    fontSize: 18,
-    marginTop: 5,
-    marginBottom: 3,
+    fontSize: 15,
+    lineHeight: 24,
+    color: publicTheme.textSecondary,
   },
 });
