@@ -1,11 +1,21 @@
 import React, { useMemo, useState } from "react";
-import { View, Button, Platform, StyleSheet } from "react-native";
+import {
+  View,
+  Button,
+  Platform,
+  StyleSheet,
+  TextInput,
+} from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { Picker } from "@react-native-picker/picker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./TimePickerComponente.css";
 import { pt } from "date-fns/locale/pt";
+import {
+  formatarHoraInput,
+  interpretarHoraInput,
+} from "./horarioPersonalizado";
 
 registerLocale("pt", pt);
 
@@ -14,6 +24,10 @@ interface TimePickerComponenteProps {
   onChange: (date: Date) => void;
   minTime?: Date;
   maxTime?: Date;
+  /** Qualquer minuto (00–59); na web permite digitar HH:mm. */
+  horarioPersonalizado?: boolean;
+  /** Intervalo dos slots fixos quando min/max estão definidos (padrão 30). */
+  intervaloMinutos?: number;
 }
 
 function minutosDesdeMeiaNoite(time: Date): number {
@@ -79,9 +93,17 @@ const TimePickerComponente = ({
   onChange,
   minTime,
   maxTime,
+  horarioPersonalizado = false,
+  intervaloMinutos,
 }: TimePickerComponenteProps) => {
   const [show, setShow] = useState(false);
+  const [textoHoraWeb, setTextoHoraWeb] = useState(() => formatarHoraInput(value));
+  const [textoHoraInvalido, setTextoHoraInvalido] = useState(false);
   const hasLimits = Boolean(minTime && maxTime);
+  const intervaloSlots = horarioPersonalizado
+    ? 1
+    : (intervaloMinutos ?? 30);
+  const usarSlotsFixos = hasLimits && intervaloSlots > 1;
 
   const minimumDate = useMemo(() => {
     if (!minTime) return undefined;
@@ -102,13 +124,19 @@ const TimePickerComponente = ({
   }, [maxTime, value]);
 
   const horariosPermitidos = useMemo(() => {
-    if (!minTime || !maxTime) {
+    if (!minTime || !maxTime || !usarSlotsFixos) {
       return [];
     }
-    return gerarHorariosPermitidos(minTime, maxTime);
-  }, [minTime, maxTime]);
+    return gerarHorariosPermitidos(minTime, maxTime, intervaloSlots);
+  }, [minTime, maxTime, usarSlotsFixos, intervaloSlots]);
 
-  const semHorarios = hasLimits && horariosPermitidos.length === 0;
+  const semHorarios = usarSlotsFixos && horariosPermitidos.length === 0;
+
+  React.useEffect(() => {
+    if (Platform.OS !== "web" || !horarioPersonalizado) return;
+    setTextoHoraWeb(formatarHoraInput(value));
+    setTextoHoraInvalido(false);
+  }, [value, horarioPersonalizado]);
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = clampTime(selectedDate || value, minTime, maxTime);
@@ -124,9 +152,40 @@ const TimePickerComponente = ({
     clampTime(value, minTime, maxTime),
   );
 
+  const commitTextoHoraWeb = () => {
+    const parsed = interpretarHoraInput(textoHoraWeb, value);
+    if (!parsed.ok) {
+      setTextoHoraInvalido(true);
+      return;
+    }
+    setTextoHoraInvalido(false);
+    onChange(clampTime(parsed.date, minTime, maxTime));
+  };
+
   return (
     <View style={styles.container}>
-      {Platform.OS === "web" ? (
+      {Platform.OS === "web" && horarioPersonalizado ? (
+        <View style={styles.webContainer}>
+          <TextInput
+            style={[
+              styles.horaManual,
+              textoHoraInvalido && styles.horaManualInvalida,
+            ]}
+            value={textoHoraWeb}
+            onChangeText={(t) => {
+              setTextoHoraWeb(t);
+              setTextoHoraInvalido(false);
+            }}
+            onBlur={commitTextoHoraWeb}
+            onSubmitEditing={commitTextoHoraWeb}
+            placeholder="HH:mm"
+            placeholderTextColor="#999"
+            keyboardType="numbers-and-punctuation"
+            maxLength={5}
+            accessibilityLabel="Horário"
+          />
+        </View>
+      ) : Platform.OS === "web" ? (
         <View style={styles.webContainer}>
           <DatePicker
             selected={
@@ -147,13 +206,14 @@ const TimePickerComponente = ({
             className="custom-timepicker"
             minTime={semHorarios ? maxTime : minTime}
             maxTime={maxTime}
+            timeIntervals={horarioPersonalizado ? 1 : intervaloSlots}
             includeTimes={
-              hasLimits && !semHorarios ? horariosPermitidos : undefined
+              usarSlotsFixos && !semHorarios ? horariosPermitidos : undefined
             }
             disabled={semHorarios}
           />
         </View>
-      ) : hasLimits ? (
+      ) : hasLimits && usarSlotsFixos ? (
         <Picker
           enabled={!semHorarios}
           selectedValue={
@@ -240,6 +300,21 @@ const styles = StyleSheet.create({
   nativePicker: {
     width: "100%",
     height: Platform.OS === "ios" ? 180 : 48,
+  },
+  horaManual: {
+    fontSize: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    height: 45,
+    width: "100%",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    textAlign: "center",
+    color: "#333",
+  },
+  horaManualInvalida: {
+    borderColor: "#c62828",
   },
 });
 

@@ -45,10 +45,9 @@ const DIA_INICIO = (() => {
 })();
 const DIA_FIM = (() => {
   const d = new Date();
-  d.setHours(23, 30, 0, 0);
+  d.setHours(23, 59, 0, 0);
   return d;
 })();
-const INTERVALO_SLOTS_MIN = 30;
 
 type Step = "atual" | "editar" | "confirmar";
 
@@ -58,50 +57,6 @@ type Props = {
   onClose: () => void;
   onSucesso?: () => void;
 };
-
-function isMesmaDataLocal(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function minutosDesdeMeiaNoite(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes();
-}
-
-function aplicarHorarioBase(h: number, m: number): Date {
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-function proximoSlotAposAgora(
-  agora: Date,
-  intervaloMinutos = INTERVALO_SLOTS_MIN,
-): number {
-  const minutos = minutosDesdeMeiaNoite(agora);
-  return Math.ceil((minutos + 1) / intervaloMinutos) * intervaloMinutos;
-}
-
-/** Mesmas regras da Nova Reserva (recepção). */
-function calcularMinCheckinRecepcao(dataCheckin: Date, agora: Date): Date {
-  if (!isMesmaDataLocal(dataCheckin, agora)) {
-    return aplicarHorarioBase(0, 0);
-  }
-  const aposAgora = proximoSlotAposAgora(agora);
-  if (aposAgora > minutosDesdeMeiaNoite(DIA_FIM)) {
-    return aplicarHorarioBase(24, 0);
-  }
-  return aplicarHorarioBase(Math.floor(aposAgora / 60), aposAgora % 60);
-}
-
-function haHorariosCheckinDisponiveis(dataCheckin: Date, agora: Date): boolean {
-  if (!isMesmaDataLocal(dataCheckin, agora)) return true;
-  const min = calcularMinCheckinRecepcao(dataCheckin, agora);
-  return minutosDesdeMeiaNoite(min) <= minutosDesdeMeiaNoite(DIA_FIM);
-}
 
 function combineDateTime(date: Date, time: Date): Date {
   const wall = new Date(
@@ -134,7 +89,7 @@ function splitIsoToLocalDateTime(iso: string): { date: Date; time: Date } {
 
 /**
  * Operação própria de Alterar Período (não é edição completa).
- * Pickers iguais à Nova Reserva; disponibilidade via SuiteDisponibilidadeService (API).
+ * Horários livres (qualquer minuto, inclusive no passado); validação de conflito na API.
  */
 export default function AlterarPeriodoModal({
   visible,
@@ -165,7 +120,6 @@ export default function AlterarPeriodoModal({
     return d;
   });
   const [motivo, setMotivo] = useState("");
-  const [agoraTick, setAgoraTick] = useState(() => new Date());
 
   const idEventoPousada = Number(detalhe?.evento?.id) || 0;
   const {
@@ -176,12 +130,6 @@ export default function AlterarPeriodoModal({
     idEventoPousada,
     visible && idEventoPousada > 0,
   );
-
-  useEffect(() => {
-    if (!visible) return;
-    const id = setInterval(() => setAgoraTick(new Date()), 30_000);
-    return () => clearInterval(id);
-  }, [visible]);
 
   useEffect(() => {
     if (!visible || !idReservaHospedagem) {
@@ -227,18 +175,6 @@ export default function AlterarPeriodoModal({
     };
   }, [visible, idReservaHospedagem]);
 
-  const checkinMinEfetivo = useMemo(
-    () => calcularMinCheckinRecepcao(checkinDate, agoraTick),
-    [checkinDate, agoraTick],
-  );
-
-  const checkinHojeSemHorarios = useMemo(
-    () =>
-      isMesmaDataLocal(checkinDate, agoraTick) &&
-      !haHorariosCheckinDisponiveis(checkinDate, agoraTick),
-    [checkinDate, agoraTick],
-  );
-
   const checkinIsoNovo = useMemo(
     () => combineDateTime(checkinDate, checkinTime).toISOString(),
     [checkinDate, checkinTime],
@@ -249,9 +185,6 @@ export default function AlterarPeriodoModal({
   );
 
   const periodoInvalido = useMemo(() => {
-    if (checkinHojeSemHorarios) {
-      return "Não há mais horários disponíveis para check-in hoje.";
-    }
     if (
       combineDateTime(checkoutDate, checkoutTime).getTime() <=
       combineDateTime(checkinDate, checkinTime).getTime()
@@ -272,7 +205,6 @@ export default function AlterarPeriodoModal({
     checkinTime,
     checkoutDate,
     checkoutTime,
-    checkinHojeSemHorarios,
     verificadorExcepcional,
   ]);
 
@@ -381,8 +313,9 @@ export default function AlterarPeriodoModal({
                       <TimePickerComponente
                         value={checkinTime}
                         onChange={setCheckinTime}
-                        minTime={checkinMinEfetivo}
+                        minTime={DIA_INICIO}
                         maxTime={DIA_FIM}
+                        horarioPersonalizado
                       />
                     </View>
                   </View>
@@ -404,6 +337,7 @@ export default function AlterarPeriodoModal({
                         onChange={setCheckoutTime}
                         minTime={DIA_INICIO}
                         maxTime={DIA_FIM}
+                        horarioPersonalizado
                       />
                     </View>
                   </View>

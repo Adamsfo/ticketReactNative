@@ -231,10 +231,6 @@ function haHorariosCheckinDisponiveis(dataCheckin: Date, agora: Date): boolean {
   return minutosDesdeMeiaNoite(min) <= minutosDesdeMeiaNoite(DIA_FIM);
 }
 
-function horarioMaiorOuIgual(time: Date, min: Date): boolean {
-  return minutosDesdeMeiaNoite(time) >= minutosDesdeMeiaNoite(min);
-}
-
 /**
  * Monta o instante UTC a partir da data/hora escolhidas no seletor,
  * interpretadas como horário de parede em America/Cuiaba — assim 22:00
@@ -544,11 +540,6 @@ export default function NovaReservaRecepcaoModal() {
     return () => clearTimeout(timer);
   }, [searchQuery, visible, step, showCadastro]);
 
-  const checkinMinEfetivo = useMemo(
-    () => calcularMinCheckinRecepcao(checkinDate, agoraTick),
-    [checkinDate, agoraTick],
-  );
-
   const checkinHojeSemHorarios = useMemo(
     () =>
       isMesmaDataLocal(checkinDate, agoraTick) &&
@@ -556,16 +547,18 @@ export default function NovaReservaRecepcaoModal() {
     [checkinDate, agoraTick],
   );
 
+  /** Recepção: não força horário ≥ agora; só limita ao fim do dia (slots 30 min). */
   useEffect(() => {
     if (checkinHojeSemHorarios) return;
     setCheckinTime((atual) => {
       const minutos = minutosDesdeMeiaNoite(atual);
-      const min = minutosDesdeMeiaNoite(checkinMinEfetivo);
       const max = minutosDesdeMeiaNoite(DIA_FIM);
-      if (minutos < min || minutos > max) return checkinMinEfetivo;
+      if (minutos > max) {
+        return aplicarHorarioBase(Math.floor(max / 60), max % 60);
+      }
       return atual;
     });
-  }, [checkinMinEfetivo, checkinHojeSemHorarios]);
+  }, [checkinHojeSemHorarios]);
 
   const getCheckinIso = useCallback(
     () => combineDateTime(checkinDate, checkinTime).toISOString(),
@@ -598,7 +591,6 @@ export default function NovaReservaRecepcaoModal() {
     const agora = new Date();
     const checkin = combineDateTime(checkinDate, checkinTime);
     const checkout = combineDateTime(checkoutDate, checkoutTime);
-    const minEfetivo = calcularMinCheckinRecepcao(checkinDate, agora);
 
     if (!checkinDate || !checkoutDate) {
       newErrors.datas = "Check-in e check-out são obrigatórios.";
@@ -619,15 +611,6 @@ export default function NovaReservaRecepcaoModal() {
       !haHorariosCheckinDisponiveis(checkinDate, agora)
     ) {
       newErrors.checkinHorario = MSG_SEM_HORARIOS_HOJE;
-    } else if (!horarioMaiorOuIgual(checkinTime, minEfetivo)) {
-      newErrors.checkinHorario =
-        "O horário de check-in deve ser posterior ao horário atual.";
-    } else if (
-      isMesmaDataLocal(checkinDate, agora) &&
-      checkin.getTime() <= agora.getTime()
-    ) {
-      newErrors.checkinHorario =
-        "O horário de check-in deve ser posterior ao horário atual.";
     }
 
     return newErrors;
@@ -1548,7 +1531,7 @@ export default function NovaReservaRecepcaoModal() {
                   <TimePickerComponente
                     value={checkinTime}
                     onChange={setCheckinTime}
-                    minTime={checkinMinEfetivo}
+                    minTime={DIA_INICIO}
                     maxTime={DIA_FIM}
                   />
                 </View>
