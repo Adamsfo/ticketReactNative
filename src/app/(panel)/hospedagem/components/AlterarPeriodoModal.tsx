@@ -45,9 +45,19 @@ const DIA_INICIO = (() => {
 })();
 const DIA_FIM = (() => {
   const d = new Date();
-  d.setHours(23, 59, 0, 0);
+  d.setHours(23, 30, 0, 0);
   return d;
 })();
+
+function minutosDesdeMeiaNoite(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+function aplicarHorarioBase(h: number, m: number): Date {
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
 
 type Step = "atual" | "editar" | "confirmar";
 
@@ -89,7 +99,7 @@ function splitIsoToLocalDateTime(iso: string): { date: Date; time: Date } {
 
 /**
  * Operação própria de Alterar Período (não é edição completa).
- * Horários livres (qualquer minuto, inclusive no passado); validação de conflito na API.
+ * Mesmo seletor da Nova Reserva (30 min, 00:00–23:30), inclusive horários já passados.
  */
 export default function AlterarPeriodoModal({
   visible,
@@ -174,6 +184,21 @@ export default function AlterarPeriodoModal({
       cancelado = true;
     };
   }, [visible, idReservaHospedagem]);
+
+  /** Igual Nova Reserva: não bloqueia horário passado; só limita ao fim do dia. */
+  useEffect(() => {
+    if (!visible || step !== "editar") return;
+    const limitarAoFimDoDia = (atual: Date) => {
+      const minutos = minutosDesdeMeiaNoite(atual);
+      const max = minutosDesdeMeiaNoite(DIA_FIM);
+      if (minutos > max) {
+        return aplicarHorarioBase(Math.floor(max / 60), max % 60);
+      }
+      return atual;
+    };
+    setCheckinTime((t) => limitarAoFimDoDia(t));
+    setCheckoutTime((t) => limitarAoFimDoDia(t));
+  }, [visible, step, checkinDate, checkoutDate]);
 
   const checkinIsoNovo = useMemo(
     () => combineDateTime(checkinDate, checkinTime).toISOString(),
@@ -315,7 +340,6 @@ export default function AlterarPeriodoModal({
                         onChange={setCheckinTime}
                         minTime={DIA_INICIO}
                         maxTime={DIA_FIM}
-                        horarioPersonalizado
                       />
                     </View>
                   </View>
@@ -337,7 +361,6 @@ export default function AlterarPeriodoModal({
                         onChange={setCheckoutTime}
                         minTime={DIA_INICIO}
                         maxTime={DIA_FIM}
-                        horarioPersonalizado
                       />
                     </View>
                   </View>
