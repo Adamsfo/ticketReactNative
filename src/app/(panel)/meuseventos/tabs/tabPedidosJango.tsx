@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Text,
   StyleSheet,
@@ -25,20 +25,69 @@ import { useRoute } from "@react-navigation/native";
 import ModalCortesia from "./modalCortesia";
 import DatePickerComponente from "@/src/components/DatePickerComponente";
 import formatCurrency from "@/src/components/FormatCurrency";
+import { Picker } from "@react-native-picker/picker";
 
 const { width } = Dimensions.get("window");
+
+type RegistroPedidoJango = {
+  id: number | string;
+  usuario: string;
+  data: string;
+  valorPedido: number;
+  valorEntregue: number;
+  total: number;
+};
+
+type OpcaoUsuarioPedido = {
+  id: string;
+  usuario: string;
+};
+
+function mapRegistroPedido(item: Record<string, unknown>): RegistroPedidoJango {
+  const dataBruta = item.DATA ?? item.data;
+  const dataStr = String(dataBruta ?? "").replace("T00:00:00.000Z", "");
+
+  return {
+    id: (item.ID ?? item.id) as number | string,
+    usuario: String(item.USUARIO ?? item.usuario ?? ""),
+    data: dataStr,
+    valorPedido: Number(item.VALORPEDIDO ?? item.valorPedido ?? 0),
+    valorEntregue: Number(item.VALORENTREGUE ?? item.valorEntregue ?? 0),
+    total: Number(item.TOTAL ?? item.total ?? 0),
+  };
+}
+
+function extrairUsuariosUnicos(
+  registros: RegistroPedidoJango[],
+): OpcaoUsuarioPedido[] {
+  const porId = new Map<string, OpcaoUsuarioPedido>();
+
+  registros.forEach((registro) => {
+    const id = String(registro.id);
+    if (!porId.has(id)) {
+      porId.set(id, { id, usuario: registro.usuario });
+    }
+  });
+
+  return Array.from(porId.values()).sort((a, b) =>
+    a.usuario.localeCompare(b.usuario, "pt-BR"),
+  );
+}
 
 export default function TabPedidosJango() {
   const route = useRoute();
   const endpointApi = "/pedidosusuariojango";
   const { id } = route.params as { id: number };
   const [visibleModal, setVisibleModal] = useState(false);
-  const [registros, setRegistros] = useState<any[]>([]);
+  const [registrosOriginais, setRegistrosOriginais] = useState<
+    RegistroPedidoJango[]
+  >([]);
   const [registroEvento, setRegistroEvento] = useState<Evento>();
   const navigation = useNavigation() as any;
   const [visibleModalCortesia, setVisibleModalCortesia] = useState(false);
   const [dataInicio, setDataInicio] = useState<Date>(new Date());
   const [dataFinal, setDataFinal] = useState<Date>(new Date());
+  const [idUsuarioFiltro, setIdUsuarioFiltro] = useState<string>("");
   // const [resumoPorSetor, setResumoPorSetor] = useState<Record<string, number>>(
   //   {}
   // );
@@ -56,7 +105,21 @@ export default function TabPedidosJango() {
     { label: "Total" },
   ];
 
-  const getRegistros = async () => {
+  const opcoesUsuario = useMemo(
+    () => extrairUsuariosUnicos(registrosOriginais),
+    [registrosOriginais],
+  );
+
+  const registrosExibidos = useMemo(() => {
+    if (idUsuarioFiltro === "") {
+      return registrosOriginais;
+    }
+    return registrosOriginais.filter(
+      (item) => String(item.id) === idUsuarioFiltro,
+    );
+  }, [registrosOriginais, idUsuarioFiltro]);
+
+  const getRegistros = useCallback(async () => {
     const response = await apiGeral.getResource<any>(endpointApi, {
       idEvento: id,
       dataInicio: format(dataInicio.toString(), "yyyy-MM-dd"),
@@ -67,20 +130,22 @@ export default function TabPedidosJango() {
 
     const registrosData = response.data ?? [];
     console.log("Response Ingressos", registrosData);
-    const registrosAjustados = registrosData.map((item: any) => {
-      return {
-        id: item.ID,
-        usuario: item.USUARIO,
-        data: item.DATA.replace("T00:00:00.000Z", ""),
-        valorPedido: item.VALORPEDIDO,
-        valorEntregue: item.VALORENTREGUE,
-        total: item.TOTAL,
-      };
-    });
+    const registrosAjustados = registrosData.map((item: any) =>
+      mapRegistroPedido(item as Record<string, unknown>),
+    );
 
     console.log("Registros Ajustados", registrosAjustados);
 
-    setRegistros(registrosAjustados);
+    setRegistrosOriginais(registrosAjustados);
+    setIdUsuarioFiltro((atual) => {
+      if (atual === "") {
+        return atual;
+      }
+      const aindaExiste = registrosAjustados.some(
+        (item) => String(item.id) === atual,
+      );
+      return aindaExiste ? atual : "";
+    });
 
     // const resumo = registrosAjustados.reduce(
     //   (acc: Record<string, number>, item) => {
@@ -92,12 +157,12 @@ export default function TabPedidosJango() {
     // );
 
     // setResumoPorSetor(resumo);
-  };
+  }, [dataInicio, dataFinal, id]);
 
   useFocusEffect(
     useCallback(() => {
       getRegistros();
-    }, [visibleModal, dataInicio, dataFinal]),
+    }, [visibleModal, dataInicio, dataFinal, getRegistros]),
   );
 
   return (
@@ -136,9 +201,31 @@ export default function TabPedidosJango() {
                 />
               </View>
             </View>
+
+            <View style={styles.eventDetails}>
+              <View style={styles.eventDetailItem}>
+                <Text style={styles.labelData}>Usuário:</Text>
+                <Picker
+                  selectedValue={idUsuarioFiltro}
+                  onValueChange={(value) =>
+                    setIdUsuarioFiltro(String(value ?? ""))
+                  }
+                  style={styles.pickerUsuario}
+                >
+                  <Picker.Item label="Todos" value="" />
+                  {opcoesUsuario.map((op) => (
+                    <Picker.Item
+                      key={op.id}
+                      label={op.usuario}
+                      value={op.id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
           </View>
           {Platform.OS === "web" && <CustomGridTitle data={data} />}
-          {registros.map((item: any, index: number) => (
+          {registrosExibidos.map((item: RegistroPedidoJango, index: number) => (
             <CustomGrid
               key={index}
               // onItemPress={handleModalEdit}
@@ -304,5 +391,10 @@ const styles = StyleSheet.create({
     textAlign: "right",
     height: 45,
     lineHeight: 45,
+  },
+  pickerUsuario: {
+    flex: 1,
+    height: 45,
+    minWidth: Platform.OS === "web" ? 200 : undefined,
   },
 });
